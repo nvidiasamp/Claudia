@@ -12,6 +12,7 @@ Generated: 2025-01-26
 Purpose: 子任务6.4 - Phase 3: 增强安全机制
 """
 
+import os
 import sys
 import time
 import threading
@@ -23,8 +24,8 @@ from datetime import datetime, timedelta
 import queue
 import statistics
 
-# 添加项目路径
-sys.path.append('/home/m1ng/claudia/src')
+# 添加项目路径（从模块位置推导，避免硬编码）
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 # 导入依赖模块
 try:

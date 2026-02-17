@@ -10,6 +10,7 @@ Purpose: 子任务6.3 - 深化环境自适应功能（基于子任务6.2修改�
 Version: 0.3.0 (Enhanced Environmental Adaptation)
 """
 
+import os
 import sys
 import time
 import threading
@@ -24,8 +25,8 @@ from collections import deque
 import statistics
 import math
 
-# 添加项目路径
-sys.path.append('/home/m1ng/claudia/src')
+# 添加项目路径（从模块位置推导，避免硬编码）
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 # 导入LED组件
 try:
