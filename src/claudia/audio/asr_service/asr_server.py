@@ -542,11 +542,18 @@ class ASRServer:
         logger.warning("⏱️ TTS 回声门控超时 (%ds)，强制恢复", TTS_GATE_TIMEOUT_S)
         self._tts_gate = False
         self._tts_gate_timer = None
-        # 异步发送审计事件
-        asyncio.ensure_future(self._emit_result({
+        # 异步发送审计事件（捕获异常避免静默丢失）
+        task = asyncio.ensure_future(self._emit_result({
             "type": "gate_timeout_audit",
             "ts": time.time(),
         }))
+        task.add_done_callback(self._log_task_exception)
+
+    @staticmethod
+    def _log_task_exception(task: "asyncio.Task") -> None:
+        """ensure_future 回调: 记录未捕获异常，防止静默丢失"""
+        if not task.cancelled() and task.exception() is not None:
+            logger.error("异步任务异常: %s", task.exception())
 
     # ------------------------------------------------------------------
     # VAD 事件处理
@@ -684,7 +691,10 @@ async def _async_main(mock: bool) -> None:
     # 信号处理
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, lambda: asyncio.ensure_future(server.shutdown()))
+        def _shutdown_handler():
+            t = asyncio.ensure_future(server.shutdown())
+            t.add_done_callback(ASRServer._log_task_exception)
+        loop.add_signal_handler(sig, _shutdown_handler)
 
     await server.start()
 

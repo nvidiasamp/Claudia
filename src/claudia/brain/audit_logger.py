@@ -7,6 +7,7 @@
 
 import json
 import logging
+import threading
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -67,12 +68,15 @@ class AuditLogger:
         log_file = self.log_dir / f"audit_{date_str}.jsonl"
         return log_file
 
-    def log_entry(self, entry: AuditEntry):
+    def log_entry(self, entry: AuditEntry) -> bool:
         """
         记录审计条目（追加到JSONL文件）
 
         Args:
             entry: 审计条目
+
+        Returns:
+            True 写入成功，False 写入失败
         """
         try:
             # 检查日志文件是否需要轮转
@@ -95,9 +99,11 @@ class AuditLogger:
             with self.current_log_file.open('a', encoding='utf-8') as f:
                 json_line = json.dumps(asdict(entry), ensure_ascii=False)
                 f.write(json_line + '\n')
+            return True
 
         except Exception as e:
             self.logger.error(f"审计日志写入失败: {e}")
+            return False
 
     def get_recent_entries(self, limit: int = 100) -> List[AuditEntry]:
         """
@@ -179,13 +185,16 @@ class AuditLogger:
         }
 
 
-# 全局单例
+# 全局单例（线程安全）
 _global_audit_logger: Optional[AuditLogger] = None
+_audit_logger_lock = threading.Lock()
 
 
 def get_audit_logger(log_dir: str = "logs/audit") -> AuditLogger:
-    """获取全局审计日志器"""
+    """获取全局审计日志器（线程安全: run_in_executor 场景）"""
     global _global_audit_logger
     if _global_audit_logger is None:
-        _global_audit_logger = AuditLogger(log_dir=log_dir)
+        with _audit_logger_lock:
+            if _global_audit_logger is None:
+                _global_audit_logger = AuditLogger(log_dir=log_dir)
     return _global_audit_logger

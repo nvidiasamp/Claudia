@@ -577,6 +577,9 @@ class ProductionBrain:
                         # SDK 恢复失败，至少保持跟踪值一致
                         self._current_timeout = previous_timeout
 
+    # === 入力正規化: 末尾標点ストリップ文字（統一定義）===
+    _TRAILING_PUNCTUATION = "！!。.．、，,？?…~"
+
     # === ASR かな別名表（唯一定義点）===
     # ASR 音声認識は漢字の代わりに仮名(ひらがな)を出力することがある。
     # このマッピングで入力テキストを正規化し、hot_cache / SEQUENCE_HOTPATH /
@@ -646,7 +649,7 @@ class ProductionBrain:
         # contextvars 标记: 协程安全，不会并发串扰
         token = _pae_depth.set(_pae_depth.get(0) + 1)
         try:
-            cmd_lower = command.strip().lower().rstrip("！!。.、，,？?…~")
+            cmd_lower = command.strip().lower().rstrip(self._TRAILING_PUNCTUATION)
             if cmd_lower in self.EMERGENCY_COMMANDS:
                 return await self._handle_emergency(command)
 
@@ -1284,7 +1287,7 @@ class ProductionBrain:
                 )
 
         # 0. 紧急指令快速通道 — 引用 EMERGENCY_COMMANDS 唯一真源
-        cmd_emergency = command.strip().lower()
+        cmd_emergency = command.strip().lower().rstrip(self._TRAILING_PUNCTUATION)
         if cmd_emergency in self.EMERGENCY_COMMANDS:
             elapsed = (time.time() - start_time) * 1000
             self.logger.info("紧急指令旁路 ({:.0f}ms)".format(elapsed))
@@ -1310,7 +1313,7 @@ class ProductionBrain:
         #   2) 去除末尾常见标点 (!！?？。．、,)
         #   3) lower() 降级匹配（英文/混合输入）
         cmd_stripped = command.strip()
-        cmd_normalized = cmd_stripped.rstrip("!！?？。．、,")
+        cmd_normalized = cmd_stripped.rstrip(self._TRAILING_PUNCTUATION)
         cmd_lower = cmd_normalized.lower()
         cached = (
             self.hot_cache.get(cmd_stripped)

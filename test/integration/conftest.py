@@ -1,10 +1,29 @@
-"""Integration tests may depend on modules not available in all environments.
+"""Integration tests configuration.
 
-Skip collection when required modules are missing.
+These tests import ProductionBrain which may trigger CycloneDDS C library.
+On Jetson (16GB unified memory), high swap usage can cause bad_alloc/OOM.
+Pre-mock heavy native deps to reduce memory footprint.
 """
+import sys
+from unittest.mock import MagicMock
+
+# Pre-mock heavy native deps before any claudia import
+# CycloneDDS: C library that allocates network buffers → bad_alloc under memory pressure
+# ollama: avoids loading LLM runtime
+# unitree_sdk2py: depends on cyclonedds
+_HEAVY_MODS = [
+    'ollama',
+    'cyclonedds', 'cyclonedds.core', 'cyclonedds.domain',
+    'cyclonedds.idl', 'cyclonedds.pub', 'cyclonedds.sub',
+    'cyclonedds._clayer',
+]
+for mod in _HEAVY_MODS:
+    sys.modules.setdefault(mod, MagicMock())
+
 collect_ignore_glob = []
 
 try:
-    from src.claudia.interactive_japanese_commander import JapaneseCommandInterface  # noqa: F401
-except (ImportError, ModuleNotFoundError):
+    from claudia.brain.production_brain import ProductionBrain  # noqa: F401
+except (ImportError, ModuleNotFoundError, OSError):
+    # OSError: catches bad_alloc propagated as OSError on some builds
     collect_ignore_glob = ["test_*.py"]
