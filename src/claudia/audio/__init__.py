@@ -1,28 +1,19 @@
 # src/claudia/audio/__init__.py
 """
-音频处理模块
+音声処理モジュール
 
-负责音频输入输出处理，包括：
-- 音频采集和预处理
-- 语音交互流程管理
-- 音频播放控制
-- 回声消除和噪声抑制
-
-对应TaskMaster任务:
-- Task 4: Hardware & Sensor System Validation (Audio I/O)
-- Task 7: Wake Word Detection System  
-- Task 8: Japanese ASR System
-- Task 9: Japanese TTS System
-- Task 12: Stage 1 End-to-End Voice Interaction
+- pcm_utils: PCM 重采样ユーティリティ
+- audio_capture: USB マイクキャプチャ (arecord → UDS)
+- asr_bridge: ASR 結果消費 → ProductionBrain 橋渡し
+- asr_service/: ASR サーバー (faster-whisper + VAD + 3路 UDS)
 """
 
-# 导入音频处理类（待实现）
-# from .audio_manager import AudioManager
-# from .voice_interaction import VoiceInteractionEngine
-# from .audio_processor import AudioProcessor
+from .pcm_utils import resample_pcm_int16
+from .audio_capture import AudioCapture
+from .asr_bridge import ASRBridge
 
 __all__ = [
-    # 'AudioManager',
-    # 'VoiceInteractionEngine',
-    # 'AudioProcessor',
+    "resample_pcm_int16",
+    "AudioCapture",
+    "ASRBridge",
 ]

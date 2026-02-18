@@ -12,9 +12,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Run
 ```bash
-./start_production_brain.sh              # Interactive launcher (sim or hardware)
-python3 production_commander.py          # Simulation mode
-python3 production_commander.py --hardware  # Real robot
+./start_production_brain.sh              # Interactive launcher (keyboard/voice x sim/hardware)
+python3 production_commander.py          # Keyboard REPL, simulation mode
+python3 production_commander.py --hardware  # Keyboard REPL, real robot
+
+# Voice mode (Phase 2: USB mic → ASR → LLM → robot)
+python3 voice_commander.py              # Voice, simulation mode
+python3 voice_commander.py --hardware   # Voice, real robot
+python3 voice_commander.py --asr-mock   # Voice, mock ASR (no mic needed)
+ASR_MOCK=1 python3 voice_commander.py   # Env-based mock ASR
 ```
 
 ### Test
@@ -147,6 +153,27 @@ Actions requiring standing state: 1016, 1017, 1022, 1023, 1029, 1030, 1031, 1032
 | `ai_components/llm_service/` | LLM service layer (cache, streaming, prompt optimization, API server) |
 | `common/ros2_manager.py` | ROS2 node lifecycle management |
 | `production_commander.py` | Interactive REPL entry point, delegates to ProductionBrain |
+| `voice_commander.py` | Voice mode entry point: ASR subprocess + AudioCapture + ASRBridge |
+| `audio/pcm_utils.py` | PCM resampling utility (44100→16000, numpy index-based) |
+| `audio/audio_capture.py` | USB mic capture: arecord subprocess → resample → UDS audio.sock |
+| `audio/asr_bridge.py` | ASR result consumer: result.sock → dedup/filter → Queue → Brain |
+| `audio/asr_service/` | ASR server: faster-whisper + silero-vad + 3-way UDS (Phase 1) |
+
+### Voice Pipeline (Phase 2)
+
+```
+USB Mic (AT2020USB-XP, hw:2,0, 44100Hz)
+  │ arecord subprocess → resample → 16kHz 960byte frames
+  ▼
+AudioCapture ──→ /tmp/claudia_audio.sock ──→ ASR Server (subprocess)
+                                                ├── silero-vad + emergency
+                                                ├── faster-whisper (ja)
+                                                ▼
+ASRBridge ←── /tmp/claudia_asr_result.sock ←─── JSON Lines
+  ├── emergency → immediate brain call + queue flush
+  ├── transcript → confidence filter → dedup → Queue(3)
+  └── command worker → brain.process_and_execute(text)
+```
 
 ### Hardware Communication
 

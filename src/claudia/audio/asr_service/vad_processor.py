@@ -49,7 +49,7 @@ class VADConfig:
     threshold: float = 0.5
     min_speech_ms: int = 300
     max_speech_ms: int = 15000
-    silence_padding_ms: int = 500
+    silence_padding_ms: int = 300
     pre_speech_buffer_ms: int = 300
     emergency_check_ms: int = 300
     sample_rate: int = 16000

@@ -47,36 +47,10 @@ FRAME_BYTES = FRAME_MS * BYTES_PER_MS  # 960 bytes = 30ms
 
 
 # ======================================================================
-# 音频重采样工具
+# 音频重采样工具 (共享模块)
 # ======================================================================
 
-def resample_pcm_int16(samples_int16, src_rate: int, dst_rate: int):
-    """PCM int16 重采样 (numpy 线性索引)
-
-    Tegra ALSA plughw 在 AT2020USB-XP 等 USB 麦克风上重采样会产出全零，
-    必须在 Python 层做。
-
-    Parameters
-    ----------
-    samples_int16 : np.ndarray (int16)
-        源采样率的 int16 PCM 样本
-    src_rate : int
-        源采样率 (如 44100)
-    dst_rate : int
-        目标采样率 (如 16000)
-
-    Returns
-    -------
-    np.ndarray (int16)
-        重采样后的 int16 PCM
-    """
-    if src_rate == dst_rate:
-        return samples_int16
-    import numpy as np
-    n_out = int(len(samples_int16) * dst_rate / src_rate)
-    indices = (np.arange(n_out, dtype=np.float64) * src_rate / dst_rate).astype(np.int64)
-    indices = np.clip(indices, 0, len(samples_int16) - 1)
-    return samples_int16[indices]
+from ..pcm_utils import resample_pcm_int16  # noqa: F401 — 提取到 pcm_utils.py
 
 
 # ======================================================================
@@ -171,10 +145,13 @@ class ASRModelWrapper:
                 audio_int16 = resample_pcm_int16(audio_int16, sample_rate, SAMPLE_RATE)
             audio_np = audio_int16.astype(np.float32) / 32768.0
 
+            # beam_size=1 で推理高速化 (beam_size=3 比 ~40% 遅い)
+            # 短コマンド (1-3秒) では beam_size=1 でも十分な精度
+            beam = int(os.getenv("CLAUDIA_ASR_BEAM_SIZE", "1"))
             segments, info = self._model.transcribe(
                 audio_np,
                 language="ja",
-                beam_size=3,
+                beam_size=beam,
                 vad_filter=False,  # 外部 VAD 已处理
             )
 

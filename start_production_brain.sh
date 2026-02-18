@@ -61,12 +61,21 @@ if [ "$ROUTER_MODE" != "legacy" ]; then
     echo ""
 fi
 
-# 询问模式
-echo "请选择运行模式:"
-echo "1) 模拟模式 (安全测试)"
-echo "2) 真实硬件模式 (连接机器人)"
-echo ""
-read -p "选择 [1/2]: " choice
+# --voice 直启参数: 跳过交互菜单
+if [ "$1" = "--voice" ]; then
+    choice=3
+elif [ "$1" = "--voice-hw" ]; then
+    choice=4
+else
+    # 交互菜单
+    echo "请选择运行模式:"
+    echo "1) 键盘模拟 (文字输入, 安全测试)"
+    echo "2) 键盘硬件 (文字输入, 连接机器人)"
+    echo "3) 语音模拟 (麦克风, 安全测试)"
+    echo "4) 语音硬件 (麦克风, 连接机器人)"
+    echo ""
+    read -p "选择 [1/2/3/4]: " choice
+fi
 
 case $choice in
     1)
@@ -114,6 +123,40 @@ case $choice in
                 echo "⚠️ 未检测到Python ollama包，预热将走HTTP兜底"
             fi
             "$PYTHON_BIN" production_commander.py --hardware
+        else
+            echo "已取消"
+        fi
+        ;;
+    3)
+        echo ""
+        echo "✅ 启动语音模拟模式..."
+        echo ""
+        if ! "$PYTHON_BIN" -c "import ollama" >/dev/null 2>&1; then
+            echo "⚠️ 未检测到Python ollama包，预热将走HTTP兜底"
+        fi
+        "$PYTHON_BIN" voice_commander.py
+        ;;
+    4)
+        echo ""
+        echo "⚠️  语音硬件模式 - 请确保机器人已连接 + USB麦克风已插入"
+        read -p "确认继续? [y/N]: " confirm
+        if [[ $confirm == [yY] ]]; then
+            if ! "$PYTHON_BIN" -c "import unitree_sdk2py, cyclonedds.idl" >/dev/null 2>&1; then
+                echo ""
+                echo "❌ 硬件依赖导入失败（unitree_sdk2py / cyclonedds.idl）"
+                echo "   当前Python: $PYTHON_BIN"
+                echo "   PYTHONPATH: ${PYTHONPATH:-<empty>}"
+                echo ""
+                echo "已停止启动，避免错误回退到 MockSportClient。"
+                exit 1
+            fi
+            echo ""
+            echo "✅ 启动语音硬件模式..."
+            echo ""
+            if ! "$PYTHON_BIN" -c "import ollama" >/dev/null 2>&1; then
+                echo "⚠️ 未检测到Python ollama包，预热将走HTTP兜底"
+            fi
+            "$PYTHON_BIN" voice_commander.py --hardware
         else
             echo "已取消"
         fi

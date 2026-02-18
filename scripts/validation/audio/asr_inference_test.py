@@ -552,7 +552,8 @@ def _run_usb_mic_test(model_size: str, device: str, native_rate: int) -> int:
 
         # リサンプル (numpy index-based)
         sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
-        from claudia.audio.asr_service.asr_server import resample_pcm_int16, SAMPLE_RATE
+        from claudia.audio.pcm_utils import resample_pcm_int16
+        from claudia.audio.asr_service.asr_server import SAMPLE_RATE
         resampled = resample_pcm_int16(samples, sr_in, SAMPLE_RATE)
         print("  Resampled: {} → {} samples (16kHz)".format(len(samples), len(resampled)))
         print("  [PASS] Resampling OK")
