@@ -46,8 +46,8 @@ class VADState(enum.Enum):
 @dataclass(frozen=True)
 class VADConfig:
     """VAD 参数配置，对应 plan section 1.6"""
-    threshold: float = 0.5
-    min_speech_ms: int = 300
+    threshold: float = 0.45
+    min_speech_ms: int = 250
     max_speech_ms: int = 15000
     silence_padding_ms: int = 300
     pre_speech_buffer_ms: int = 300
@@ -283,6 +283,12 @@ class VADProcessor:
                         events.extend(self._end_speech(now_ms, forced=False))
                     else:
                         # 太短，丢弃（可能是噪声）
+                        logger.info(
+                            "短発話破棄: %dms < %dms (utt=%s)",
+                            self._accumulated_ms,
+                            self._config.min_speech_ms,
+                            self._current_utterance_id,
+                        )
                         self._reset_state()
 
         return events

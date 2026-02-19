@@ -13,9 +13,12 @@ result.sock から JSON Lines を読み取り、メッセージタイプに応�
 """
 
 import asyncio
+import json
 import logging
+import os
 import time
-from typing import Any, Dict, Optional
+from datetime import datetime
+from typing import Any, Dict, Optional, Tuple
 
 from .asr_service.ipc_protocol import (
     ASR_RESULT_SOCKET,
@@ -29,11 +32,18 @@ logger = logging.getLogger("claudia.asr.bridge")
 
 # 設定定数
 QUEUE_MAXSIZE = 3
-MIN_CONFIDENCE = 0.55
+MIN_CONFIDENCE = 0.35
 DEDUP_TTL_S = 10.0
 HEARTBEAT_TIMEOUT_S = 15.0
 EMERGENCY_COOLDOWN_S = 0.5
 RECONNECT_DELAY_S = 2.0
+
+# E2E タイミングログ
+_E2E_LOG_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..", "..", "..", "logs",
+)
+_E2E_LOG_PATH = os.path.join(_E2E_LOG_DIR, "e2e_timing.jsonl")
 
 
 class ASRBridge:
@@ -223,7 +233,7 @@ class ASRBridge:
 
         # 信頼度フィルタ
         if confidence < MIN_CONFIDENCE:
-            logger.debug("低信頼度スキップ: '%s' (conf=%.2f)", text, confidence)
+            logger.info("低信頼度スキップ: '%s' (conf=%.2f < %.2f)", text, confidence, MIN_CONFIDENCE)
             return
 
         # 重複排除 (emergency が先に処理済みの場合スキップ)
@@ -232,7 +242,8 @@ class ASRBridge:
             return
 
         # キューに投入 (mark_processed はワーカー実行時に行う)
-        await self._enqueue_command(text, utterance_id)
+        asr_latency_ms = msg.get("asr_latency_ms", 0)
+        await self._enqueue_command(text, utterance_id, asr_latency_ms)
 
         if self._on_result:
             try:
@@ -282,13 +293,29 @@ class ASRBridge:
 
         self._cooldown_until = time.monotonic() + EMERGENCY_COOLDOWN_S
 
-        # brain 呼出 (キュー迂回)
+        # brain 呼出 (キュー迂回) + E2E 計測
         logger.warning("Emergency 実行: '%s'", keyword)
+        brain_start = time.monotonic()
         try:
             result = await self._brain.process_and_execute("止まれ")
-            logger.info("Emergency 結果: %s", result)
+            brain_ms = (time.monotonic() - brain_start) * 1000
+
+            self._write_e2e_log(
+                command=keyword,
+                route="emergency",
+                asr_ms=0,  # emergency はキーワード検出、ASR full推論なし
+                queue_ms=0,
+                brain_ms=brain_ms,
+                e2e_ms=brain_ms,
+                api_code=result.api_code if result else None,
+                execution_status=result.execution_status or "" if result else "",
+                utterance_id=utterance_id,
+            )
+
+            logger.info("Emergency 結果: %s (brain=%.0fms)", result, brain_ms)
         except Exception as e:
-            logger.error("Emergency brain 呼出失敗: %s", e)
+            brain_ms = (time.monotonic() - brain_start) * 1000
+            logger.error("Emergency brain 呼出失敗: %s (brain=%.0fms)", e, brain_ms)
 
     def _handle_heartbeat(self, msg: dict) -> None:
         """heartbeat 更新"""
@@ -324,7 +351,9 @@ class ASRBridge:
     # コマンドキュー
     # ------------------------------------------------------------------
 
-    async def _enqueue_command(self, text: str, utterance_id: str) -> None:
+    async def _enqueue_command(
+        self, text: str, utterance_id: str, asr_latency_ms: int = 0,
+    ) -> None:
         """bounded キューにコマンドを投入 (満杯時は最古を破棄)"""
         if self._queue.full():
             try:
@@ -332,20 +361,23 @@ class ASRBridge:
                 logger.warning("キュー満杯: 最古コマンド破棄 '%s'", discarded[0])
             except asyncio.QueueEmpty:
                 pass
-        await self._queue.put((text, utterance_id))
+        enqueue_ts = time.monotonic()
+        await self._queue.put((text, utterance_id, asr_latency_ms, enqueue_ts))
         logger.debug("コマンドキュー投入: '%s' (size=%d)", text, self._queue.qsize())
 
     async def _command_worker(self) -> None:
-        """コマンドワーカー: キューから直列消費 → brain.process_and_execute"""
+        """コマンドワーカー: キューから直列消費 → brain.process_and_execute + E2E計測"""
         while self._running:
             try:
-                text, utterance_id = await asyncio.wait_for(
+                item = await asyncio.wait_for(
                     self._queue.get(), timeout=1.0,
                 )
             except asyncio.TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break
+
+            text, utterance_id, asr_latency_ms, enqueue_ts = item
 
             # 冷却ウィンドウチェック
             now = time.monotonic()
@@ -362,15 +394,46 @@ class ASRBridge:
 
             self._mark_processed(utterance_id)
 
-            # brain 呼出
+            # キュー待機時間
+            queue_wait_ms = (now - enqueue_ts) * 1000
+
+            # brain 呼出 + E2E 計測
             logger.info("コマンド実行: '%s'", text)
+            brain_start = time.monotonic()
             try:
                 result = await self._brain.process_and_execute(text)
+                brain_ms = (time.monotonic() - brain_start) * 1000
 
-                # 結果表示
+                # E2E = ASR推論 + キュー待機 + Brain処理+実行
+                e2e_ms = asr_latency_ms + queue_wait_ms + brain_ms
+
+                # E2E タイミングログ出力
+                self._write_e2e_log(
+                    command=text,
+                    route=result.reasoning or "",
+                    asr_ms=asr_latency_ms,
+                    queue_ms=queue_wait_ms,
+                    brain_ms=brain_ms,
+                    e2e_ms=e2e_ms,
+                    api_code=result.api_code,
+                    execution_status=result.execution_status or "",
+                    utterance_id=utterance_id,
+                )
+
+                logger.info(
+                    "E2E計測: '%s' → e2e=%.0fms (asr=%dms + queue=%.0fms + brain=%.0fms)",
+                    text, e2e_ms, asr_latency_ms, queue_wait_ms, brain_ms,
+                )
+
+                # 結果表示 (E2E データ付き)
                 if self._on_result:
                     try:
                         self._on_result("result", text, result)
+                        self._on_result("e2e_timing", text, {
+                            "asr_ms": asr_latency_ms,
+                            "brain_ms": brain_ms,
+                            "e2e_ms": e2e_ms,
+                        })
                     except Exception:
                         pass
 
@@ -380,7 +443,52 @@ class ASRBridge:
                             result.execution_status)
 
             except Exception as e:
-                logger.error("コマンド実行失敗: '%s': %s", text, e)
+                brain_ms = (time.monotonic() - brain_start) * 1000
+                logger.error("コマンド実行失敗: '%s': %s (brain=%.0fms)", text, e, brain_ms)
+
+    # ------------------------------------------------------------------
+    # ハートビート watchdog
+    # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # E2E タイミングログ
+    # ------------------------------------------------------------------
+
+    def _write_e2e_log(
+        self,
+        command,        # type: str
+        route,          # type: str
+        asr_ms,         # type: float
+        queue_ms,       # type: float
+        brain_ms,       # type: float
+        e2e_ms,         # type: float
+        api_code,       # type: Optional[int]
+        execution_status,  # type: str
+        utterance_id,   # type: str
+    ):
+        # type: (...) -> None
+        """E2E タイミングを JSONL ファイルに記録"""
+        try:
+            entry = {
+                "ts": datetime.now().isoformat(),
+                "command": command,
+                "route": route,
+                "asr_ms": round(asr_ms, 1),
+                "queue_ms": round(queue_ms, 1),
+                "brain_ms": round(brain_ms, 1),
+                "e2e_ms": round(e2e_ms, 1),
+                "api_code": api_code,
+                "execution_status": execution_status,
+                "utterance_id": utterance_id,
+            }
+            log_path = os.path.normpath(_E2E_LOG_PATH)
+            log_dir = os.path.dirname(log_path)
+            if not os.path.isdir(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except Exception as e:
+            logger.debug("E2E ログ書込失敗: %s", e)
 
     # ------------------------------------------------------------------
     # ハートビート watchdog

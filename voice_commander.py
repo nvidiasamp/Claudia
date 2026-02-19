@@ -74,8 +74,16 @@ class VoiceCommander:
             print("\n{} Listening... (Ctrl+C で終了)\n".format(
                 "🎙️" if not self._asr_mock else "🧪"))
 
-            # シグナル待ち
-            await self._shutdown_event.wait()
+            # ASR プロセス死活監視 + シグナル待ちを並行
+            asr_monitor = asyncio.ensure_future(self._monitor_asr_process())
+            done, _ = await asyncio.wait(
+                [self._shutdown_event.wait(), asr_monitor],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            # monitor が先に完了 = ASR クラッシュ
+            if asr_monitor in done and not self._shutdown_event.is_set():
+                print("\n❌ ASR サーバーが予期せず終了しました")
+                logger.error("ASR プロセスが予期せず終了 — シャットダウン開始")
 
         except KeyboardInterrupt:
             print("\n\n⚠️ Ctrl+C 検出、シャットダウン中...")
@@ -139,6 +147,16 @@ class VoiceCommander:
         if not task.cancelled() and task.exception():
             logger.error("AudioCapture 異常終了: %s", task.exception())
 
+    async def _monitor_asr_process(self) -> None:
+        """ASR サブプロセス死活監視: プロセス終了を検出"""
+        if not self._asr_process:
+            return
+        await self._asr_process.wait()
+        if self._shutdown_event.is_set():
+            return  # 正常シャットダウン中
+        rc = self._asr_process.returncode
+        logger.error("ASR プロセスが予期せず終了: code=%s", rc)
+
     # ------------------------------------------------------------------
     # ASR サブプロセス管理
     # ------------------------------------------------------------------
@@ -178,15 +196,26 @@ class VoiceCommander:
         )
 
     async def _drain_stderr(self, stream: asyncio.StreamReader) -> None:
-        """ASR stderr を読み取り logger に転送"""
+        """ASR stderr を読み取り logger に転送
+
+        ERROR/WARNING/Traceback 行は warning レベルで表示し、
+        ASR サーバーのクラッシュ原因を可視化する。
+        """
+        _error_indicators = ("error", "exception", "traceback", "critical",
+                             "fatal", "segfault", "sigabrt", "killed")
         try:
             while True:
                 line = await stream.readline()
                 if not line:
                     break
                 text = line.decode("utf-8", errors="replace").rstrip()
-                if text:
-                    logger.debug("[ASR] %s", text)
+                if not text:
+                    continue
+                text_lower = text.lower()
+                if any(ind in text_lower for ind in _error_indicators):
+                    logger.warning("[ASR] %s", text)
+                else:
+                    logger.info("[ASR] %s", text)
         except asyncio.CancelledError:
             pass
         except Exception as e:
@@ -283,6 +312,14 @@ class VoiceCommander:
             print("\n🚨 Emergency: '{}'".format(text))
         elif event_type == "transcript":
             print("\n🎤 認識: '{}' (conf={:.2f})".format(text, data))
+        elif event_type == "e2e_timing":
+            # E2E タイミング表示 (result の直後に呼ばれる)
+            timing = data
+            asr = timing.get("asr_ms", 0)
+            brain = timing.get("brain_ms", 0)
+            e2e = timing.get("e2e_ms", 0)
+            print("⏱️  E2E: {:.0f}ms (ASR={:.0f}ms + Brain={:.0f}ms)".format(
+                e2e, asr, brain))
         elif event_type == "result":
             self._command_count += 1
             result = data
@@ -380,15 +417,27 @@ class VoiceCommander:
         else:
             logger.info("ASR プロセス既に終了: code=%d", self._asr_process.returncode)
 
-        # Python 3.8: subprocess transport を明示的に close し、
+        # Python 3.8: subprocess transport + pipe transport を明示的に close し、
         # GC 時の "Event loop is closed" RuntimeError を防ぐ
-        # 全 return 経路で必ず実行される
+        # stderr=PIPE で作成された ReadTransport も close しないと
+        # __del__ → call_soon → "Event loop is closed" が発生する
         try:
             transport = self._asr_process._transport  # type: ignore[attr-defined]
             if transport is not None:
                 transport.close()
         except Exception:
             pass
+
+        # stderr pipe transport を明示 close
+        for pipe_name in ("stderr", "stdout", "stdin"):
+            try:
+                pipe = getattr(self._asr_process, pipe_name, None)
+                if pipe is not None:
+                    pipe_transport = getattr(pipe, "_transport", None)
+                    if pipe_transport is not None:
+                        pipe_transport.close()
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # UI

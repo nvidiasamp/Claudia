@@ -105,7 +105,8 @@ class TestTranscriptHandling(unittest.TestCase):
                 "utterance_id": "utt-001",
             })
             self.assertEqual(bridge._queue.qsize(), 1)
-            text, uid = bridge._queue.get_nowait()
+            item = bridge._queue.get_nowait()
+            text, uid = item[0], item[1]
             self.assertEqual(text, "お手")
             self.assertEqual(uid, "utt-001")
         _run(_test())
@@ -303,7 +304,7 @@ class TestQueueManagement(unittest.TestCase):
             items = []
             while not bridge._queue.empty():
                 items.append(bridge._queue.get_nowait())
-            texts = [t for t, _ in items]
+            texts = [item[0] for item in items]
             self.assertEqual(texts, ["cmd2", "cmd3", "cmd4"])
         _run(_test())
 
