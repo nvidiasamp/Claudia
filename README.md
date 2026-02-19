@@ -29,7 +29,7 @@
 - **Whitelist Enforcement**: Only registered, enabled actions can execute
 
 ### Hardware Control
-- **15 Validated Actions**: 8 basic postures + 4 performance + 3 advanced (see [Supported Actions](#supported-actions))
+- **18 Validated Actions**: 8 basic postures + 7 performance + 3 advanced (see [Supported Actions](#supported-actions))
 - **Real-Time Control**: 1ms (cached) to ~5s (LLM on Jetson) response time
 - **State-Aware Sequencing**: Automatic action dependency resolution
 - **Graceful Fallback**: Real hardware → Mock simulation, with structured error codes
@@ -110,7 +110,7 @@ Claudia> 量子力学について教えて → Conversational response (no actio
 | 1002 | BalanceStand | バランス | 平衡站立 | Balance | - |
 | 1003 | StopMove | 止まる | 停止 | Stop | - |
 | 1004 | StandUp | 立つ | 站立 | Stand Up | - |
-| 1005 | StandDown | 伏せる | 趴下 | Stand Down | - |
+| 1005 | StandDown | 伏せる | 趴下 | Stand Down | Yes |
 | 1006 | RecoveryStand | 回復 | 恢复站立 | Recovery | - |
 | 1009 | Sit | 座る | 坐下 | Sit | Yes |
 | 1010 | RiseSit | 起き上がる | 起立 | Rise Sit | - |
@@ -121,7 +121,6 @@ Claudia> 量子力学について教えて → Conversational response (no actio
 |----------|--------|----------|---------|---------|:-:|
 | 1016 | Hello | 挨拶 | 打招呼 | Hello | Yes |
 | 1017 | Stretch | 伸び | 伸懒腰 | Stretch | Yes |
-| 1021 | Wallow | 転がる | 翻滚 | Wallow | - |
 | 1022 | Dance1 | ダンス1 | 舞蹈1 | Dance 1 | Yes |
 | 1023 | Dance2 | ダンス2 | 舞蹈2 | Dance 2 | Yes |
 | 1029 | Scrape | 刮る | 刮擦 | Scrape | Yes |
@@ -151,7 +150,7 @@ User Input (JA/ZH/EN)
 1. Emergency Bypass ........... hardcoded stop commands, ~0ms
   |
   v
-2. Hot Cache .................. 60+ cached command→API mappings, ~1ms
+2. Hot Cache .................. 80+ cached command→API mappings, ~1ms
   |                            (cultural terms, kana aliases, suffix stripping)
   v
 3. Conversational Detection ... greetings/questions → text-only response
@@ -206,7 +205,7 @@ AudioCapture ──→ /tmp/claudia_audio.sock ──→ ASR Server (subprocess)
                                                 v
 ASRBridge ←── /tmp/claudia_asr_result.sock ←─── JSON Lines
   ├── emergency → queue flush + cooldown → brain call (bypass lock)
-  ├── transcript → confidence ≥0.55 filter → dedup → Queue(3)
+  ├── transcript → confidence ≥0.35 filter → dedup → Queue(3)
   └── command worker → brain.process_and_execute(text)
 ```
 
