@@ -146,12 +146,16 @@ class ASRModelWrapper:
             audio_np = audio_int16.astype(np.float32) / 32768.0
 
             # beam_size: 精度と速度のトレード
-            # beam=3(デフォルト): 精度優先、beam=1: 速度優先
-            beam = int(os.getenv("CLAUDIA_ASR_BEAM_SIZE", "3"))
+            # beam=1(デフォルト): greedy decoder、短コマンド向け最速
+            # beam=3+: beam search、長文向け精度優先
+            # CLAUDIA_ASR_BEAM_SIZE で実行時切替可能
+            beam = int(os.getenv("CLAUDIA_ASR_BEAM_SIZE", "1"))
             segments, info = self._model.transcribe(
                 audio_np,
                 language="ja",
                 beam_size=beam,
+                best_of=1,
+                without_timestamps=True,
                 vad_filter=False,  # 外部 VAD 已处理
             )
 
@@ -429,14 +433,15 @@ class ASRServer:
                 # 读取一帧 PCM 数据 (30ms = 960 bytes)
                 data = await reader.readexactly(FRAME_BYTES)
 
-                # 写入环形缓冲区
-                await loop.run_in_executor(None, self._ring.write, data)
+                # 写入环形缓冲区 (threading.Lock 保护，960 bytes 写入 <1μs)
+                # executor 不要: 开销 (~1-2ms) 远大于实际 lock 持有时间
+                self._ring.write(data)
 
                 # TTS 回声门控: 播放期间不做 VAD
                 if self._tts_gate:
                     continue
 
-                # VAD 处理
+                # VAD 处理 (silero-vad CPU 推理，需要 executor 避免阻塞)
                 if self._vad:
                     events = await loop.run_in_executor(None, self._vad.process_frame, data)
                     for event in events:
@@ -579,11 +584,18 @@ class ASRServer:
 
         start_time = time.monotonic()
 
-        # 在线程池中运行 ASR 推理
+        # 在线程池中运行 ASR 推理 (30s 超时保护，防止 Whisper 卡死)
         loop = asyncio.get_event_loop()
-        text, confidence = await loop.run_in_executor(
-            None, self._asr.transcribe, audio_data,
-        )
+        try:
+            text, confidence = await asyncio.wait_for(
+                loop.run_in_executor(None, self._asr.transcribe, audio_data),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            asr_latency_ms = int((time.monotonic() - start_time) * 1000)
+            logger.error("ASR 转写超时 (30s): utt=%s, duration=%dms, latency=%dms",
+                         utterance_id, duration_ms, asr_latency_ms)
+            return
 
         asr_latency_ms = int((time.monotonic() - start_time) * 1000)
 

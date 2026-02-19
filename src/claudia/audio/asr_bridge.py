@@ -256,7 +256,12 @@ class ASRBridge:
                 pass
 
     async def _handle_emergency_action(self, utterance_id: str, keyword: str) -> None:
-        """Emergency 共通処理: brain 呼出 + キュー空化 + 冷却"""
+        """Emergency 共通処理: キュー空化 → 冷却設定 → brain 呼出
+
+        順序が重要: キュー空化と冷却を brain 呼出の前に行うことで、
+        brain の await 中にワーカーが古いコマンドを実行するのを防ぐ。
+        (emergency は _command_lock を取得しないため、ワーカーと並行実行される)
+        """
         # 重複排除チェック
         if self._is_processed(utterance_id):
             logger.debug("emergency 重複排除: utt=%s", utterance_id)
@@ -264,15 +269,7 @@ class ASRBridge:
 
         self._mark_processed(utterance_id)
 
-        # 即座に brain へ (キュー迂回)
-        logger.warning("Emergency 実行: '%s'", keyword)
-        try:
-            result = await self._brain.process_and_execute("止まれ")
-            logger.info("Emergency 結果: %s", result)
-        except Exception as e:
-            logger.error("Emergency brain 呼出失敗: %s", e)
-
-        # キュー空化 (stop 後に古いコマンドを実行させない)
+        # 先にキュー空化 + 冷却設定 (brain await 中のワーカー実行を防止)
         flushed = 0
         while not self._queue.empty():
             try:
@@ -281,10 +278,17 @@ class ASRBridge:
             except asyncio.QueueEmpty:
                 break
         if flushed:
-            logger.info("Emergency 後キュー空化: %d 件破棄", flushed)
+            logger.info("Emergency キュー空化: %d 件破棄", flushed)
 
-        # 冷却ウィンドウ
         self._cooldown_until = time.monotonic() + EMERGENCY_COOLDOWN_S
+
+        # brain 呼出 (キュー迂回)
+        logger.warning("Emergency 実行: '%s'", keyword)
+        try:
+            result = await self._brain.process_and_execute("止まれ")
+            logger.info("Emergency 結果: %s", result)
+        except Exception as e:
+            logger.error("Emergency brain 呼出失敗: %s", e)
 
     def _handle_heartbeat(self, msg: dict) -> None:
         """heartbeat 更新"""

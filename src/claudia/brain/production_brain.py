@@ -7,6 +7,7 @@ Production Brain Fixed - 修复SportClient初始化和提示词问题
 import contextvars
 import copy
 import json
+import re
 import time
 import asyncio
 import logging
@@ -791,9 +792,11 @@ class ProductionBrain:
             return "すみません、よく分かりません"
 
         # 检查是否是无意义的单词（godee, pong等）
-        nonsense_patterns = ['godee', 'pong', 'hi', 'hello', 'ok', 'yes', 'no']
+        # 使用 \b 单词边界匹配，避免 'ok' 误匹配 'tokyo' 等合法子串
+        nonsense_patterns = [r'\bgodee\b', r'\bpong\b', r'\bhi\b', r'\bhello\b',
+                             r'\bok\b', r'\byes\b', r'\bno\b']
         r_lower = r.lower()
-        if any(pattern in r_lower for pattern in nonsense_patterns):
+        if any(re.search(pat, r_lower) for pat in nonsense_patterns):
             self.logger.warning(f"⚠️ LLM输出包含无意义词: '{r}' → 使用默认回复")
             return "すみません、よく分かりません"
 
@@ -1005,9 +1008,13 @@ class ProductionBrain:
         except asyncio.TimeoutError:
             self.logger.error("模型 {} 预加载超时 (60s)".format(model))
             return False
+        except (ConnectionError, OSError) as e:
+            # Ollama 进程不可达，后续推理必然失败，快速失败
+            self.logger.error("模型预加载连接失败 (Ollama 未运行?): {}".format(e))
+            return False
         except Exception as e:
             self.logger.warning("模型预加载检查异常: {}".format(e))
-            return True  # 异常时乐观通过，让推理自行处理
+            return True  # 非连接类异常乐观通过，让推理自行处理
 
     async def _call_ollama_v2(self, model, command, timeout=10,
                               num_predict=100, num_ctx=2048,
