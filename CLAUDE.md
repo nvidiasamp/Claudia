@@ -155,7 +155,6 @@ Actions requiring standing state: 1016, 1017, 1022, 1023, 1029, 1030, 1031, 1032
 | `robot_controller/unified_led_controller.py` | LED mode API (thinking/success/error/listening) |
 | `robot_controller/led_state_machine.py` | State-based LED transitions |
 | `ai_components/llm_service/` | LLM service layer (cache, streaming, prompt optimization, API server) |
-| `common/ros2_manager.py` | ROS2 node lifecycle management |
 | `production_commander.py` | Interactive REPL entry point, delegates to ProductionBrain |
 | `voice_commander.py` | Voice mode entry point: ASR subprocess + AudioCapture + ASRBridge |
 | `audio/pcm_utils.py` | PCM resampling utility (44100→16000, numpy index-based) |
@@ -232,5 +231,5 @@ Robot IP: `192.168.123.161` via `eth0`
 - **Audit logs**: `logs/audit/`
 - **Cleanup**: `bash scripts/maintenance/daily_cleanup.sh`
 - **Test structure**: `test/unit/`, `test/integration/`, `test/hardware/` — each with `__init__.py`
-- **Config**: `config/default.yaml`, `.env.ros2` (auto-generated)
+- **Config**: `.env.ros2` (auto-generated)
 - **Model files**: `models/ClaudiaIntelligent_7B_v2.0` — Ollama Modelfile for creating the brain model (no extension, per Ollama convention)
