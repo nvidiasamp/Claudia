@@ -60,12 +60,6 @@ except ImportError:
     SDK_STATE_PROVIDER_AVAILABLE = False
 
 try:
-    from claudia.brain.safety_validator import get_safety_validator, SafetyCheckResult
-    SAFETY_VALIDATOR_AVAILABLE = True
-except ImportError:
-    SAFETY_VALIDATOR_AVAILABLE = False
-
-try:
     from claudia.brain.audit_logger import get_audit_logger, AuditEntry
     AUDIT_LOGGER_AVAILABLE = True
 except ImportError:
@@ -266,13 +260,7 @@ class ProductionBrain:
             reason = "SDK不可用" if use_real_hardware else "状态监控模块不可用"
             self.logger.warning(f"⚠️ 状态监控器未启动: {reason}")
 
-        # 安全验证器（旧，deprecated — 保留供其他模块引用）
-        if SAFETY_VALIDATOR_AVAILABLE:
-            self.safety_validator = get_safety_validator(enable_high_risk=False)
-        else:
-            self.safety_validator = None
-
-        # 安全编译器（新，统一安全管线）
+        # 安全编译器（统一安全管线）
         allow_high_risk = os.getenv("SAFETY_ALLOW_HIGH_RISK", "0") == "1"
         self.safety_compiler = SafetyCompiler(allow_high_risk=allow_high_risk)
         if allow_high_risk:

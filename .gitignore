@@ -25,11 +25,16 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.ros2
+.env.unitree_sdk
 
 # ----------------------------------------------------------------------------
 # AI Tool Configuration (keep CLAUDE.md in root as architecture docs)
 # ----------------------------------------------------------------------------
 AGENTS.md
+.roomodes
+package.json
+package-lock.json
 
 # ----------------------------------------------------------------------------
 # Editor and IDE Directories
@@ -179,9 +184,11 @@ docs/archive/
 .venvs/
 
 # ----------------------------------------------------------------------------
-# Audio Validation Output (recorded WAV files)
+# Validation Output (timestamped reports, charts, data)
 # ----------------------------------------------------------------------------
-scripts/validation/audio/output/*.wav
+scripts/validation/*/output/
+scripts/validation/*/*/output/
+scripts/validation/*/*/*/output/
 
 # ----------------------------------------------------------------------------
 # Personal Documents and Workshop Materials
@@ -193,5 +200,3 @@ workshop/
 # Keep Important Files (Override previous rules)
 # ----------------------------------------------------------------------------
 !.env.example
-!.env.ros2
-!.env.unitree_sdk
