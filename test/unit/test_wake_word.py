@@ -25,7 +25,7 @@ class TestWakeWordMatcher(unittest.TestCase):
         self.matcher = WakeWordMatcher()
 
     # ------------------------------------------------------------------
-    # Standalone 検出 (Layer 1)
+    # Standalone 検出 (既知プレフィクス完全一致)
     # ------------------------------------------------------------------
 
     def test_ideal_wake_word(self):
@@ -75,7 +75,7 @@ class TestWakeWordMatcher(unittest.TestCase):
         self.assertEqual(result[0], "")
 
     # ------------------------------------------------------------------
-    # Inline 検出 (Layer 2 + 3)
+    # Inline 検出 (既知プレフィクス + remainder)
     # ------------------------------------------------------------------
 
     def test_inline_kurachan_odotte(self):

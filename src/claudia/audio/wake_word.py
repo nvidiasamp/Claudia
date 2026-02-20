@@ -30,19 +30,24 @@ logger = logging.getLogger("claudia.audio.wake_word")
 # 既知ウェイクワードプレフィクス (長い順にソート — 最長一致優先)
 # ASR (whisper-base) が出力しうるバリエーションを網羅。
 # 一般語 (クラス, クラブ等) は含めないこと — false positive の原因になる。
+# 新規追加時は文字数降順を維持すること。
 WAKE_PREFIXES = [
+    # 6文字
     "クローディア", "くろーでぃあ",
     "クラウディア", "くらうでぃあ",
     "クラッチョン",
+    "クラーちゃん", "くらーちゃん",
+    # 5文字
     "クロディア", "くろでぃあ",
     "クラちゃん", "くらちゃん",
-    "クラチャン", "くらちゃん",
+    "クラチャン",
     "クラチョン",
+    # 4文字
     "クラチャ",
-    # ASR 観測バリアント (whisper-base 特有)
-    "クラーちゃん",
-    "くらーちゃん",
 ]
+
+# "クラ" / "くら" プレフィクス — 未知バリアント検出用ログ判定
+_KURA_PREFIXES = ("クラ", "くら", "クロ", "くろ")
 
 # inline remainder から除去するフィラー文字
 _FILLER_CHARS = re.compile(r"^[さねー、,\s]+")
@@ -93,6 +98,17 @@ class WakeWordMatcher:
                 if remainder:
                     return (remainder, prefix)
                 return ("", norm)
+
+        # 未知バリアント検出: "クラ/くら/クロ/くろ" で始まるが
+        # WAKE_PREFIXES に一致しないテキストを WARNING で記録。
+        # 新しい ASR バリアントを発見するためのログ。
+        for kp in _KURA_PREFIXES:
+            if norm.startswith(kp):
+                logger.warning(
+                    "唤醒詞 候補不一致: '%s' (prefix='%s'、WAKE_PREFIXES に未登録)",
+                    norm, kp,
+                )
+                break
 
         return None
 
