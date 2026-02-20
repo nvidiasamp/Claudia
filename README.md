@@ -13,6 +13,14 @@
 
 ---
 
+## Demo
+
+<!-- TODO: Add video demo -->
+
+> Video demo coming soon — voice commands, real-time robot execution, config panel walkthrough.
+
+---
+
 ## Key Features
 
 ### LLM Brain Architecture
@@ -71,8 +79,10 @@ export PYTHONPATH=/path/to/unitree_sdk2_python:$PYTHONPATH
 ### Launch
 
 ```bash
-# Interactive launcher (recommended)
+# Interactive launcher with config panel (recommended)
 ./start_production_brain.sh
+# → Select mode, configure settings (wake word, model, routing, etc.)
+# → Option 'c' opens config panel, 't' launches in tmux background
 
 # Keyboard mode:
 python3 production_commander.py              # Simulation mode
@@ -82,6 +92,11 @@ python3 production_commander.py --hardware   # Real robot
 python3 voice_commander.py                   # Voice, simulation
 python3 voice_commander.py --hardware        # Voice, real robot
 python3 voice_commander.py --asr-mock        # Voice, mock ASR (no mic)
+python3 voice_commander.py --daemon          # Background mode (for tmux)
+
+# Direct launch (skip menu):
+./start_production_brain.sh --voice          # Voice + simulation
+./start_production_brain.sh --voice-hw       # Voice + real robot
 ```
 
 ---
@@ -185,6 +200,7 @@ Execute ....................... SportClient RPC via CycloneDDS/DDS
 | `voice_commander.py` | Voice mode entry point: ASR subprocess + AudioCapture + ASRBridge |
 | `audio/audio_capture.py` | USB mic capture: arecord subprocess → resample → UDS |
 | `audio/asr_bridge.py` | ASR result consumer: dedup/filter → Queue → Brain |
+| `audio/wake_word.py` | Wake word matcher + gate: exact prefix matching + listening window |
 | `audio/asr_service/` | ASR server: faster-whisper + silero-vad + UDS |
 
 ---
@@ -209,6 +225,13 @@ ASRBridge ←── /tmp/claudia_asr_result.sock ←─── JSON Lines
   └── command worker → brain.process_and_execute(text)
 ```
 
+### Process Resilience
+
+- **SIGHUP Handling**: Both commanders ignore SIGHUP — SSH disconnection does not kill the process
+- **ASR Auto-Restart**: If the ASR subprocess crashes, VoiceCommander automatically restarts the full pipeline (Bridge → Capture → ASR → rebuild). Up to 3 attempts before entering degraded mode (keyboard-only)
+- **tmux Integration**: `start_production_brain.sh` option `t` launches in a tmux session with full environment forwarding. Survives SSH disconnection
+- **Ollama GPU Cleanup**: On shutdown, models are explicitly unloaded from GPU memory (`keep_alive=0`) instead of occupying VRAM for 30 minutes
+
 ### ASR Environment Overrides
 
 | Variable | Default | Options |
@@ -216,6 +239,8 @@ ASRBridge ←── /tmp/claudia_asr_result.sock ←─── JSON Lines
 | `CLAUDIA_ASR_MODEL` | `base` | `base` / `small` / `medium` |
 | `CLAUDIA_ASR_BEAM_SIZE` | `1` (greedy) | `1` / `3`+ (beam search) |
 | `CLAUDIA_ASR_DEVICE` | `cpu` | `cpu` / `cuda` |
+| `CLAUDIA_WAKE_WORD_ENABLED` | `0` (off) | `0` / `1` |
+| `CLAUDIA_WAKE_WORD_TIMEOUT` | `5` (seconds) | Listening window after standalone wake word |
 
 ### KANA Normalization
 
@@ -347,4 +372,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*

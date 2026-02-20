@@ -145,6 +145,9 @@ class VoiceCommander:
         self._shutdown_event = asyncio.Event()
         self._command_count = 0
         self._session_start = datetime.now()
+        self._asr_restart_count = 0
+        self._asr_max_restarts = 3
+        self._asr_degraded = False
 
     # ------------------------------------------------------------------
     # メイン実行
@@ -179,16 +182,44 @@ class VoiceCommander:
             self._startup_phase = False
 
         try:
-            # ASR プロセス死活監視 + シグナル待ちを並行
-            asr_monitor = asyncio.ensure_future(self._monitor_asr_process())
-            done, _ = await asyncio.wait(
-                [self._shutdown_event.wait(), asr_monitor],
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            # monitor が先に完了 = ASR クラッシュ
-            if asr_monitor in done and not self._shutdown_event.is_set():
-                print("\n  [error] ASR サーバーが予期せず終了しました")
-                logger.error("ASR プロセスが予期せず終了 — シャットダウン開始")
+            # ASR プロセス死活監視 + 自動再起動ループ
+            while not self._shutdown_event.is_set():
+                asr_monitor = asyncio.ensure_future(
+                    self._monitor_asr_process())
+                shutdown_future = asyncio.ensure_future(
+                    self._shutdown_event.wait())
+                done, pending = await asyncio.wait(
+                    [shutdown_future, asr_monitor],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for p in pending:
+                    p.cancel()
+                    try:
+                        await p
+                    except asyncio.CancelledError:
+                        pass
+
+                if self._shutdown_event.is_set():
+                    break
+
+                if asr_monitor in done:
+                    # 最大再起動回数チェック
+                    if self._asr_restart_count >= self._asr_max_restarts:
+                        self._asr_degraded = True
+                        print("\n  [degraded] ASR 最大再起動回数 ({}) 到達"
+                              " — キーボードのみで継続".format(
+                                  self._asr_max_restarts))
+                        logger.warning(
+                            "ASR 最大再起動到達 — degraded mode")
+                        await self._shutdown_event.wait()
+                        break
+
+                    self._asr_restart_count += 1
+                    print("\n  [restart] ASR 再起動中... ({}/{})".format(
+                        self._asr_restart_count, self._asr_max_restarts))
+                    success = await self._restart_asr()
+                    if not success:
+                        continue  # 再試行 (max_restarts チェックへ)
 
         except KeyboardInterrupt:
             print("\n\n  Ctrl+C 検出、シャットダウン中...")
@@ -243,6 +274,7 @@ class VoiceCommander:
         self._bridge = ASRBridge(
             brain=self._brain,
             on_result=self._display_result,
+            on_wake=self._on_wake_confirm,
         )
         await self._bridge.start()
 
@@ -265,6 +297,9 @@ class VoiceCommander:
         for sig in (signal.SIGTERM, signal.SIGINT):
             loop.add_signal_handler(sig, self._signal_handler)
 
+        # SIGHUP 無視 — SSH 切断時にプロセスを維持
+        loop.add_signal_handler(signal.SIGHUP, lambda: None)
+
     def _signal_handler(self) -> None:
         """SIGINT/SIGTERM ハンドラ"""
         self._shutdown_event.set()
@@ -283,6 +318,76 @@ class VoiceCommander:
             return  # 正常シャットダウン中
         rc = self._asr_process.returncode
         logger.error("ASR プロセスが予期せず終了: code=%s", rc)
+
+    # ------------------------------------------------------------------
+    # ASR 自動再起動
+    # ------------------------------------------------------------------
+
+    async def _restart_asr(self) -> bool:
+        """ASR サブプロセスを完全に拆卸-再構築
+
+        停止順: stderr drain → ASR プロセス → Bridge → AudioCapture
+        2s 待機後に再構築 (socket ファイルクリーンアップ)
+
+        Returns:
+            True: 再起動成功, False: 失敗
+        """
+        try:
+            # 1. stderr drain 停止
+            if self._stderr_task and not self._stderr_task.done():
+                self._stderr_task.cancel()
+                try:
+                    await self._stderr_task
+                except asyncio.CancelledError:
+                    pass
+
+            # 2. ASR プロセス停止
+            await self._stop_asr_process()
+
+            # 3. Bridge 停止
+            if self._bridge:
+                await self._bridge.stop()
+
+            # 4. AudioCapture 停止
+            if self._capture:
+                await self._capture.shutdown()
+            if self._capture_task and not self._capture_task.done():
+                self._capture_task.cancel()
+                try:
+                    await self._capture_task
+                except asyncio.CancelledError:
+                    pass
+
+            # 5. socket クリーンアップ待ち
+            await asyncio.sleep(2.0)
+
+            # 6. ASR プロセス再起動
+            await self._start_asr_process()
+
+            # 7. Bridge 再構築 + ready 待ち
+            self._bridge = ASRBridge(
+                brain=self._brain,
+                on_result=self._display_result,
+                on_wake=self._on_wake_confirm,
+            )
+            await self._bridge.start()
+            await asyncio.wait_for(
+                self._bridge.ready_event.wait(), timeout=90)
+
+            # 8. AudioCapture 再起動
+            self._capture = AudioCapture(mock=self._asr_mock)
+            self._capture_task = asyncio.ensure_future(self._capture.run())
+            self._capture_task.add_done_callback(self._on_capture_done)
+
+            logger.info("ASR 再起動成功 (%d/%d)",
+                        self._asr_restart_count, self._asr_max_restarts)
+            print("  [restart] ASR 再起動成功")
+            return True
+
+        except Exception as e:
+            logger.error("ASR 再起動失敗: %s", e, exc_info=True)
+            print("  [restart] ASR 再起動失敗: {}".format(e))
+            return False
 
     # ------------------------------------------------------------------
     # ASR サブプロセス管理
@@ -439,12 +544,23 @@ class VoiceCommander:
                     print("  [warn] {} warmup failed: {}".format(label, e))
 
     # ------------------------------------------------------------------
+    # 唤醒詞コールバック
+    # ------------------------------------------------------------------
+
+    def _on_wake_confirm(self) -> None:
+        """唤醒確認: 照明フラッシュ (Phase 2 で VUI brightness 統合)"""
+        logger.info("唤醒確認: 監聴ウィンドウ開始")
+
+    # ------------------------------------------------------------------
     # 結果表示
     # ------------------------------------------------------------------
 
     def _display_result(self, event_type: str, text: str, data) -> None:
         """ASRBridge からのコールバック: 結果をターミナルに表示"""
-        if event_type == "vad_start":
+        if event_type == "wake":
+            print("\n  [wake] クラちゃん! (5秒間聴取中...)")
+            return
+        elif event_type == "vad_start":
             print("  ... (聴取中)", end="", flush=True)
             return
         elif event_type == "emergency":
@@ -513,9 +629,52 @@ class VoiceCommander:
             except asyncio.CancelledError:
                 pass
 
+        # 6. Ollama モデルアンロード (GPU メモリ解放)
+        await self._unload_ollama_models()
+
         runtime = datetime.now() - self._session_start
         print("  session: {} commands, {:.0f}s\n".format(
             self._command_count, runtime.total_seconds()))
+
+    async def _unload_ollama_models(self) -> None:
+        """Ollama モデルをアンロード (keep_alive=0 で GPU メモリ即時解放)"""
+        if not self._brain:
+            return
+
+        models_to_unload = set()
+        models_to_unload.add(self._brain.model_7b)
+        try:
+            if self._brain._channel_router:
+                models_to_unload.add(
+                    self._brain._channel_router._action_model)
+        except Exception:
+            pass
+
+        loop = asyncio.get_event_loop()
+        for model in models_to_unload:
+            try:
+                def _unload(m):
+                    from urllib.request import Request, urlopen
+                    payload = json.dumps({
+                        "model": m,
+                        "keep_alive": 0,
+                    }).encode("utf-8")
+                    req = Request(
+                        "http://localhost:11434/api/generate",
+                        data=payload,
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urlopen(req, timeout=5) as resp:
+                        resp.read()
+
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, _unload, model),
+                    timeout=5.0,
+                )
+                logger.info("Ollama モデルアンロード: %s", model)
+            except Exception as e:
+                logger.debug("Ollama アンロード失敗 (%s): %s", model, e)
 
     async def _send_ctrl_shutdown(self) -> None:
         """ctrl socket 経由で ASR に shutdown メッセージを送信"""
@@ -591,9 +750,12 @@ class VoiceCommander:
             "{} / ASR {} ".format(hw, asr),
             ts,
         ]))
+        wake = "ON" if os.getenv("CLAUDIA_WAKE_WORD_ENABLED", "0") == "1" else "OFF"
         print()
         print("  話しかけてください (例: お手, 座って, 踊って)")
         print("  緊急停止: 止まれ / stop / 停止")
+        if wake == "ON":
+            print("  唤醒词: クラちゃん (CLAUDIA_WAKE_WORD_ENABLED=1)")
         print("  Ctrl+C で終了")
 
 
@@ -626,6 +788,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="ASR mock モード (マイク不要、テスト用)",
     )
+    parser.add_argument(
+        "--daemon",
+        action="store_true",
+        help="デーモンモード (stdin を /dev/null にリダイレクト)",
+    )
     return parser.parse_args()
 
 
@@ -644,6 +811,12 @@ def main() -> None:
     """同期エントリ"""
     _setup_logging()
     args = _parse_args()
+
+    # --daemon: stdin を /dev/null にリダイレクト (tmux 後台用)
+    if args.daemon:
+        devnull = open(os.devnull, "r")
+        os.dup2(devnull.fileno(), sys.stdin.fileno())
+        devnull.close()
 
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

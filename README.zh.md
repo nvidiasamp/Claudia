@@ -13,6 +13,14 @@
 
 ---
 
+## 演示
+
+<!-- TODO: 添加视频演示 -->
+
+> 视频演示即将发布 —— 语音命令、实时机器人执行、配置面板演示。
+
+---
+
 ## 核心特性
 
 ### LLM 大脑架构
@@ -71,8 +79,10 @@ export PYTHONPATH=/path/to/unitree_sdk2_python:$PYTHONPATH
 ### 启动
 
 ```bash
-# 交互式启动器（推荐）
+# 交互式启动器 + 配置面板（推荐）
 ./start_production_brain.sh
+# → 选择运行模式，配置设置（唤醒词、模型、路由等）
+# → 输入 'c' 进入配置面板，'t' 以 tmux 后台模式启动
 
 # 键盘模式：
 python3 production_commander.py              # 模拟模式
@@ -82,6 +92,11 @@ python3 production_commander.py --hardware   # 真实硬件模式
 python3 voice_commander.py                   # 语音，模拟模式
 python3 voice_commander.py --hardware        # 语音，真实硬件
 python3 voice_commander.py --asr-mock        # 语音，模拟 ASR（无需麦克风）
+python3 voice_commander.py --daemon          # 后台模式（tmux 用）
+
+# 直接启动（跳过菜单）：
+./start_production_brain.sh --voice          # 语音 + 模拟
+./start_production_brain.sh --voice-hw       # 语音 + 真实硬件
 ```
 
 ---
@@ -185,6 +200,7 @@ SafetyCompiler.compile() ..... 白名单→电量门控→站立前置
 | `voice_commander.py` | 语音模式入口：ASR 子进程 + AudioCapture + ASRBridge |
 | `audio/audio_capture.py` | USB 麦克风采集：arecord 子进程 → 重采样 → UDS |
 | `audio/asr_bridge.py` | ASR 结果消费者：去重/过滤 → Queue → Brain |
+| `audio/wake_word.py` | 唤醒词匹配器 + 门控：精确前缀匹配 + 监听窗口 |
 | `audio/asr_service/` | ASR 服务器：faster-whisper + silero-vad + UDS |
 
 ---
@@ -209,6 +225,13 @@ ASRBridge ←── /tmp/claudia_asr_result.sock ←─── JSON Lines
   └── command worker → brain.process_and_execute(text)
 ```
 
+### 进程守护
+
+- **SIGHUP 处理**：两个命令器均忽略 SIGHUP —— SSH 断连不会杀死进程
+- **ASR 自动重启**：ASR 子进程崩溃时，VoiceCommander 自动重启完整管线（Bridge → Capture → ASR → 重建）。最多重试 3 次，超限后进入降级模式（仅键盘）
+- **tmux 集成**：`start_production_brain.sh` 选项 `t` 在 tmux 会话中启动，完整转发环境变量，抗 SSH 断连
+- **Ollama GPU 清理**：退出时通过 `keep_alive=0` 立即释放 GPU 显存，避免模型空占 30 分钟
+
 ### ASR 环境变量
 
 | 变量 | 默认值 | 选项 |
@@ -216,6 +239,8 @@ ASRBridge ←── /tmp/claudia_asr_result.sock ←─── JSON Lines
 | `CLAUDIA_ASR_MODEL` | `base` | `base` / `small` / `medium` |
 | `CLAUDIA_ASR_BEAM_SIZE` | `1`（贪心解码） | `1` / `3`+（束搜索） |
 | `CLAUDIA_ASR_DEVICE` | `cpu` | `cpu` / `cuda` |
+| `CLAUDIA_WAKE_WORD_ENABLED` | `0`（关闭） | `0` / `1` |
+| `CLAUDIA_WAKE_WORD_TIMEOUT` | `5`（秒） | 独立唤醒词后的监听窗口 |
 
 ### 假名正规化
 
@@ -339,4 +364,4 @@ MIT License — 详见 [LICENSE](LICENSE)。
 
 ---
 
-*最后更新：2026-02-19*
+*最后更新：2026-02-20*

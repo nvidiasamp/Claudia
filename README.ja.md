@@ -13,6 +13,14 @@
 
 ---
 
+## デモ
+
+<!-- TODO: 動画デモを追加 -->
+
+> 動画デモ準備中 — 音声コマンド、リアルタイムロボット実行、設定パネルのウォークスルー。
+
+---
+
 ## 主な特徴
 
 ### LLM頭脳アーキテクチャ
@@ -71,8 +79,10 @@ export PYTHONPATH=/path/to/unitree_sdk2_python:$PYTHONPATH
 ### 起動
 
 ```bash
-# インタラクティブランチャー（推奨）
+# インタラクティブランチャー + 設定パネル（推奨）
 ./start_production_brain.sh
+# → モード選択、設定変更（唤醒詞、モデル、ルーティング等）
+# → 'c' で設定パネル、't' で tmux 後台モード起動
 
 # キーボードモード:
 python3 production_commander.py              # シミュレーションモード
@@ -82,6 +92,11 @@ python3 production_commander.py --hardware   # 実機モード
 python3 voice_commander.py                   # 音声、シミュレーション
 python3 voice_commander.py --hardware        # 音声、実機
 python3 voice_commander.py --asr-mock        # 音声、モックASR（マイク不要）
+python3 voice_commander.py --daemon          # 後台モード（tmux 用）
+
+# 直接起動（メニュースキップ）:
+./start_production_brain.sh --voice          # 音声 + シミュレーション
+./start_production_brain.sh --voice-hw       # 音声 + 実機
 ```
 
 ---
@@ -185,6 +200,7 @@ SafetyCompiler.compile() ...... ホワイトリスト→バッテリーゲート
 | `voice_commander.py` | 音声モードエントリーポイント: ASRサブプロセス + AudioCapture + ASRBridge |
 | `audio/audio_capture.py` | USBマイク取得: arecordサブプロセス → リサンプル → UDS |
 | `audio/asr_bridge.py` | ASR結果コンシューマー: 重複排除/フィルター → Queue → Brain |
+| `audio/wake_word.py` | 唤醒詞マッチャー + ゲート: 既知プレフィクス完全一致 + 監聴ウィンドウ |
 | `audio/asr_service/` | ASRサーバー: faster-whisper + silero-vad + UDS |
 
 ---
@@ -209,6 +225,13 @@ ASRBridge ←── /tmp/claudia_asr_result.sock ←─── JSON Lines
   └── command worker → brain.process_and_execute(text)
 ```
 
+### プロセス耐障害性
+
+- **SIGHUP 処理**: 両コマンダーが SIGHUP を無視 — SSH 切断時にプロセスが終了しない
+- **ASR 自動再起動**: ASR サブプロセスがクラッシュした場合、VoiceCommander が完全なパイプラインを自動再構築（Bridge → Capture → ASR → 再構築）。最大 3 回まで試行後、degraded モード（キーボードのみ）に移行
+- **tmux 統合**: `start_production_brain.sh` のオプション `t` で tmux セッション内で起動。環境変数を完全転送し、SSH 切断に耐える
+- **Ollama GPU クリーンアップ**: シャットダウン時にモデルを GPU メモリから即座にアンロード（`keep_alive=0`）。30 分間の無駄な VRAM 占有を防止
+
 ### ASR環境変数オーバーライド
 
 | 変数 | デフォルト | 選択肢 |
@@ -216,6 +239,8 @@ ASRBridge ←── /tmp/claudia_asr_result.sock ←─── JSON Lines
 | `CLAUDIA_ASR_MODEL` | `base` | `base` / `small` / `medium` |
 | `CLAUDIA_ASR_BEAM_SIZE` | `1`（貪欲デコード） | `1` / `3`+（ビームサーチ） |
 | `CLAUDIA_ASR_DEVICE` | `cpu` | `cpu` / `cuda` |
+| `CLAUDIA_WAKE_WORD_ENABLED` | `0`（無効） | `0` / `1` |
+| `CLAUDIA_WAKE_WORD_TIMEOUT` | `5`（秒） | standalone 唤醒詞後の監聴ウィンドウ |
 
 ### カナ正規化
 
@@ -339,4 +364,4 @@ MIT License — 詳細は[LICENSE](LICENSE)を参照。
 
 ---
 
-*最終更新: 2026-02-19*
+*最終更新: 2026-02-20*

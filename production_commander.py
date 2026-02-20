@@ -8,6 +8,7 @@ Production Commander - 生产环境交互式命令器
 import asyncio
 import json
 import logging
+import signal
 import time
 import sys
 import os
@@ -479,9 +480,51 @@ class ProductionCommander:
             except Exception as e:
                 print("\n  [error] {}\n".format(e))
 
+        # Ollama モデルアンロード (GPU メモリ即時解放)
+        await self._unload_ollama_models()
+
         runtime = datetime.now() - self.session_start
         print("  session: {} commands, {:.0f}s\n".format(
             len(self.command_history), runtime.total_seconds()))
+
+    async def _unload_ollama_models(self):
+        """Ollama モデルをアンロード (keep_alive=0 で GPU メモリ即時解放)"""
+        if not self.brain:
+            return
+
+        models_to_unload = set()
+        models_to_unload.add(self.brain.model_7b)
+        try:
+            if self.brain._channel_router:
+                models_to_unload.add(
+                    self.brain._channel_router._action_model)
+        except Exception:
+            pass
+
+        loop = asyncio.get_event_loop()
+        for model in models_to_unload:
+            try:
+                def _unload(m):
+                    from urllib.request import Request, urlopen
+                    payload = json.dumps({
+                        "model": m,
+                        "keep_alive": 0,
+                    }).encode("utf-8")
+                    req = Request(
+                        "http://localhost:11434/api/generate",
+                        data=payload,
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urlopen(req, timeout=5) as resp:
+                        resp.read()
+
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, _unload, model),
+                    timeout=5.0,
+                )
+            except Exception:
+                pass
 
 
 async def main():
@@ -504,5 +547,11 @@ async def main():
 if __name__ == "__main__":
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    # SIGHUP 無視 — SSH 切断時にプロセスを維持
+    try:
+        signal.signal(signal.SIGHUP, signal.SIG_IGN)
+    except (AttributeError, OSError):
+        pass
 
     asyncio.run(main())

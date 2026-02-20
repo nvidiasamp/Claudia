@@ -78,6 +78,10 @@ export BRAIN_MODEL_7B=claudia-7b:v2.0  # Override LLM model
 # PR2: Dual-channel routing
 export BRAIN_ROUTER_MODE=dual     # "dual" (default) | "legacy" | "shadow"
 export BRAIN_MODEL_ACTION=claudia-action-v3  # Action channel model name
+
+# Wake word (唤醒词)
+export CLAUDIA_WAKE_WORD_ENABLED=1  # 唤醒詞検出有効化 (デフォルト OFF)
+export CLAUDIA_WAKE_WORD_TIMEOUT=5  # 監聴窓秒数 (デフォルト 5)
 ```
 
 ## Architecture
@@ -156,7 +160,8 @@ Actions requiring standing state: 1016, 1017, 1022, 1023, 1029, 1030, 1031, 1032
 | `voice_commander.py` | Voice mode entry point: ASR subprocess + AudioCapture + ASRBridge |
 | `audio/pcm_utils.py` | PCM resampling utility (44100→16000, numpy index-based) |
 | `audio/audio_capture.py` | USB mic capture: arecord subprocess → resample → UDS audio.sock |
-| `audio/asr_bridge.py` | ASR result consumer: result.sock → dedup/filter → Queue → Brain |
+| `audio/wake_word.py` | Wake word matcher + gate: "クラちゃん" detection + 5s listening window |
+| `audio/asr_bridge.py` | ASR result consumer: result.sock → wake word → dedup/filter → Queue → Brain |
 | `audio/asr_service/` | ASR server: faster-whisper + silero-vad + 3-way UDS (Phase 1) |
 
 ### Voice Pipeline (Phase 2)
@@ -170,9 +175,14 @@ AudioCapture ──→ /tmp/claudia_audio.sock ──→ ASR Server (subprocess)
                                                 ├── faster-whisper base (ja, beam=1, CPU int8)
                                                 ▼
 ASRBridge ←── /tmp/claudia_asr_result.sock ←─── JSON Lines
-  ├── emergency → queue flush + cooldown → brain call (bypass lock)
-  ├── transcript → confidence ≥0.55 filter → dedup → Queue(3)
+  ├── emergency → queue flush + cooldown → brain call (bypass wake word)
+  ├── transcript → confidence ≥0.35 filter → wake word gate → dedup → Queue(3)
   └── command worker → brain.process_and_execute(text)
+
+Wake word gate (CLAUDIA_WAKE_WORD_ENABLED=1, default OFF):
+  "クラちゃん踊って" → strip prefix → "踊って" → brain (inline)
+  "クラちゃん" alone  → 5s listening window → next utterance → brain (2-step)
+  Emergency always bypasses wake word gate
 
 ASR env overrides:
   CLAUDIA_ASR_MODEL=small          # base(default)/small/medium
@@ -212,6 +222,8 @@ Robot IP: `192.168.123.161` via `eth0`
 | `(聴取中)` but no recognition | Mic mute/low gain/VAD not triggering | Check mic gain, test: `arecord -D hw:X,0 -d 3 /tmp/t.raw` then check RMS |
 | Hot cache miss on `かわいいです` | Suffix not stripped | Fixed: suffix stripping layer (です/ます/ください) now active |
 | ASR slow (>5s/utterance) | whisper-small on CPU | Use base (default) or set `CLAUDIA_ASR_MODEL=base` |
+| Wake word not detected | ASR variant not in prefix list | "クラ" prefix always matches; check `CLAUDIA_WAKE_WORD_ENABLED=1` |
+| Commands ignored with wake word ON | Wake word gate filtering | Say "クラちゃん" first, or prefix command: "クラちゃん踊って" |
 
 ## Project Conventions
 

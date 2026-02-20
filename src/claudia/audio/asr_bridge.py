@@ -60,10 +60,17 @@ class ASRBridge:
         brain: Any,
         socket_path: str = ASR_RESULT_SOCKET,
         on_result: Any = None,
+        on_wake: Any = None,
     ) -> None:
         self._brain = brain
         self._socket_path = socket_path
         self._on_result = on_result
+
+        # 唤醒词ゲート
+        from .wake_word import WakeWordGate
+        self._wake_gate = WakeWordGate(
+            on_wake=self._make_wake_callback(on_wake),
+        )
 
         # 準備完了イベント (ready メッセージ受信で set)
         self.ready_event = asyncio.Event()
@@ -86,6 +93,22 @@ class ASRBridge:
         self._watchdog_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
 
         self._running = False
+
+    def _make_wake_callback(self, external_on_wake):
+        # type: (Any) -> Any
+        """唤醒詞コールバックを生成: 外部コールバック + "wake" イベント通知"""
+        def _cb():
+            if external_on_wake:
+                try:
+                    external_on_wake()
+                except Exception:
+                    pass
+            if self._on_result:
+                try:
+                    self._on_result("wake", "", 0)
+                except Exception:
+                    pass
+        return _cb
 
     # ------------------------------------------------------------------
     # 公開 API
@@ -236,6 +259,12 @@ class ASRBridge:
             logger.info("低信頼度スキップ: '%s' (conf=%.2f < %.2f)", text, confidence, MIN_CONFIDENCE)
             return
 
+        # 唤醒詞ゲート (emergency は上で処理済み — ここには到達しない)
+        filtered_text = self._wake_gate.filter(text, confidence)
+        if filtered_text is None:
+            return
+        text = filtered_text
+
         # 重複排除 (emergency が先に処理済みの場合スキップ)
         if self._is_processed(utterance_id):
             logger.debug("重複排除: utt=%s", utterance_id)
@@ -292,6 +321,9 @@ class ASRBridge:
             logger.info("Emergency キュー空化: %d 件破棄", flushed)
 
         self._cooldown_until = time.monotonic() + EMERGENCY_COOLDOWN_S
+
+        # 唤醒詞ゲートリセット (emergency 時は監聴窓を閉じる)
+        self._wake_gate.reset()
 
         # brain 呼出 (キュー迂回) + E2E 計測
         logger.warning("Emergency 実行: '%s'", keyword)
