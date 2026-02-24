@@ -110,7 +110,7 @@ class ProductionBrain:
 
         _mode = os.getenv("BRAIN_ROUTER_MODE", "dual")
         if _mode != "dual":
-            self.logger.info("🧠 7B模型: {}".format(self.model_7b))
+            self.logger.info("🧠 7Bモデル: {}".format(self.model_7b))
         
         # 精简动作缓存（仅保留文化特定词和LLM容易出错的核心命令）
         self.hot_cache = {
@@ -237,9 +237,9 @@ class ProductionBrain:
                     logger=self.logger,
                 )
                 self.state_monitor.start_polling(interval=2.0)
-                self.logger.info("SDK 状态提供器已启动（RPC 轮询, 间隔 2.0s）")
+                self.logger.info("SDK 状態プロバイダー起動（RPC ポーリング, 間隔 2.0s）")
             except Exception as e:
-                self.logger.warning(f"SDK 状态提供器启动失败: {e}")
+                self.logger.warning(f"SDK 状態プロバイダー起動失敗: {e}")
                 self.state_monitor = None
         elif not use_real_hardware and STATE_MONITOR_AVAILABLE:
             # 模拟模式: 可以尝试 ROS2 monitor
@@ -250,23 +250,23 @@ class ProductionBrain:
                 )
                 if self.state_monitor.initialize():
                     self.state_monitor.start_monitoring()
-                    self.logger.info("✅ ROS2 状态监控器已启动")
+                    self.logger.info("✅ ROS2 状態モニター起動済み")
                 else:
-                    self.logger.warning("⚠️ ROS2 状态监控器初始化失败，使用默认状态")
+                    self.logger.warning("⚠️ ROS2 状態モニター初期化失敗、デフォルト状態を使用")
             except Exception as e:
-                self.logger.warning(f"⚠️ ROS2 状态监控器不可用: {e}")
+                self.logger.warning(f"⚠️ ROS2 状態モニター使用不可: {e}")
                 self.state_monitor = None
         else:
             reason = "SDK不可用" if use_real_hardware else "状态监控模块不可用"
-            self.logger.warning(f"⚠️ 状态监控器未启动: {reason}")
+            self.logger.warning(f"⚠️ 状態モニター未起動: {reason}")
 
         # 安全编译器（统一安全管线）
         allow_high_risk = os.getenv("SAFETY_ALLOW_HIGH_RISK", "0") == "1"
         self.safety_compiler = SafetyCompiler(allow_high_risk=allow_high_risk)
         if allow_high_risk:
-            self.logger.warning("!! SAFETY_ALLOW_HIGH_RISK=1: 高风险动作已启用 !!")
+            self.logger.warning("!! SAFETY_ALLOW_HIGH_RISK=1: 高リスク動作有効化 !!")
         else:
-            self.logger.info("SafetyCompiler 已加载（高风险动作已禁用）")
+            self.logger.info("SafetyCompiler 読込完了（高リスク動作は無効）")
 
         # RPC 锁（SportClient 非线程安全，所有 RPC 调用必须通过 _rpc_call）
         self._rpc_lock = threading.RLock()
@@ -278,10 +278,10 @@ class ProductionBrain:
         # 审计日志器
         if AUDIT_LOGGER_AVAILABLE:
             self.audit_logger = get_audit_logger()
-            self.logger.info("✅ 审计日志器已启动 (logs/audit/)")
+            self.logger.info("✅ 監査ログ起動済み (logs/audit/)")
         else:
             self.audit_logger = None
-            self.logger.warning("⚠️ 审计日志器不可用")
+            self.logger.warning("⚠️ 監査ログ使用不可")
 
         # 姿态跟踪（用于模拟模式状态准确性）
         self.last_posture_standing = False  # 初始假设坐姿
@@ -305,9 +305,9 @@ class ProductionBrain:
                 self._router_mode = RouterMode.LEGACY
                 self._channel_router = ChannelRouter(self, self._router_mode)
 
-        self.logger.info("🧠 生产大脑初始化完成")
-        self.logger.info(f"   硬件模式: {'真实' if use_real_hardware else '模拟'}")
-        self.logger.info(f"   路由模式: {self._router_mode.value}")
+        self.logger.info("🧠 ProductionBrain 初期化完了")
+        self.logger.info(f"   ハードウェア: {'実機' if use_real_hardware else 'シミュレーション'}")
+        self.logger.info(f"   ルーティング: {self._router_mode.value}")
     
     def _setup_logger(self) -> logging.Logger:
         """设置日志"""
@@ -384,7 +384,7 @@ class ProductionBrain:
             from unitree_sdk2py.go2.sport.sport_client import SportClient
             
             # 初始化DDS通道工厂 - 这是关键步骤！
-            self.logger.info("📡 初始化DDS通道工厂 (eth0)...")
+            self.logger.info("📡 DDSチャネルファクトリ初期化 (eth0)...")
             ChannelFactoryInitialize(0, "eth0")
             
             # 创建SportClient实例
@@ -438,7 +438,7 @@ class ProductionBrain:
                             )
                         )
                     else:
-                        self.logger.warning("   GetState 探测: {}次重试均失败（JSON解析错误）".format(
+                        self.logger.warning("   GetState 探査: {}回リトライ全失敗（JSON解析エラー）".format(
                             MAX_PROBE_RETRIES
                         ))
                         test_result = -1
@@ -450,65 +450,65 @@ class ProductionBrain:
                             )
                         )
                     else:
-                        self.logger.warning("   GetState 探测: {}次重试均失败: {}".format(
+                        self.logger.warning("   GetState 探査: {}回リトライ全失敗: {}".format(
                             MAX_PROBE_RETRIES, e
                         ))
                         test_result = -1
 
             # 防止“code=0 + 空/无效data”被误判为连通成功
             if not probe_ok and test_result == 0:
-                self.logger.warning("   GetState 探测返回 code=0 但数据无效，按失败处理")
+                self.logger.warning("   GetState 探査: code=0 だがデータ無効、失敗扱い")
                 test_result = -1
 
             try:
                 # 分析返回码
                 if test_result == 0:
-                    self.logger.info("✅ 真实SportClient初始化成功 - 机器人已连接")
-                    self.logger.info(f"   网络接口: eth0")
-                    self.logger.info(f"   本机IP: 192.168.123.18")
-                    self.logger.info(f"   机器人IP: 192.168.123.161")
-                    self.logger.info(f"   测试返回码: {test_result}")
+                    self.logger.info("✅ SportClient 初期化成功 — ロボット接続済み")
+                    self.logger.info(f"   ネットワーク: eth0")
+                    self.logger.info(f"   ローカルIP: 192.168.123.18")
+                    self.logger.info(f"   ロボットIP: 192.168.123.161")
+                    self.logger.info(f"   テスト応答コード: {test_result}")
                     
                 elif test_result == 3103:
                     # APP占用问题 - 这是最常见的问题
                     self.logger.error("="*60)
-                    self.logger.error("❌ 检测到APP占用sport_mode (错误码3103)")
+                    self.logger.error("❌ APP が sport_mode を占有中 (エラー3103)")
                     self.logger.error("")
-                    self.logger.error("原因：SDK和APP不能同时控制机器人")
-                    self.logger.error("这是Unitree的安全设计，不是故障")
+                    self.logger.error("原因: SDK と APP は同時にロボットを制御できません")
+                    self.logger.error("これは Unitree の安全設計であり、故障ではありません")
                     self.logger.error("")
-                    self.logger.error("解决步骤：")
-                    self.logger.error("1. 关闭手机上的Unitree Go APP")
-                    self.logger.error("2. 按住机器人电源键重启")
-                    self.logger.error("3. 等待30秒后重新运行程序")
+                    self.logger.error("解決手順:")
+                    self.logger.error("1. スマホの Unitree Go APP を閉じる")
+                    self.logger.error("2. ロボットの電源ボタンを長押しして再起動")
+                    self.logger.error("3. 30秒待ってからプログラムを再実行")
                     self.logger.error("")
-                    self.logger.error("或使用: ./start_sdk_exclusive.sh")
+                    self.logger.error("または: ./start_sdk_exclusive.sh")
                     self.logger.error("="*60)
-                    self.logger.warning("切换到模拟模式继续...")
+                    self.logger.warning("シミュレーションモードに切替...")
                     self._init_mock_client()
                     return  # 使用模拟客户端
                     
                 elif test_result == 3203:
-                    self.logger.warning("⚠️ API未实现 (3203) - 该机器人可能不支持某些动作")
-                    self.logger.info("   SportClient已创建，继续运行...")
+                    self.logger.warning("⚠️ API未実装 (3203) — 一部の動作は非対応の可能性")
+                    self.logger.info("   SportClient 作成済み、続行...")
                     
                 else:
-                    self.logger.warning(f"⚠️ 连接测试返回码: {test_result}")
-                    self.logger.info("   SportClient已创建，继续运行...")
+                    self.logger.warning(f"⚠️ 接続テスト応答コード: {test_result}")
+                    self.logger.info("   SportClient 作成済み、続行...")
                     
             except Exception as e:
-                self.logger.warning(f"⚠️ 连接测试异常: {e}")
-                self.logger.info("   SportClient已创建，继续运行...")
+                self.logger.warning(f"⚠️ 接続テスト例外: {e}")
+                self.logger.info("   SportClient 作成済み、続行...")
             
         except ImportError as e:
-            self.logger.error(f"❌ 导入错误: {e}")
-            self.logger.info("   使用MockSportClient模拟硬件")
+            self.logger.error(f"❌ インポートエラー: {e}")
+            self.logger.info("   MockSportClient でシミュレーション")
             self._init_mock_client()
             
         except Exception as e:
-            self.logger.error(f"❌ SportClient初始化失败: {e}")
-            self.logger.info("   提示: 机器人可能未连接")
-            self.logger.info("   使用MockSportClient模拟硬件")
+            self.logger.error(f"❌ SportClient 初期化失敗: {e}")
+            self.logger.info("   ヒント: ロボット未接続の可能性")
+            self.logger.info("   MockSportClient でシミュレーション")
             self._init_mock_client()
 
     def _is_valid_getstate_probe(self, code: Any, data: Any) -> bool:
@@ -530,11 +530,11 @@ class ProductionBrain:
             from claudia.brain.mock_sport_client import MockSportClient
             self.sport_client = MockSportClient()
             self.sport_client.Init()
-            self.logger.info("🎭 MockSportClient初始化成功（模拟模式）")
+            self.logger.info("🎭 MockSportClient 初期化完了（シミュレーション）")
             # 保持硬件模式标志，但使用模拟客户端
             # 这样用户知道系统在尝试硬件控制，只是用模拟代替
         except Exception as e:
-            self.logger.error(f"❌ MockSportClient初始化失败: {e}")
+            self.logger.error(f"❌ MockSportClient 初期化失敗: {e}")
             self.sport_client = None
             self.use_real_hardware = False
     
@@ -709,7 +709,7 @@ class ProductionBrain:
           - RPC 返回其他值 → failed
           - RPC 异常 → failed
         """
-        self.logger.warning("!! 紧急停止: {} !!".format(command))
+        self.logger.warning("!! 緊急停止: {} !!".format(command))
         exec_status = "success"  # 默认: 模拟模式无需物理停止
         response = "緊急停止しました"
         if self.sport_client:
@@ -722,11 +722,11 @@ class ProductionBrain:
                 else:
                     exec_status = "failed"
                     response = "緊急停止を試みましたが、エラーが発生しました（コード:{}）".format(result)
-                    self.logger.error("紧急停止返回异常: {}".format(result))
+                    self.logger.error("緊急停止応答異常: {}".format(result))
             except Exception as e:
                 exec_status = "failed"
                 response = "緊急停止に失敗しました"
-                self.logger.error("紧急停止 RPC 失败: {}".format(e))
+                self.logger.error("緊急停止 RPC 失敗: {}".format(e))
         output = BrainOutput(
             response=response,
             api_code=1003,
@@ -768,7 +768,7 @@ class ProductionBrain:
                 )
             else:
                 self.logger.warning(
-                    "battery_level={} > 1.0 (传感器精度)，clamp 至 1.0".format(level)
+                    "battery_level={} > 1.0 (センサー精度)、1.0にクランプ".format(level)
                 )
             return 1.0
         return level
@@ -800,7 +800,7 @@ class ProductionBrain:
 
         # 如果没有日语字符，返回默认回复
         if not has_japanese:
-            self.logger.warning(f"⚠️ LLM输出无日语字符: '{r}' → 使用默认回复")
+            self.logger.warning(f"⚠️ LLM出力に日本語なし: '{r}' → デフォルト応答")
             return "すみません、よく分かりません"
 
         # 检查是否是无意义的单词（godee, pong等）
@@ -809,7 +809,7 @@ class ProductionBrain:
                              r'\bok\b', r'\byes\b', r'\bno\b']
         r_lower = r.lower()
         if any(re.search(pat, r_lower) for pat in nonsense_patterns):
-            self.logger.warning(f"⚠️ LLM输出包含无意义词: '{r}' → 使用默认回复")
+            self.logger.warning(f"⚠️ LLM出力に無意味語検出: '{r}' → デフォルト応答")
             return "すみません、よく分かりません"
 
         return r
@@ -963,7 +963,7 @@ class ProductionBrain:
         _stand = state_snapshot.is_standing if state_snapshot else False
         _ts = snapshot_monotonic_ts if state_snapshot else None
         if not state_snapshot:
-            self.logger.warning("状態監視なし: fail-safe安全コンパイル (battery=0.0)")
+            self.logger.warning("状態監視なし: fail-safe コンパイル (battery=0.0)")
         return self.safety_compiler.compile(
             candidate, _batt, _stand, snapshot_timestamp=_ts,
         )
@@ -975,11 +975,11 @@ class ProductionBrain:
             return False
         try:
             ollama.show(self._channel_router._action_model)
-            self.logger.info("Action 模型已验证: {}".format(
+            self.logger.info("Action モデル確認済み: {}".format(
                 self._channel_router._action_model))
             return True
         except Exception as e:
-            self.logger.warning("Action 模型不可用: {}".format(e))
+            self.logger.warning("Action モデル使用不可: {}".format(e))
             return False
 
     async def _ensure_model_loaded(self, model, num_ctx=2048):
@@ -1030,18 +1030,18 @@ class ProductionBrain:
                 timeout=60,
             )
             elapsed_ms = (time.monotonic() - start) * 1000
-            self.logger.info("模型 {} 预加载完成 ({:.0f}ms)".format(model, elapsed_ms))
+            self.logger.info("モデル {} プリロード完了 ({:.0f}ms)".format(model, elapsed_ms))
             return True
 
         except asyncio.TimeoutError:
-            self.logger.error("模型 {} 预加载超时 (60s)".format(model))
+            self.logger.error("モデル {} プリロードタイムアウト (60s)".format(model))
             return False
         except (ConnectionError, OSError) as e:
             # Ollama 进程不可达，后续推理必然失败，快速失败
-            self.logger.error("模型预加载连接失败 (Ollama 未运行?): {}".format(e))
+            self.logger.error("モデルプリロード接続失敗 (Ollama 未起動?): {}".format(e))
             return False
         except Exception as e:
-            self.logger.warning("模型预加载检查异常: {}".format(e))
+            self.logger.warning("モデルプリロード確認例外: {}".format(e))
             return True  # 非连接类异常乐观通过，让推理自行处理
 
     async def _call_ollama_v2(self, model, command, timeout=10,
@@ -1060,7 +1060,7 @@ class ProductionBrain:
                           dict = JSON Schema 结构化输出（Action 通道用 ACTION_SCHEMA）
         """
         if not OLLAMA_AVAILABLE:
-            self.logger.error("ollama Python 包不可用，无法调用 LLM。请安装: pip install ollama")
+            self.logger.error("ollama Python パッケージ不可。インストール: pip install ollama")
             return None
 
         # 闭包捕获: 将参数绑定到局部变量供 _sync_ollama_call 使用
@@ -1094,13 +1094,13 @@ class ProductionBrain:
             return result
 
         except asyncio.TimeoutError:
-            self.logger.warning(f"模型超时({timeout}s): {model}")
+            self.logger.warning(f"モデルタイムアウト({timeout}s): {model}")
             return None
         except json.JSONDecodeError as e:
-            self.logger.error(f"JSON解析失败: {e}")
+            self.logger.error(f"JSON解析失敗: {e}")
             return None
         except Exception as e:
-            self.logger.error(f"Ollama调用错误: {e}")
+            self.logger.error(f"Ollama呼出エラー: {e}")
             return None
 
     def _apply_safety_to_router_result(self, command, router_result,
@@ -1131,7 +1131,7 @@ class ProductionBrain:
             verdict = self._compile_safety(
                 candidate, state_snapshot, snapshot_monotonic_ts)
             if verdict.is_blocked:
-                self.logger.warning("路由器路径安全拒绝: {}".format(verdict.block_reason))
+                self.logger.warning("ルーター経路安全拒否: {}".format(verdict.block_reason))
                 elapsed = (time.monotonic() - start_time) * 1000
                 rejected_output = BrainOutput(
                     response=verdict.response_override or "安全のため動作を停止しました",
@@ -1248,9 +1248,9 @@ class ProductionBrain:
                 voice_latency_ms=voice_latency_ms,
             )
             if not self.audit_logger.log_entry(entry):
-                self.logger.warning("⚠️ 审计日志写入失败 (route={})".format(route))
+                self.logger.warning("⚠️ 監査ログ書込失敗 (route={})".format(route))
         except Exception as e:
-            self.logger.warning(f"⚠️ 审计日志记录失败: {e}")
+            self.logger.warning(f"⚠️ 監査ログ記録失敗: {e}")
 
     async def process_command(self, command: str) -> BrainOutput:
         """处理用户指令（状态快照+热路径+安全门优化版）"""
@@ -1260,7 +1260,7 @@ class ProductionBrain:
                 "— 请迁移至 process_and_execute() 原子入口"
             )
         start_time = time.monotonic()
-        self.logger.info(f"📥 接收指令: '{command}'")
+        self.logger.info(f"📥 コマンド受信: '{command}'")
 
         # ===== 1) 一次性快照并统一归一化 =====
         state_snapshot = self.state_monitor.get_current_state() if self.state_monitor else None
@@ -1280,15 +1280,15 @@ class ProductionBrain:
                 state_snapshot.is_standing = False
                 state_snapshot.battery_level = 0.50  # 保守值，限制高能动作
                 self.logger.warning(
-                    "状态快照: 来源=simulation（不可靠），电池未知(安全默认50%), 姿态非站立(fail-safe)"
+                    "状態スナップショット: ソース=simulation（信頼不可）, バッテリー不明(安全デフォルト50%), 姿勢=非起立(fail-safe)"
                 )
             elif state_source == 'sdk':
                 # SDK 真实数据: 直接信任 mode→is_standing 和 battery
                 # 不走 ros_initialized 覆盖分支（SDK 就是真实硬件数据）
                 self.logger.info(
-                    "状态快照: 来源=sdk, 电池{:.0f}%, 姿态{}".format(
+                    "状態スナップショット: ソース=sdk, バッテリー{:.0f}%, 姿勢={}".format(
                         state_snapshot.battery_level * 100 if state_snapshot.battery_level else 0,
-                        '站立' if state_snapshot.is_standing else '非站立'
+                        '起立' if state_snapshot.is_standing else '非起立'
                     )
                 )
             elif state_source == 'sdk_partial':
@@ -1300,17 +1300,17 @@ class ProductionBrain:
                     state_snapshot.is_standing = False
                 # 如果 battery_ok=False，保持 SDKStateSnapshot 的默认值 0.5
                 battery_desc = (
-                    "电池{:.0f}%".format(
+                    "バッテリー{:.0f}%".format(
                         state_snapshot.battery_level * 100 if state_snapshot.battery_level else 0
                     )
-                    if has_battery else "电池未知(安全默认50%)"
+                    if has_battery else "バッテリー不明(安全デフォルト50%)"
                 )
                 self.logger.info(
-                    "状态快照: 来源=sdk_partial (state={}, battery={}), {}, 姿态{}{}".format(
+                    "状態スナップショット: ソース=sdk_partial (state={}, battery={}), {}, 姿勢={}{}".format(
                         'ok' if has_state else 'fail',
                         'ok' if has_battery else 'fail',
                         battery_desc,
-                        '站立' if state_snapshot.is_standing else '非站立',
+                        '起立' if state_snapshot.is_standing else '非起立',
                         '(fail-safe)' if not has_state else '',
                     )
                 )
@@ -1319,7 +1319,7 @@ class ProductionBrain:
                 # fail-safe: is_standing=False，让 SafetyCompiler 自动前插 StandUp
                 state_snapshot.is_standing = False
                 self.logger.info(
-                    "状态快照: 来源=sdk_fallback, 电池未知(安全默认50%), 姿态非站立(fail-safe)"
+                    "状態スナップショット: ソース=sdk_fallback, バッテリー不明(安全デフォルト50%), 姿勢=非起立(fail-safe)"
                 )
             else:
                 # ROS2 state_monitor 或 unknown
@@ -1331,10 +1331,10 @@ class ProductionBrain:
                 if not ros_initialized:
                     state_snapshot.is_standing = self.last_posture_standing
                 self.logger.info(
-                    "状态快照: 来源={}, 电池{:.0f}%, 姿态{}".format(
+                    "状態スナップショット: ソース={}, バッテリー{:.0f}%, 姿勢{}".format(
                         state_source,
                         state_snapshot.battery_level * 100 if state_snapshot.battery_level else 0,
-                        '站立' if state_snapshot.is_standing else '非站立'
+                        '起立' if state_snapshot.is_standing else '非起立'
                     )
                 )
 
@@ -1379,7 +1379,7 @@ class ProductionBrain:
             or self.hot_cache.get(cmd_desuffixed)
         )
         if cached:
-            self.logger.info("热点缓存命中: {}".format(command))
+            self.logger.info("ホットキャッシュヒット: {}".format(command))
 
             api_code = cached.get("api_code")
             sequence = cached.get("sequence")
@@ -1389,7 +1389,7 @@ class ProductionBrain:
                 verdict = self._compile_safety(
                     candidate, state_snapshot, snapshot_monotonic_ts)
                 if verdict.is_blocked:
-                    self.logger.warning("热路径安全拒绝: {}".format(verdict.block_reason))
+                    self.logger.warning("ホットパス安全拒否: {}".format(verdict.block_reason))
                     elapsed = (time.monotonic() - start_time) * 1000
                     rejected_output = BrainOutput(
                         response=verdict.response_override or "安全のため動作を停止しました",
@@ -1426,7 +1426,7 @@ class ProductionBrain:
             )
 
             elapsed = (time.monotonic() - start_time) * 1000
-            self.logger.info("热路径处理完成 ({:.0f}ms)".format(elapsed))
+            self.logger.info("ホットパス処理完了 ({:.0f}ms)".format(elapsed))
             self._log_audit(
                 command, brain_output, route=ROUTE_HOTPATH,
                 elapsed_ms=elapsed, cache_hit=True, model_used="hotpath",
@@ -1435,7 +1435,7 @@ class ProductionBrain:
             return brain_output
 
         # 热路径未命中，记录日志
-        self.logger.info(f"🔍 热路径未命中，检查序列预定义...")
+        self.logger.info(f"🔍 ホットパス未ヒット、シーケンス定義を確認...")
 
         # ===== 3.3) 常见序列预定义（避免LLM调用） =====
         cmd_lower = command.strip().lower()
@@ -1443,13 +1443,13 @@ class ProductionBrain:
         cmd_normalized = self._kana_to_kanji(cmd_lower)
         for key, seq in self.SEQUENCE_HOTPATH.items():
             if key in cmd_normalized:
-                self.logger.info("序列预定义命中: {} -> {}".format(key, seq))
+                self.logger.info("シーケンス定義ヒット: {} -> {}".format(key, seq))
 
                 # P0-9: 序列路径必须走 SafetyCompiler（旧版无安全检查）
                 verdict = self._compile_safety(
                     seq, state_snapshot, snapshot_monotonic_ts)
                 if verdict.is_blocked:
-                    self.logger.warning("序列安全拒绝: {}".format(verdict.block_reason))
+                    self.logger.warning("シーケンス安全拒否: {}".format(verdict.block_reason))
                     elapsed = (time.monotonic() - start_time) * 1000
                     rejected_output = BrainOutput(
                         response=verdict.response_override or "安全のため動作を停止しました",
@@ -1480,13 +1480,13 @@ class ProductionBrain:
                 )
                 return seq_output
 
-        self.logger.info("序列预定义未命中，检查对话查询...")
+        self.logger.info("シーケンス定義未ヒット、会話クエリを確認...")
 
         # ===== 3.5) 对话查询检测（避免LLM将对话误解为动作） =====
         if self._is_conversational_query(command):
             conversational_response = self._generate_conversational_response(command)
             elapsed = (time.monotonic() - start_time) * 1000
-            self.logger.info(f"💬 对话查询识别 ({elapsed:.0f}ms)")
+            self.logger.info(f"💬 会話クエリ検出 ({elapsed:.0f}ms)")
 
             dialog_output = BrainOutput(
                 response=conversational_response,
@@ -1514,7 +1514,7 @@ class ProductionBrain:
             verdict = self._compile_safety(
                 [dance_choice], state_snapshot, snapshot_monotonic_ts)
             if verdict.is_blocked:
-                self.logger.warning("舞蹈安全拒绝: {}".format(verdict.block_reason))
+                self.logger.warning("ダンス安全拒否: {}".format(verdict.block_reason))
                 elapsed = (time.monotonic() - start_time) * 1000
                 rejected_output = BrainOutput(
                     response=verdict.response_override or "安全のため動作を停止しました",
@@ -1537,7 +1537,7 @@ class ProductionBrain:
                 final_sequence = exec_seq
 
             elapsed = (time.monotonic() - start_time) * 1000
-            self.logger.info("随机选择舞蹈{} ({:.0f}ms)".format(dance_name, elapsed))
+            self.logger.info("ランダムダンス{} ({:.0f}ms)".format(dance_name, elapsed))
             dance_output = BrainOutput(
                 response="踊ります{}".format(dance_name),
                 api_code=final_api,
@@ -1554,7 +1554,7 @@ class ProductionBrain:
         # PR2: 根据 BRAIN_ROUTER_MODE 分派到不同通道
         if self._router_mode == RouterMode.LEGACY:
             # --- Legacy 直通路径（零行为变更）---
-            self.logger.info("使用7B模型推理...")
+            self.logger.info("7Bモデル推論中...")
             await self._ensure_model_loaded(self.model_7b, num_ctx=2048)
             result = await self._call_ollama_v2(
                 self.model_7b,
@@ -1564,7 +1564,7 @@ class ProductionBrain:
 
             if result:
                 elapsed = (time.monotonic() - start_time) * 1000
-                self.logger.info("7B模型响应 ({:.0f}ms)".format(elapsed))
+                self.logger.info("7Bモデル応答 ({:.0f}ms)".format(elapsed))
 
                 raw_response = result.get("response") or result.get("r", "実行します")
                 response = self._sanitize_response(raw_response)
@@ -1572,13 +1572,13 @@ class ProductionBrain:
                 sequence = result.get("sequence") or result.get("s")
 
                 if api_code is not None and api_code not in VALID_API_CODES:
-                    self.logger.warning("LLM 输出非法 api_code={}，降级为纯文本".format(api_code))
+                    self.logger.warning("LLM 出力不正 api_code={}、テキストに降格".format(api_code))
                     api_code = None
                 if sequence:
                     valid_seq = [c for c in sequence if c in VALID_API_CODES]
                     if len(valid_seq) != len(sequence):
                         dropped = [c for c in sequence if c not in VALID_API_CODES]
-                        self.logger.warning("LLM 序列含非法码 {}，过滤后: {}".format(dropped, valid_seq))
+                        self.logger.warning("LLM シーケンスに不正コード {}、フィルタ後: {}".format(dropped, valid_seq))
                         sequence = valid_seq if valid_seq else None
 
                 candidate = sequence if sequence else ([api_code] if api_code else [])
@@ -1587,7 +1587,7 @@ class ProductionBrain:
                     verdict = self._compile_safety(
                         candidate, state_snapshot, snapshot_monotonic_ts)
                     if verdict.is_blocked:
-                        self.logger.warning("LLM 路径安全拒绝: {}".format(verdict.block_reason))
+                        self.logger.warning("LLM パス安全拒否: {}".format(verdict.block_reason))
                         rejected_output = BrainOutput(
                             response=verdict.response_override or "安全のため動作を停止しました",
                             api_code=None, confidence=1.0,
@@ -1633,14 +1633,14 @@ class ProductionBrain:
 
             # Legacy 无响应降级
             elapsed = (time.monotonic() - start_time) * 1000
-            self.logger.warning("模型无响应，使用默认 ({:.0f}ms)".format(elapsed))
+            self.logger.warning("モデル無応答、デフォルト使用 ({:.0f}ms)".format(elapsed))
             return BrainOutput(
                 response="すみません、理解できませんでした",
                 api_code=None,
             )
 
         # --- Dual/Shadow 路由器路径 ---
-        self.logger.info("路由器推理 (mode={})...".format(self._router_mode.value))
+        self.logger.info("ルーター推論 (mode={})...".format(self._router_mode.value))
         router_result = await self._channel_router.route(
             command, state_snapshot=state_snapshot, start_time=start_time)
         return self._apply_safety_to_router_result(
@@ -1662,22 +1662,22 @@ class ProductionBrain:
             )
         # 检查硬件模式和SportClient状态
         if self.use_real_hardware and self.sport_client:
-            self.logger.info("🤖 使用真实硬件执行")
+            self.logger.info("🤖 実機ハードウェアで実行")
             return await self._execute_real(brain_output)
         else:
             if self.use_real_hardware:
-                self.logger.warning("⚠️ 硬件模式但SportClient未初始化，使用模拟")
+                self.logger.warning("⚠️ 実機モードだが SportClient 未初期化、シミュレーション使用")
             return await self._execute_mock(brain_output)
     
     async def _execute_mock(self, brain_output: BrainOutput) -> bool:
         """模拟执行"""
         if brain_output.api_code:
-            self.logger.info(f"🎭 [模拟] 执行API: {brain_output.api_code}")
+            self.logger.info(f"🎭 [シミュ] API実行: {brain_output.api_code}")
             await asyncio.sleep(0.5)
             return True
         
         if brain_output.sequence:
-            self.logger.info(f"🎭 [模拟] 执行序列: {brain_output.sequence}")
+            self.logger.info(f"🎭 [シミュ] シーケンス実行: {brain_output.sequence}")
             for api in brain_output.sequence:
                 self.logger.info(f"   → API: {api}")
                 await asyncio.sleep(0.3)
@@ -1711,24 +1711,24 @@ class ProductionBrain:
                             mode = int(mode)
                             if mode in STANDING_MODES:
                                 self.logger.info(
-                                    "   GetState 确认站立 (mode={}, attempt {}/{})".format(
+                                    "   GetState 起立確認 (mode={}, attempt {}/{})".format(
                                         mode, attempt + 1, max_retries
                                     )
                                 )
                                 return True
                             else:
                                 self.logger.info(
-                                    "   GetState 未站立 (mode={}, attempt {}/{})".format(
+                                    "   GetState 未起立 (mode={}, attempt {}/{})".format(
                                         mode, attempt + 1, max_retries
                                     )
                                 )
             except Exception as e:
                 self.logger.warning(
-                    "   GetState 查询失败 (attempt {}/{}): {}".format(
+                    "   GetState クエリ失敗 (attempt {}/{}): {}".format(
                         attempt + 1, max_retries, e
                     )
                 )
-        self.logger.warning("   StandUp 确认超时: {} 次重试后仍未站立".format(max_retries))
+        self.logger.warning("   StandUp 確認タイムアウト: {}回リトライ後も未起立".format(max_retries))
         return False
 
     def _update_posture_tracking(self, api_code):
@@ -1765,7 +1765,7 @@ class ProductionBrain:
         try:
             # P0-8: 序列中间失败则中止（不再静默继续）
             if brain_output.sequence:
-                self.logger.info("执行序列: {}".format(brain_output.sequence))
+                self.logger.info("実行シーケンス: {}".format(brain_output.sequence))
                 for i, api in enumerate(brain_output.sequence):
                     single = BrainOutput("", api)
                     success = await self._execute_real(single)
@@ -1784,8 +1784,8 @@ class ProductionBrain:
                             standing_ok = await self._verify_standing_after_unknown()
                             if not standing_ok:
                                 self.logger.error(
-                                    "序列中止: StandUp(1004) unknown 后无法确认站立，"
-                                    "后续动作 {} 需要站立状态".format(
+                                    "シーケンス中止: StandUp(1004) unknown 後に起立確認不可、"
+                                    "後続動作 {} は起立状態が必要".format(
                                         brain_output.sequence[i + 1:]
                                     )
                                 )
@@ -1801,14 +1801,14 @@ class ProductionBrain:
             # 从 registry 查询方法名（替代内联 method_map）
             method_name = METHOD_MAP.get(brain_output.api_code)
             if not method_name:
-                self.logger.error("未注册的 API: {}".format(brain_output.api_code))
+                self.logger.error("未登録 API: {}".format(brain_output.api_code))
                 return False
 
             # SafetyCompiler 已处理站立前置（自动前插 StandUp），
             # 此处不再重复检查 actions_need_standing。
 
             # 使用 _rpc_call 统一调用（线程安全 + 超时管理）
-            self.logger.info("执行: {} (API:{})".format(method_name, brain_output.api_code))
+            self.logger.info("実行: {} (API:{})".format(method_name, brain_output.api_code))
 
             # 长时间动作: 增加 RPC 超时（Dance/Scrape/Heart 等动画 ~10-20s）
             LONG_RUNNING_ACTIONS = {1022, 1023, 1029, 1036}  # Dance1, Dance2, Scrape, Heart
@@ -1827,7 +1827,7 @@ class ProductionBrain:
             if isinstance(result, tuple):
                 result = result[0]
 
-            self.logger.info("   返回码: {}".format(result))
+            self.logger.info("   応答コード: {}".format(result))
 
             self.last_executed_api = brain_output.api_code
 
@@ -1840,7 +1840,7 @@ class ProductionBrain:
                 self._update_posture_tracking(brain_output.api_code)
                 return True
             elif result == 3104:  # RPC_ERR_CLIENT_API_TIMEOUT
-                self.logger.warning("   动作响应超时 (3104)")
+                self.logger.warning("   動作応答タイムアウト (3104)")
                 # 长时间动作（Dance/FrontFlip 等）经常触发 3104:
                 # 动作已发送到机器人并在执行中，只是 RPC 响应超时。
                 # 连通性确认: 用正确的 key "state"（非 "mode"）
@@ -1849,31 +1849,31 @@ class ProductionBrain:
                         "GetState", GETSTATE_FULL_KEYS, timeout_override=3.0
                     )
                     if state_code == 0:
-                        self.logger.info("   连通性确认OK，动作仍在执行中")
+                        self.logger.info("   接続確認OK、動作はまだ実行中")
                         return "unknown"
                     else:
-                        self.logger.warning("   连通性异常 ({}), 但动作可能已执行".format(state_code))
+                        self.logger.warning("   接続異常 ({})、動作は実行済みの可能性".format(state_code))
                         return "unknown"  # 3104 本身说明命令已发送，不应判定为失败
                 except (json.JSONDecodeError, ValueError):
                     # GetState RPC 也可能超时（机器人忙于执行动作）
-                    self.logger.info("   连通性探测超时（机器人可能忙于执行动作）")
+                    self.logger.info("   接続探査タイムアウト（ロボットは動作実行中の可能性）")
                     return "unknown"
                 except Exception as e:
-                    self.logger.warning("   连通性确认异常: {}".format(e))
+                    self.logger.warning("   接続確認例外: {}".format(e))
                     return "unknown"  # 3104 说明命令已发出，保守判定为 unknown
             else:
                 # P0-2: 修复 3103 注释和日志
                 if result == 3103:
-                    self.logger.error("   控制冲突 (3103): APP可能占用sport_mode")
-                    self.logger.error("      请关闭APP并重启机器人，或检查Init()是否成功")
+                    self.logger.error("   制御衝突 (3103): APP が sport_mode を占有中の可能性")
+                    self.logger.error("      APP を閉じてロボットを再起動、または Init() の成功を確認")
                 elif result == 3203:
-                    self.logger.warning("   动作不支持 (3203): 该API在Go2固件中未实现")
+                    self.logger.warning("   動作未対応 (3203): この API は Go2 ファームウェアに未実装")
                 else:
-                    self.logger.warning("   未知错误: {}".format(result))
+                    self.logger.warning("   不明エラー: {}".format(result))
                 return False
 
         except Exception as e:
-            self.logger.error("执行错误: {}".format(e))
+            self.logger.error("実行エラー: {}".format(e))
             return False
     
     def get_statistics(self) -> Dict:

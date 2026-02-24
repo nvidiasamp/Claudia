@@ -80,7 +80,7 @@ class ASRModelWrapper:
     def load(self) -> None:
         """加载 faster-whisper 模型"""
         if self._mock:
-            logger.info("ASR mock 模式，跳过模型加载")
+            logger.info("ASR mock モード、モデル読込スキップ")
             self._ram_mb = 0
             return
 
@@ -91,7 +91,7 @@ class ASRModelWrapper:
             device = os.getenv("CLAUDIA_ASR_DEVICE", "cpu")
             compute_type = os.getenv("CLAUDIA_ASR_COMPUTE_TYPE", "int8")
 
-            logger.info("ASR 模型加载中: whisper-%s (device=%s, compute=%s)",
+            logger.info("ASR モデル読込中: whisper-%s (device=%s, compute=%s)",
                         model_size, device, compute_type)
 
             self._model = WhisperModel(
@@ -109,12 +109,12 @@ class ASRModelWrapper:
             }
             self._ram_mb = size_ram_map.get(model_size, 500)
 
-            logger.info("ASR 模型加载完成: whisper-%s (RAM ~%dMB)",
+            logger.info("ASR モデル読込完了: whisper-%s (RAM ~%dMB)",
                         model_size, self._ram_mb)
 
         except Exception as e:
-            logger.error("ASR 模型加载失败: %s", e)
-            logger.warning("降级为 mock 模式")
+            logger.error("ASR モデル読込失敗: %s", e)
+            logger.warning("mock モードに降格")
             self._mock = True
             self._ram_mb = 0
 
@@ -180,7 +180,7 @@ class ASRModelWrapper:
             return (text, confidence)
 
         except Exception as e:
-            logger.error("ASR 推理失败: %s", e)
+            logger.error("ASR 推論失敗: %s", e)
             return ("", 0.0)
 
     def quick_transcribe(self, audio_data: bytes,
@@ -235,7 +235,7 @@ class ASRModelWrapper:
             return (text, confidence)
 
         except Exception as e:
-            logger.error("Emergency ASR quick_transcribe 失败: %s", e)
+            logger.error("Emergency ASR quick_transcribe 失敗: %s", e)
             return ("", 0.0)
 
     @property
@@ -297,7 +297,7 @@ class ASRServer:
 
     async def start(self) -> None:
         """启动 ASR 服务"""
-        logger.info("🚀 ASR 服务启动中 (mock=%s)...", self._mock)
+        logger.info("🚀 ASR サービス起動中 (mock=%s)...", self._mock)
 
         # 1. 加载 ASR 模型
         loop = asyncio.get_event_loop()
@@ -337,7 +337,7 @@ class ASRServer:
         # 5. 启动心跳
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
 
-        logger.info("✅ ASR 服务就绪 (audio=%s, result=%s, ctrl=%s)",
+        logger.info("✅ ASR サービス準備完了 (audio=%s, result=%s, ctrl=%s)",
                      AUDIO_SOCKET, RESULT_SOCKET, CTRL_SOCKET)
 
     async def shutdown(self) -> None:
@@ -345,7 +345,7 @@ class ASRServer:
         if not self._running:
             return
 
-        logger.info("🛑 ASR 服务关闭中...")
+        logger.info("🛑 ASR サービス終了中...")
         self._running = False
 
         # 取消心跳
@@ -382,7 +382,7 @@ class ASRServer:
                 except OSError:
                     pass
 
-        logger.info("✅ ASR 服务已关闭")
+        logger.info("✅ ASR サービス終了完了")
 
     # ------------------------------------------------------------------
     # UDS 连接处理
@@ -394,7 +394,7 @@ class ASRServer:
         writer: asyncio.StreamWriter,
     ) -> None:
         """Result socket 连接处理: 保存 writer 引用，发送 handshake"""
-        logger.info("📡 Result socket 客户端已连接")
+        logger.info("📡 Result socket クライアント接続")
         async with self._result_lock:
             self._result_writer = writer
 
@@ -418,7 +418,7 @@ class ASRServer:
         except (asyncio.CancelledError, ConnectionError):
             pass
         finally:
-            logger.info("📡 Result socket 客户端断开")
+            logger.info("📡 Result socket クライアント切断")
             writer.close()
             async with self._result_lock:
                 # 只清空当前 writer，防止新连接的 writer 被误清
@@ -431,7 +431,7 @@ class ASRServer:
         writer: asyncio.StreamWriter,
     ) -> None:
         """Audio socket 连接处理: 接收 PCM 流 → ring buffer → VAD"""
-        logger.info("🎙️ Audio socket 客户端已连接")
+        logger.info("🎙️ Audio socket クライアント接続")
         loop = asyncio.get_event_loop()
 
         try:
@@ -454,11 +454,11 @@ class ASRServer:
                         await self._handle_vad_event(event)
 
         except asyncio.IncompleteReadError:
-            logger.info("🎙️ Audio 流结束 (不完整帧)")
+            logger.info("🎙️ Audio ストリーム終了 (不完全フレーム)")
         except (asyncio.CancelledError, ConnectionError):
             pass
         finally:
-            logger.info("🎙️ Audio socket 客户端断开")
+            logger.info("🎙️ Audio socket クライアント切断")
             writer.close()
 
     async def _handle_ctrl_connection(
@@ -467,7 +467,7 @@ class ASRServer:
         writer: asyncio.StreamWriter,
     ) -> None:
         """Control socket 连接处理: 接收 JSON Lines 控制消息"""
-        logger.info("🎛️ Control socket 客户端已连接")
+        logger.info("🎛️ Control socket クライアント接続")
 
         try:
             while self._running:
@@ -478,7 +478,7 @@ class ASRServer:
                 try:
                     msg = json.loads(line.decode("utf-8").strip())
                 except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                    logger.warning("⚠️ 无效控制消息: %s", e)
+                    logger.warning("⚠️ 無効な制御メッセージ: %s", e)
                     continue
 
                 msg_type = msg.get("type", "")
@@ -487,7 +487,7 @@ class ASRServer:
         except (asyncio.CancelledError, ConnectionError):
             pass
         finally:
-            logger.info("🎛️ Control socket 客户端断开")
+            logger.info("🎛️ Control socket クライアント切断")
             writer.close()
 
     # ------------------------------------------------------------------
@@ -497,7 +497,7 @@ class ASRServer:
     async def _handle_ctrl_message(self, msg_type: str, msg: Dict[str, Any]) -> None:
         """处理控制消息"""
         if msg_type == "tts_start":
-            logger.info("🔇 TTS 回声门控: 开启")
+            logger.info("🔇 TTS エコーゲート: 有効")
             self._tts_gate = True
             # 重置 VAD（丢弃当前语音段）
             if self._vad:
@@ -511,7 +511,7 @@ class ASRServer:
             )
 
         elif msg_type == "tts_end":
-            logger.info("🔊 TTS 回声门控: 关闭")
+            logger.info("🔊 TTS エコーゲート: 無効")
             self._tts_gate = False
             if self._tts_gate_timer:
                 self._tts_gate_timer.cancel()
@@ -519,15 +519,15 @@ class ASRServer:
 
         elif msg_type == "shutdown":
             reason = msg.get("reason", "requested")
-            logger.info("🛑 收到 shutdown 控制消息 (reason=%s)", reason)
+            logger.info("🛑 shutdown 制御メッセージ受信 (reason=%s)", reason)
             await self.shutdown()
 
         else:
-            logger.warning("⚠️ 未知控制消息类型: %s", msg_type)
+            logger.warning("⚠️ 不明な制御メッセージタイプ: %s", msg_type)
 
     def _force_gate_open(self) -> None:
         """TTS 门控超时保护: 30s 后强制恢复 VAD + 审计"""
-        logger.warning("⏱️ TTS 回声门控超时 (%ds)，强制恢复", TTS_GATE_TIMEOUT_S)
+        logger.warning("⏱️ TTS エコーゲートタイムアウト (%ds)、強制復帰", TTS_GATE_TIMEOUT_S)
         self._tts_gate = False
         self._tts_gate_timer = None
         # 异步发送审计事件（捕获异常避免静默丢失）
@@ -541,7 +541,7 @@ class ASRServer:
     def _log_task_exception(task: "asyncio.Task") -> None:
         """ensure_future 回调: 记录未捕获异常，防止静默丢失"""
         if not task.cancelled() and task.exception() is not None:
-            logger.error("异步任务异常: %s", task.exception())
+            logger.error("非同期タスク例外: %s", task.exception())
 
     # ------------------------------------------------------------------
     # VAD 事件处理
@@ -585,7 +585,7 @@ class ASRServer:
         if not audio_data:
             return
 
-        logger.info("🧠 ASR 转写开始: utt=%s, duration=%dms, audio=%d bytes",
+        logger.info("🧠 ASR 転写開始: utt=%s, duration=%dms, audio=%d bytes",
                      utterance_id, duration_ms, len(audio_data))
 
         start_time = time.monotonic()
@@ -599,14 +599,14 @@ class ASRServer:
             )
         except asyncio.TimeoutError:
             asr_latency_ms = int((time.monotonic() - start_time) * 1000)
-            logger.error("ASR 转写超时 (30s): utt=%s, duration=%dms, latency=%dms",
+            logger.error("ASR 転写タイムアウト (30s): utt=%s, duration=%dms, latency=%dms",
                          utterance_id, duration_ms, asr_latency_ms)
             return
 
         asr_latency_ms = int((time.monotonic() - start_time) * 1000)
 
         if text:
-            logger.info("📝 ASR 结果: '%s' (conf=%.2f, latency=%dms, utt=%s)",
+            logger.info("📝 ASR 結果: '%s' (conf=%.2f, latency=%dms, utt=%s)",
                          text, confidence, asr_latency_ms, utterance_id)
             await self._emit_result({
                 "type": "transcript",
@@ -617,7 +617,7 @@ class ASRServer:
                 "utterance_id": utterance_id,
             })
         else:
-            logger.warning("⚠️ ASR 转写为空 (utt=%s, latency=%dms)",
+            logger.warning("⚠️ ASR 転写結果なし (utt=%s, latency=%dms)",
                            utterance_id, asr_latency_ms)
 
     # ------------------------------------------------------------------
@@ -634,7 +634,7 @@ class ASRServer:
                 self._result_writer.write(line.encode("utf-8"))
                 await self._result_writer.drain()
             except (ConnectionError, OSError) as e:
-                logger.warning("⚠️ Result socket 写入失败: %s", e)
+                logger.warning("⚠️ Result socket 書込失敗: %s", e)
                 self._result_writer = None
 
     # ------------------------------------------------------------------
@@ -710,9 +710,9 @@ def main() -> None:
     mock = args.mock or os.getenv("ASR_MOCK", "0") == "1"
 
     if mock:
-        logger.info("🧪 ASR 服务以 mock 模式启动")
+        logger.info("🧪 ASR サービス mock モードで起動")
     else:
-        logger.info("🧠 ASR 服务以 production 模式启动")
+        logger.info("🧠 ASR サービス production モードで起動")
 
     asyncio.run(_async_main(mock))
 

@@ -210,11 +210,11 @@ class ChannelRouter:
         if raw is None:
             if allow_fallback:
                 # Dual 模式: 超时/失败 → 模板回复（不调用 7B）
-                self._logger.warning("Action 通道超時/失敗，模板回復")
+                self._logger.warning("Action チャネルタイムアウト/失敗、テンプレート応答")
                 return self._template_fallback(command, request_id, latency)
             else:
                 # Shadow 观测: 不回退，直接记录失败（保持对照纯净性）
-                self._logger.warning("Action 通道超时/失败 (shadow 观测，不回退)")
+                self._logger.warning("Action チャネルタイムアウト/失敗 (shadow 観測、フォールバックなし)")
                 return RouterResult(
                     api_code=None, sequence=None,
                     response="",
@@ -276,7 +276,7 @@ class ChannelRouter:
 
                 if not valid_seq:
                     # 全部非法
-                    self._logger.warning("Action 通道序列全部非法")
+                    self._logger.warning("Action チャネルシーケンス全不正")
                     if allow_fallback:
                         return self._template_fallback(command, request_id, latency)
                     sequence = None
