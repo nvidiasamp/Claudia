@@ -123,24 +123,68 @@ export PYTHONPATH=/path/to/unitree_sdk2_python:$PYTHONPATH
 ### 启动
 
 ```bash
-# 交互式启动器 + 配置面板（推荐）
+# 交互式启动器（推荐）
 ./start_production_brain.sh
-# → 选择运行模式，配置设置（唤醒词、模型、路由等）
-# → 输入 'c' 进入配置面板，'t' 以 tmux 后台模式启动
+```
 
-# 键盘模式：
-python3 production_commander.py              # 模拟模式
-python3 production_commander.py --hardware   # 真实硬件模式
+启动器会显示模式选择菜单：
 
-# 语音模式（Phase 2：USB 麦克风 → ASR → LLM → 机器人）
-python3 voice_commander.py                   # 语音，模拟模式
-python3 voice_commander.py --hardware        # 语音，真实硬件
-python3 voice_commander.py --asr-mock        # 语音，模拟 ASR（无需麦克风）
-python3 voice_commander.py --daemon          # 后台模式（tmux 用）
+```
+==================================
+🤖 Claudia Production Brain Launcher
+==================================
 
-# 直接启动（跳过菜单）：
+🔧 網路配置:
+   本機IP: 192.168.123.18
+   機器人IP: 192.168.123.161 (Go2)
+   DDS配置: eth0
+   Python: /usr/bin/python3 (Python 3.8.10)
+
+运行モード選択:
+  1) キーボード + シミュレーション
+  2) キーボード + 実機
+  3) 語音 + シミュレーション
+  4) 語音 + 実機
+  c) 設定パネル
+  t) 後台モード (tmux)
+```
+
+| 选项 | 模式 | 说明 |
+|:---:|------|------|
+| **1** | 键盘 + 模拟 | 在 REPL 中输入命令，动作仅记录不发送至机器人。用于开发和测试 |
+| **2** | 键盘 + 实机 | 输入命令，通过 DDS 发送至真实 Go2 执行。会提示确认连接 |
+| **3** | 语音 + 模拟 | USB 麦克风 → ASR → LLM 管线，动作模拟执行。用于语音管线调试 |
+| **4** | 语音 + 实机 | 完整管线：语音输入 → ASR → LLM → SafetyCompiler → 真实机器人执行 |
+| **c** | 配置面板 | 启动前调整各项设置（见下方） |
+| **t** | 后台模式 (tmux) | 在 tmux 会话中启动，SSH 断连后仍保持运行 |
+
+#### 配置面板
+
+选项 `c` 打开设置面板，可在启动前配置运行参数：
+
+| 设置项 | 默认值 | 说明 |
+|--------|--------|------|
+| 唤醒词 | OFF | 启用/禁用"クラちゃん"唤醒词门控 |
+| 启动动画 | OFF | 启动时执行 RecoveryStand + Hello 动作 |
+| LLM 模型 | `claudia-7b:v2.0` | 从已安装的 Ollama 模型中选择 |
+| 路由模式 | `dual` | `dual`（Action 通道）/ `legacy`（仅 7B）/ `shadow`（A/B 对比） |
+| ASR 模型 | `base` | `base`（~2-3 秒）/ `small`（~5-8 秒）/ `medium`（~10-15 秒） |
+| 高风险动作 | OFF | 允许 FrontFlip、FrontJump、FrontPounce |
+| 麦克风设备 | `auto` | 自动检测 USB 麦克风，或手动指定（如 `hw:2,0`） |
+
+#### 直接启动（跳过菜单）
+
+```bash
 ./start_production_brain.sh --voice          # 语音 + 模拟
-./start_production_brain.sh --voice-hw       # 语音 + 真实硬件
+./start_production_brain.sh --voice-hw       # 语音 + 实机
+
+# 直接运行 Python 脚本：
+python3 production_commander.py              # 键盘 + 模拟
+python3 production_commander.py --hardware   # 键盘 + 实机
+python3 voice_commander.py                   # 语音 + 模拟
+python3 voice_commander.py --hardware        # 语音 + 实机
+python3 voice_commander.py --asr-mock        # 语音 + 模拟 ASR（无需麦克风）
+python3 voice_commander.py --daemon          # 后台模式（tmux 用）
 ```
 
 ---

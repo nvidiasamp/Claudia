@@ -123,24 +123,68 @@ export PYTHONPATH=/path/to/unitree_sdk2_python:$PYTHONPATH
 ### 起動
 
 ```bash
-# インタラクティブランチャー + 設定パネル（推奨）
+# インタラクティブランチャー（推奨）
 ./start_production_brain.sh
-# → モード選択、設定変更（唤醒詞、モデル、ルーティング等）
-# → 'c' で設定パネル、't' で tmux 後台モード起動
+```
 
-# キーボードモード:
-python3 production_commander.py              # シミュレーションモード
-python3 production_commander.py --hardware   # 実機モード
+ランチャーはモード選択メニューを表示します：
 
-# 音声モード（Phase 2: USBマイク → ASR → LLM → ロボット）
-python3 voice_commander.py                   # 音声、シミュレーション
-python3 voice_commander.py --hardware        # 音声、実機
-python3 voice_commander.py --asr-mock        # 音声、モックASR（マイク不要）
-python3 voice_commander.py --daemon          # 後台モード（tmux 用）
+```
+==================================
+🤖 Claudia Production Brain Launcher
+==================================
 
-# 直接起動（メニュースキップ）:
+🔧 網路配置:
+   本機IP: 192.168.123.18
+   機器人IP: 192.168.123.161 (Go2)
+   DDS配置: eth0
+   Python: /usr/bin/python3 (Python 3.8.10)
+
+运行モード選択:
+  1) キーボード + シミュレーション
+  2) キーボード + 実機
+  3) 語音 + シミュレーション
+  4) 語音 + 実機
+  c) 設定パネル
+  t) 後台モード (tmux)
+```
+
+| オプション | モード | 説明 |
+|:---:|--------|------|
+| **1** | キーボード + シミュレーション | REPLでコマンド入力、動作はログのみ（実機未接続可）。開発・テスト用 |
+| **2** | キーボード + 実機 | コマンド入力、DDS経由で実機Go2に送信。接続確認プロンプトあり |
+| **3** | 語音 + シミュレーション | USBマイク → ASR → LLMパイプライン、動作はシミュレーション。音声パイプラインのテスト用 |
+| **4** | 語音 + 実機 | フルパイプライン：音声入力 → ASR → LLM → SafetyCompiler → 実機ロボット実行 |
+| **c** | 設定パネル | 起動前に各種設定を変更（下記参照） |
+| **t** | 後台モード (tmux) | SSH切断に耐えるtmuxセッションで起動 |
+
+#### 設定パネル
+
+オプション `c` で設定パネルを開き、実行時設定を変更できます：
+
+| 設定項目 | デフォルト | 説明 |
+|----------|-----------|------|
+| 唤醒詞 | OFF | 「クラちゃん」唤醒詞ゲーティングの有効/無効 |
+| 起動アニメーション | OFF | 起動時にRecoveryStand + Hello動作を実行 |
+| LLMモデル | `claudia-7b:v2.0` | 利用可能なOllamaモデルから選択 |
+| ルーティングモード | `dual` | `dual`（Actionチャネル）/ `legacy`（7Bのみ）/ `shadow`（A/B比較） |
+| ASRモデル | `base` | `base`（~2-3秒）/ `small`（~5-8秒）/ `medium`（~10-15秒） |
+| 高リスク動作 | OFF | FrontFlip、FrontJump、FrontPounceの許可 |
+| マイクデバイス | `auto` | USBマイク自動検出、または手動指定（例：`hw:2,0`） |
+
+#### 直接起動（メニュースキップ）
+
+```bash
 ./start_production_brain.sh --voice          # 音声 + シミュレーション
 ./start_production_brain.sh --voice-hw       # 音声 + 実機
+
+# Pythonスクリプト直接実行:
+python3 production_commander.py              # キーボード + シミュレーション
+python3 production_commander.py --hardware   # キーボード + 実機
+python3 voice_commander.py                   # 音声 + シミュレーション
+python3 voice_commander.py --hardware        # 音声 + 実機
+python3 voice_commander.py --asr-mock        # 音声 + モックASR（マイク不要）
+python3 voice_commander.py --daemon          # 後台モード（tmux用）
 ```
 
 ---

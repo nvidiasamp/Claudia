@@ -123,24 +123,68 @@ export PYTHONPATH=/path/to/unitree_sdk2_python:$PYTHONPATH
 ### Launch
 
 ```bash
-# Interactive launcher with config panel (recommended)
+# Interactive launcher (recommended)
 ./start_production_brain.sh
-# → Select mode, configure settings (wake word, model, routing, etc.)
-# → Option 'c' opens config panel, 't' launches in tmux background
+```
 
-# Keyboard mode:
-python3 production_commander.py              # Simulation mode
-python3 production_commander.py --hardware   # Real robot
+The launcher displays a mode selection menu:
 
-# Voice mode (Phase 2: USB mic → ASR → LLM → robot)
-python3 voice_commander.py                   # Voice, simulation
-python3 voice_commander.py --hardware        # Voice, real robot
-python3 voice_commander.py --asr-mock        # Voice, mock ASR (no mic)
-python3 voice_commander.py --daemon          # Background mode (for tmux)
+```
+==================================
+🤖 Claudia Production Brain Launcher
+==================================
 
-# Direct launch (skip menu):
+🔧 網路配置:
+   本機IP: 192.168.123.18
+   機器人IP: 192.168.123.161 (Go2)
+   DDS配置: eth0
+   Python: /usr/bin/python3 (Python 3.8.10)
+
+运行モード選択:
+  1) キーボード + シミュレーション
+  2) キーボード + 実機
+  3) 語音 + シミュレーション
+  4) 語音 + 実機
+  c) 設定パネル
+  t) 後台モード (tmux)
+```
+
+| Option | Mode | Description |
+|--------|------|-------------|
+| **1** | Keyboard + Simulation | Type commands in REPL, actions logged but not sent to robot. For development and testing |
+| **2** | Keyboard + Hardware | Type commands, execute on real Go2 via DDS. Prompts for connection confirmation |
+| **3** | Voice + Simulation | USB mic → ASR → LLM pipeline, actions simulated. For voice pipeline testing |
+| **4** | Voice + Hardware | Full pipeline: voice input → ASR → LLM → SafetyCompiler → real robot execution |
+| **c** | Config Panel | Adjust settings before launch (see below) |
+| **t** | Background (tmux) | Launch in a tmux session that survives SSH disconnection |
+
+#### Config Panel
+
+Option `c` opens a settings panel for runtime configuration:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Wake word | OFF | Enable/disable "クラちゃん" wake word gating |
+| Startup animation | OFF | Robot performs RecoveryStand + Hello on boot |
+| LLM model | `claudia-7b:v2.0` | Select from available Ollama models |
+| Routing mode | `dual` | `dual` (action channel) / `legacy` (7B only) / `shadow` (A/B comparison) |
+| ASR model | `base` | `base` (~2-3s) / `small` (~5-8s) / `medium` (~10-15s) |
+| High-risk actions | OFF | Allow FrontFlip, FrontJump, FrontPounce |
+| Mic device | `auto` | Auto-detect USB mic or specify manually (e.g., `hw:2,0`) |
+
+#### Direct Launch (skip menu)
+
+```bash
 ./start_production_brain.sh --voice          # Voice + simulation
 ./start_production_brain.sh --voice-hw       # Voice + real robot
+
+# Or run Python scripts directly:
+python3 production_commander.py              # Keyboard + simulation
+python3 production_commander.py --hardware   # Keyboard + hardware
+python3 voice_commander.py                   # Voice + simulation
+python3 voice_commander.py --hardware        # Voice + hardware
+python3 voice_commander.py --asr-mock        # Voice + mock ASR (no mic)
+python3 voice_commander.py --daemon          # Background mode (for tmux)
 ```
 
 ---
