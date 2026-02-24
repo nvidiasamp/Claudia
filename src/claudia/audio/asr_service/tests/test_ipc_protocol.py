@@ -289,14 +289,22 @@ class TestValidateProtoVersion:
 
 class TestSocketPaths:
 
-    def test_audio_socket_path(self):
-        assert AUDIO_SOCKET == "/tmp/claudia_audio.sock"
+    def test_audio_socket_in_claudia_dir(self):
+        assert AUDIO_SOCKET.endswith("/audio.sock")
+        assert "claudia" in AUDIO_SOCKET
 
-    def test_result_socket_path(self):
-        assert ASR_RESULT_SOCKET == "/tmp/claudia_asr_result.sock"
+    def test_result_socket_in_claudia_dir(self):
+        assert ASR_RESULT_SOCKET.endswith("/result.sock")
+        assert "claudia" in ASR_RESULT_SOCKET
 
-    def test_ctrl_socket_path(self):
-        assert ASR_CTRL_SOCKET == "/tmp/claudia_asr_ctrl.sock"
+    def test_ctrl_socket_in_claudia_dir(self):
+        assert ASR_CTRL_SOCKET.endswith("/ctrl.sock")
+        assert "claudia" in ASR_CTRL_SOCKET
+
+    def test_sockets_share_directory(self):
+        import os
+        dirs = {os.path.dirname(p) for p in [AUDIO_SOCKET, ASR_RESULT_SOCKET, ASR_CTRL_SOCKET]}
+        assert len(dirs) == 1, "all sockets must be in the same directory"
 
 
 # ============================================================
