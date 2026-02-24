@@ -1,5 +1,9 @@
 [English](README.md) | [日本語](README.ja.md) | [中文](README.zh.md)
 
+<p align="center">
+  <img src="docs/images/cover.jpg" alt="Claudia — Unitree Go2 LLM 大脑机器人" width="800">
+</p>
+
 # Claudia — LLM 大脑机器人智能
 
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
