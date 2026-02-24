@@ -188,6 +188,9 @@ class ProductionBrain:
             "お辞儀": {"response": "お辞儀します", "api_code": 1029},  # 鞠躬动作 → Scrape(前爪鞠躬)
             "礼": {"response": "お辞儀します", "api_code": 1029},
             "ジャンプ": {"response": "前跳します", "api_code": 1031},
+            # Pose(1028) は has_params=True のため LLM の VALID_API_CODES には含まれないが、
+            # hot_cache 経由なら safe_default_params で EXECUTABLE_API_CODES として
+            # SafetyCompiler を通過する。意図的な設計差異。
             "ポーズ": {"response": "ポーズします", "api_code": 1028},
         }
 

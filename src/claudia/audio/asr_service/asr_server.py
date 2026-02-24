@@ -3,10 +3,10 @@
 """
 ASR 服务主入口 — Python 3.8 系统进程
 
-3 路单向 UDS:
-- /tmp/claudia_audio.sock  (接收 PCM 音频流)
-- /tmp/claudia_asr_result.sock (发送 JSON Lines: transcript/emergency/heartbeat)
-- /tmp/claudia_asr_ctrl.sock   (接收 JSON Lines: tts_start/tts_end/shutdown)
+3 路单向 UDS ($XDG_RUNTIME_DIR/claudia/ 下):
+- audio.sock  (接收 PCM 音频流)
+- result.sock (发送 JSON Lines: transcript/emergency/heartbeat)
+- ctrl.sock   (接收 JSON Lines: tts_start/tts_end/shutdown)
 
 启动后加载 faster-whisper 模型 (CTranslate2 backend)，发送 handshake ready 消息。
 支持 --mock 标志或 ASR_MOCK=1 环境变量，mock 模式不加载模型。
@@ -33,9 +33,16 @@ logger = logging.getLogger("claudia.asr.server")
 # 常量
 # ======================================================================
 
-AUDIO_SOCKET = "/tmp/claudia_audio.sock"
-RESULT_SOCKET = "/tmp/claudia_asr_result.sock"
-CTRL_SOCKET = "/tmp/claudia_asr_ctrl.sock"
+# Socket パスは ipc_protocol の唯一定義点から取得（DRY）
+# 独立プロセス (python3 asr_server.py) とパッケージインポートの両方に対応
+try:
+    from ipc_protocol import (
+        AUDIO_SOCKET, ASR_RESULT_SOCKET as RESULT_SOCKET, ASR_CTRL_SOCKET as CTRL_SOCKET,
+    )
+except ImportError:
+    from .ipc_protocol import (
+        AUDIO_SOCKET, ASR_RESULT_SOCKET as RESULT_SOCKET, ASR_CTRL_SOCKET as CTRL_SOCKET,
+    )
 
 HEARTBEAT_INTERVAL_S = 5
 TTS_GATE_TIMEOUT_S = 30

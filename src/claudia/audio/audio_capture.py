@@ -43,7 +43,7 @@ class AudioCapture:
     Args:
         device: ALSA デバイス名 (例: "hw:2,0")。None で自動検出。
         mock: True の場合、無音フレームを生成 (マイク不要)
-        socket_path: 音声ソケットパス (デフォルト: /tmp/claudia_audio.sock)
+        socket_path: 音声ソケットパス (デフォルト: ipc_protocol.AUDIO_SOCKET)
     """
 
     def __init__(

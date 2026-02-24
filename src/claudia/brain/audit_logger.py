@@ -53,9 +53,11 @@ class AuditLogger:
             max_size_mb: 单个日志文件最大大小（MB）
         """
         self.log_dir = Path(log_dir).resolve()
-        # 防御路径遍历: 确保解析后的路径仍在预期的工作目录下
+        # 防御路径遍历: 确保解析后的路径是 cwd 的子目录
+        # 使用 parents 集合判定，避免 startswith 的同前缀兄弟目录误判
+        # (如 cwd=/home/app, log_dir=/home/app-evil/... 不会被误放行)
         _cwd = Path.cwd().resolve()
-        if not str(self.log_dir).startswith(str(_cwd)):
+        if _cwd not in self.log_dir.parents and self.log_dir != _cwd:
             raise ValueError(
                 "監査ログパス {} がワークディレクトリ {} の範囲外".format(self.log_dir, _cwd)
             )

@@ -685,11 +685,11 @@ class TestEmergencyAliasRouting:
         return _make_lightweight_brain()
 
     def test_process_command_kana_emergency_alias(self):
-        """process_command: とまれ（かな）应命中紧急旁路"""
+        """process_command: とまれ（かな）应命中紧急旁路（委托到 _handle_emergency）"""
         brain, _ = self._make_brain()
         result = _run_async(brain.process_command(" とまれ "))
         assert result.api_code == 1003
-        assert result.reasoning == "emergency_bypass"
+        assert result.reasoning in ("emergency_bypass", "emergency")
 
     def test_process_and_execute_uses_same_emergency_source(self):
         """process_and_execute: STOP（大写）应命中同一紧急词源"""

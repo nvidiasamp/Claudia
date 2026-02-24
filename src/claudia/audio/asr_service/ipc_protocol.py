@@ -3,10 +3,10 @@
 """
 IPC 协议层: 消息工厂 + Unix Domain Socket 工具
 
-3 路单向 Socket 架构:
-  - /tmp/claudia_audio.sock      (AudioCapture → ASR, raw PCM)
-  - /tmp/claudia_asr_result.sock (ASR → Main, JSON Lines)
-  - /tmp/claudia_asr_ctrl.sock   (Main → ASR, JSON Lines)
+3 路单向 Socket 架构 ($XDG_RUNTIME_DIR/claudia/ 下):
+  - audio.sock  (AudioCapture → ASR, raw PCM)
+  - result.sock (ASR → Main, JSON Lines)
+  - ctrl.sock   (Main → ASR, JSON Lines)
 
 协议版本: major 相同则兼容 (1.0 和 1.1 互通, 2.0 不兼容)
 消息格式: JSON Lines (每行一条 JSON, \\n 分隔)
@@ -26,9 +26,23 @@ logger = logging.getLogger(__name__)
 PROTO_VERSION = "1.0"
 
 # === Socket 路径 ===
-AUDIO_SOCKET = "/tmp/claudia_audio.sock"
-ASR_RESULT_SOCKET = "/tmp/claudia_asr_result.sock"
-ASR_CTRL_SOCKET = "/tmp/claudia_asr_ctrl.sock"
+# セキュリティ: /tmp ではなく $XDG_RUNTIME_DIR (通常 /run/user/<uid>, 0700) を使用。
+# 同一ユーザー以外のアクセスを OS レベルで遮断する。
+# $XDG_RUNTIME_DIR が未設定の場合のみ /tmp にフォールバック（0o600 パーミッション付き）。
+def _socket_dir():
+    # type: () -> str
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if runtime and os.path.isdir(runtime):
+        d = os.path.join(runtime, "claudia")
+    else:
+        d = "/tmp/claudia_ipc"
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    return d
+
+_SOCK_DIR = _socket_dir()
+AUDIO_SOCKET = os.path.join(_SOCK_DIR, "audio.sock")
+ASR_RESULT_SOCKET = os.path.join(_SOCK_DIR, "result.sock")
+ASR_CTRL_SOCKET = os.path.join(_SOCK_DIR, "ctrl.sock")
 
 # === 消息类型 (Result: ASR → Main) ===
 MSG_READY = "ready"

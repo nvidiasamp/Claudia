@@ -365,9 +365,12 @@ class ASRBridge:
         return utterance_id in self._processed_ids
 
     def _mark_processed(self, utterance_id: str) -> None:
-        """utterance_id を処理済みとしてマーク"""
+        """utterance_id を処理済みとしてマーク（+ 定期クリーンアップ）"""
         if utterance_id:
             self._processed_ids[utterance_id] = time.monotonic()
+            # _is_processed が呼ばれないパスでもメモリ蓄積を防ぐ
+            if len(self._processed_ids) > 100:
+                self._cleanup_expired_ids()
 
     def _cleanup_expired_ids(self) -> None:
         """TTL 超過した utterance_id を削除"""
