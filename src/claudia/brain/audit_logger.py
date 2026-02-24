@@ -7,6 +7,7 @@
 
 import json
 import logging
+import re
 import threading
 from pathlib import Path
 from datetime import datetime
@@ -39,6 +40,21 @@ class AuditEntry:
     shadow_comparison: Optional[Dict[str, Any]] = None
     action_latency_ms: Optional[float] = None
     voice_latency_ms: Optional[float] = None
+
+
+def sanitize_audit_input(text, max_len=500):
+    # type: (str, int) -> str
+    """監査ログ入力のサニタイズ
+
+    - 埋め込み改行をスペースに置換 (JSONL インジェクション防止)
+    - 制御文字を除去 (タブ/スペース以外の 0x00-0x1F, 0x7F)
+    - max_len で切り詰め
+    """
+    if not isinstance(text, str):
+        return str(text)[:max_len]
+    text = text.replace("\n", " ").replace("\r", " ")
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+    return text[:max_len]
 
 
 class AuditLogger:

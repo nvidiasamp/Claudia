@@ -235,7 +235,7 @@ class TestActionModelApiCodes:
         import re
         modelfile_path = os.path.join(
             os.path.dirname(__file__), '..', '..', 'models',
-            'ClaudiaAction_v1.0')
+            'ClaudiaAction_v3.0')
         with open(modelfile_path, 'r', encoding='utf-8') as f:
             content = f.read()
 

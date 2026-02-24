@@ -38,10 +38,12 @@ logger = logging.getLogger("claudia.asr.server")
 try:
     from ipc_protocol import (
         AUDIO_SOCKET, ASR_RESULT_SOCKET as RESULT_SOCKET, ASR_CTRL_SOCKET as CTRL_SOCKET,
+        SESSION_TOKEN_FILE, generate_session_token, validate_session_token,
     )
 except ImportError:
     from .ipc_protocol import (
         AUDIO_SOCKET, ASR_RESULT_SOCKET as RESULT_SOCKET, ASR_CTRL_SOCKET as CTRL_SOCKET,
+        SESSION_TOKEN_FILE, generate_session_token, validate_session_token,
     )
 
 HEARTBEAT_INTERVAL_S = 5
@@ -273,6 +275,9 @@ class ASRServer:
         self._mock = mock
         self._running = False
 
+        # ctrl socket セッショントークン (起動毎に再生成)
+        self._session_token = generate_session_token()
+
         # ASR 模型
         self._asr = ASRModelWrapper(mock=mock)
 
@@ -322,6 +327,15 @@ class ASRServer:
         for sock_path in (AUDIO_SOCKET, RESULT_SOCKET, CTRL_SOCKET):
             if os.path.exists(sock_path):
                 os.unlink(sock_path)
+
+        # 3.5. セッショントークンをファイルに書き出し (0o600)
+        try:
+            fd = os.open(SESSION_TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as f:
+                f.write(self._session_token)
+            logger.info("セッショントークン書込: %s", SESSION_TOKEN_FILE)
+        except OSError as e:
+            logger.warning("セッショントークン書込失敗: %s", e)
 
         # 4. 启动 3 路 UDS 服务器 (创建后限制权限为 owner-only)
         self._result_server = await asyncio.start_unix_server(
@@ -381,8 +395,8 @@ class ASRServer:
             except Exception:
                 pass
 
-        # 清理 socket 文件
-        for sock_path in (AUDIO_SOCKET, RESULT_SOCKET, CTRL_SOCKET):
+        # 清理 socket 文件 + トークンファイル
+        for sock_path in (AUDIO_SOCKET, RESULT_SOCKET, CTRL_SOCKET, SESSION_TOKEN_FILE):
             if os.path.exists(sock_path):
                 try:
                     os.unlink(sock_path)
@@ -486,6 +500,12 @@ class ASRServer:
                     msg = json.loads(line.decode("utf-8").strip())
                 except (json.JSONDecodeError, UnicodeDecodeError) as e:
                     logger.warning("⚠️ 無効な制御メッセージ: %s", e)
+                    continue
+
+                # セッショントークン検証
+                if not validate_session_token(msg, self._session_token):
+                    logger.warning("⚠️ 無効なセッショントークン: 制御メッセージ拒否 (type=%s)",
+                                   msg.get("type", "?"))
                     continue
 
                 msg_type = msg.get("type", "")

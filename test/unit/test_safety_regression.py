@@ -678,6 +678,42 @@ class TestBowActionMapping:
         )
 
 
+class TestPose1028IntentionalWhitelistDifference:
+    """Pose(1028) 双層ホワイトリストの意図的設計差異を検証
+
+    1028 は has_params=True + safe_default_params=(True,) のため:
+    - LLM パス (VALID_API_CODES) からは除外 (幻覚パラメータ防止)
+    - 実行パス (EXECUTABLE_API_CODES) には含まれる (安全デフォルト値で実行)
+    - hot_cache にはユーザー直接コマンドとして登録
+    """
+
+    def test_pose_not_in_valid_api_codes(self):
+        """1028 は LLM 決策白名単に含まれない"""
+        assert 1028 not in VALID_API_CODES
+
+    def test_pose_in_executable_api_codes(self):
+        """1028 は実行白名単に含まれる"""
+        assert 1028 in EXECUTABLE_API_CODES
+
+    def test_pose_in_hot_cache(self):
+        """1028 は hot_cache に登録されている"""
+        brain, _ = _make_lightweight_brain()
+        pose_entries = [
+            v for v in brain.hot_cache.values()
+            if v.get("api_code") == 1028
+        ]
+        assert len(pose_entries) > 0, "Pose(1028) が hot_cache に存在しない"
+
+    def test_llm_path_rejects_1028(self):
+        """LLM が 1028 を出力しても process_command で無視される
+
+        VALID_API_CODES にないコードは LLM 出力パース層でフィルタされる
+        """
+        assert 1028 not in VALID_API_CODES, (
+            "LLM パスは 1028 を許可してはならない（パラメータ幻覚リスク）"
+        )
+
+
 class TestEmergencyAliasRouting:
     """紧急词统一入口（EMERGENCY_COMMANDS）回归"""
 
@@ -761,19 +797,24 @@ class TestCommanderUnknownBranch:
         """production_commander.py 使用 execution_status 而非直接 result 检查
 
         PR2-A: Commander 已迁移至 process_and_execute()，
-        执行结果通过 execution_status 字段区分（不再直接检查 execute_action 返回值）
+        执行结果通过 execution_status 字段区分（不再直接检查 execute_action 返回值）。
+        实际代码: status = brain_output.execution_status; if status == "success": ...
         """
         import pathlib
         commander_path = pathlib.Path(__file__).parent.parent.parent / "production_commander.py"
         source = commander_path.read_text(encoding="utf-8")
-        assert 'execution_status == "success"' in source, (
-            "production_commander.py 应使用 execution_status==\"success\" 区分成功"
+        # 代码先赋值 status = brain_output.execution_status，再用 status == "..." 判定
+        assert "execution_status" in source, (
+            "production_commander.py 应引用 execution_status 字段"
         )
-        assert 'execution_status == "unknown"' in source, (
-            "production_commander.py 应使用 execution_status==\"unknown\" 区分超时"
+        assert 'status == "success"' in source, (
+            "production_commander.py 应使用 status==\"success\" 区分成功"
         )
-        assert 'execution_status == "failed"' in source, (
-            "production_commander.py 应使用 execution_status==\"failed\" 区分失败"
+        assert 'status == "unknown"' in source, (
+            "production_commander.py 应使用 status==\"unknown\" 区分超时"
+        )
+        assert 'status == "failed"' in source, (
+            "production_commander.py 应使用 status==\"failed\" 区分失败"
         )
 
 

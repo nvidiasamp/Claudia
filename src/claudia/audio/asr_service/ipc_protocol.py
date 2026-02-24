@@ -18,7 +18,7 @@ import logging
 import os
 import stat
 import time
-from typing import AsyncIterator, Callable, Optional, Tuple
+from typing import Any, AsyncIterator, Callable, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ _SOCK_DIR = _socket_dir()
 AUDIO_SOCKET = os.path.join(_SOCK_DIR, "audio.sock")
 ASR_RESULT_SOCKET = os.path.join(_SOCK_DIR, "result.sock")
 ASR_CTRL_SOCKET = os.path.join(_SOCK_DIR, "ctrl.sock")
+SESSION_TOKEN_FILE = os.path.join(_SOCK_DIR, ".ctrl_token")
 
 # === 消息类型 (Result: ASR → Main) ===
 MSG_READY = "ready"
@@ -58,6 +59,42 @@ MSG_GATE_TIMEOUT_AUDIT = "gate_timeout_audit"
 CTRL_TTS_START = "tts_start"
 CTRL_TTS_END = "tts_end"
 CTRL_SHUTDOWN = "shutdown"
+
+
+# === ctrl socket セッション認証 ===
+# 同一ユーザー内の不正プロセスによる ctrl メッセージ送信を防止する。
+# ASR サーバー起動時にトークンを生成しファイルに書き込み (0o600)、
+# ctrl クライアントはトークンファイルを読んでメッセージに含める。
+
+
+def generate_session_token():
+    # type: () -> str
+    """ctrl socket 認証用セッショントークンを生成 (16-byte hex)"""
+    return os.urandom(16).hex()
+
+
+def create_ctrl_message(msg_type, token, **kwargs):
+    # type: (str, str, **Any) -> dict
+    """認証トークン付き ctrl メッセージを生成"""
+    msg = {"type": msg_type, "token": token}
+    msg.update(kwargs)
+    return msg
+
+
+def validate_session_token(msg, expected_token):
+    # type: (dict, str) -> bool
+    """ctrl メッセージのセッショントークンを検証"""
+    return msg.get("token") == expected_token
+
+
+def read_session_token():
+    # type: () -> Optional[str]
+    """トークンファイルからセッショントークンを読み取り"""
+    try:
+        with open(SESSION_TOKEN_FILE, "r") as f:
+            return f.read().strip()
+    except (OSError, IOError):
+        return None
 
 
 # ============================================================

@@ -60,7 +60,7 @@ except ImportError:
     SDK_STATE_PROVIDER_AVAILABLE = False
 
 try:
-    from claudia.brain.audit_logger import get_audit_logger, AuditEntry
+    from claudia.brain.audit_logger import get_audit_logger, AuditEntry, sanitize_audit_input
     AUDIT_LOGGER_AVAILABLE = True
 except ImportError:
     AUDIT_LOGGER_AVAILABLE = False
@@ -188,9 +188,14 @@ class ProductionBrain:
             "お辞儀": {"response": "お辞儀します", "api_code": 1029},  # 鞠躬动作 → Scrape(前爪鞠躬)
             "礼": {"response": "お辞儀します", "api_code": 1029},
             "ジャンプ": {"response": "前跳します", "api_code": 1031},
-            # Pose(1028) は has_params=True のため LLM の VALID_API_CODES には含まれないが、
-            # hot_cache 経由なら safe_default_params で EXECUTABLE_API_CODES として
-            # SafetyCompiler を通過する。意図的な設計差異。
+            # === 双層ホワイトリスト: Pose(1028) の意図的な設計差異 ===
+            # LLM パス: VALID_API_CODES (has_params=True → 除外)
+            #   → LLM がパラメータ値を幻覚生成するリスクを遮断
+            # hot_cache パス: EXECUTABLE_API_CODES (safe_default_params=(True,) → 許可)
+            #   → ユーザー直接コマンドは安全デフォルト値で実行
+            # この二重基準はセキュリティ監査 R3 で確認済み (accepted risk)。
+            # 検証テスト: test_action_registry.py::test_pose_1028_in_executable_not_valid
+            #           test_safety_regression.py::test_pose_1028_intentional_whitelist_difference
             "ポーズ": {"response": "ポーズします", "api_code": 1028},
         }
 
@@ -684,6 +689,13 @@ class ProductionBrain:
         try:
             cmd_lower = command.strip().lower().rstrip(self._TRAILING_PUNCTUATION)
             if cmd_lower in self.EMERGENCY_COMMANDS:
+                # === 緊急バイパス: _command_lock を取得しない (意図的設計) ===
+                # 理由: 緊急停止は最小遅延で実行する必要がある。
+                #   _command_lock 待ちで数秒のブロックが発生し得る。
+                # リスク: _rpc_lock は共有のため、別 RPC が実行中なら
+                #   StopMove が最大 ~1s 遅延する (高速動作の RPC 完了待ち)。
+                # 受容: シングルユーザー Jetson 環境では並行 RPC は稀であり、
+                #   ~1s の遅延は許容範囲。セキュリティ監査 R4 で確認済み。
                 return await self._handle_emergency(command)
 
             async with self._command_lock:
@@ -1026,7 +1038,7 @@ class ProductionBrain:
                     keep_alive='30m',
                 )
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             start = time.monotonic()
             await asyncio.wait_for(
                 loop.run_in_executor(None, _sync_preload),
@@ -1088,8 +1100,8 @@ class ProductionBrain:
                 content = response['message']['content']
                 return json.loads(content)
 
-            # 使用run_in_executor避免阻塞（Python 3.8兼容）
-            loop = asyncio.get_event_loop()
+            # 使用run_in_executor避免阻塞（Python 3.7+ get_running_loop）
+            loop = asyncio.get_running_loop()
             result = await asyncio.wait_for(
                 loop.run_in_executor(None, _sync_ollama_call),
                 timeout=timeout
@@ -1224,7 +1236,7 @@ class ProductionBrain:
             entry = AuditEntry(
                 timestamp=datetime.now().isoformat(),
                 model_name=model_used,
-                input_command=command,
+                input_command=sanitize_audit_input(command),
                 state_battery=current_state.battery_level if current_state else None,
                 state_standing=current_state.is_standing if current_state else None,
                 state_emergency=(

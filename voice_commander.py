@@ -32,7 +32,10 @@ sys.path.append(os.path.join(_PROJECT_ROOT, "src"))
 from claudia.brain.production_brain import ProductionBrain
 from claudia.audio.audio_capture import AudioCapture
 from claudia.audio.asr_bridge import ASRBridge
-from claudia.audio.asr_service.ipc_protocol import ASR_CTRL_SOCKET, connect_uds, write_json_line
+from claudia.audio.asr_service.ipc_protocol import (
+    ASR_CTRL_SOCKET, connect_uds, write_json_line,
+    read_session_token, create_ctrl_message,
+)
 
 logger = logging.getLogger("claudia.voice")
 
@@ -677,13 +680,18 @@ class VoiceCommander:
                 logger.debug("Ollama アンロード失敗 (%s): %s", model, e)
 
     async def _send_ctrl_shutdown(self) -> None:
-        """ctrl socket 経由で ASR に shutdown メッセージを送信"""
+        """ctrl socket 経由で ASR に shutdown メッセージを送信 (セッショントークン付き)"""
         try:
+            token = read_session_token()
+            if token is None:
+                logger.debug("セッショントークン読取失敗 — shutdown 送信スキップ")
+                return
             _, writer = await asyncio.wait_for(
                 connect_uds(ASR_CTRL_SOCKET, retries=2, delay=0.5),
                 timeout=3.0,
             )
-            await write_json_line(writer, {"type": "shutdown", "reason": "voice_commander_exit"})
+            msg = create_ctrl_message("shutdown", token, reason="voice_commander_exit")
+            await write_json_line(writer, msg)
             writer.close()
             logger.info("ASR shutdown メッセージ送信完了")
         except Exception as e:
