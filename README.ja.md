@@ -23,7 +23,7 @@
 
 ### Claudia 音声パイプライン
 
-[![Voice Demo](https://img.youtube.com/vi/C67kufhKB_0/maxresdefault.jpg)](https://youtu.be/C67kufhKB_0)
+[![Voice Demo](https://img.youtube.com/vi/C67kufhKB_0/sddefault.jpg)](https://youtu.be/C67kufhKB_0)
 
 > 音声 → ASR → ローカル LLM → ロボット実行 — 完全オンデバイス、クラウド不要。
 > 実演コマンド: 立って / 座って / 伏せて（日本語音声入力、Unitree Go2 実機）

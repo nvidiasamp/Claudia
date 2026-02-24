@@ -23,7 +23,7 @@
 
 ### Claudia Voice Pipeline
 
-[![Voice Demo](https://img.youtube.com/vi/C67kufhKB_0/maxresdefault.jpg)](https://youtu.be/C67kufhKB_0)
+[![Voice Demo](https://img.youtube.com/vi/C67kufhKB_0/sddefault.jpg)](https://youtu.be/C67kufhKB_0)
 
 > Voice → ASR → Local LLM → Robot Action — fully on-device, zero cloud dependency.
 > Commands shown: Stand up / Sit / Lie down (Japanese voice input on Unitree Go2)
