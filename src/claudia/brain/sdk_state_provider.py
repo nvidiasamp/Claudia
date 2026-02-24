@@ -117,12 +117,12 @@ class SDKStateProvider:
 
             self._lowstate_sub = ChannelSubscriber("rt/lowstate", LowState_)
             self._lowstate_sub.Init(self._on_lowstate, 10)
-            self.logger.info("LowState DDS 订阅已启动 (电量/电压)")
+            self.logger.info("LowState DDS サブスクリプション起動 (バッテリー/電圧)")
         except ImportError as e:
-            self.logger.warning("LowState 订阅不可用（SDK import 失败）: {}".format(e))
+            self.logger.warning("LowState サブスクリプション不可（SDK import 失敗）: {}".format(e))
             self._lowstate_sub = None
         except Exception as e:
-            self.logger.warning("LowState 订阅初始化失败: {}".format(e))
+            self.logger.warning("LowState サブスクリプション初期化失敗: {}".format(e))
             self._lowstate_sub = None
 
     def _on_lowstate(self, msg):
@@ -184,11 +184,11 @@ class SDKStateProvider:
                     snapshot.is_moving = mode in self.MOVING_MODES
                     state_ok = True
                 else:
-                    self.logger.debug("GetState(state) 返回码: {}".format(code))
+                    self.logger.debug("GetState(state) 応答コード: {}".format(code))
             else:
-                self.logger.debug("GetState(state) 返回格式异常: {}".format(type(result)))
+                self.logger.debug("GetState(state) 応答形式異常: {}".format(type(result)))
         except Exception as e:
-            self.logger.debug("GetState(state) 查询失败: {}".format(e))
+            self.logger.debug("GetState(state) クエリ失敗: {}".format(e))
 
         # 2. 从 LowState DDS 订阅获取电量
         with self._battery_lock:
@@ -258,14 +258,14 @@ class SDKStateProvider:
             name="sdk-state-poll"
         )
         self._poll_thread.start()
-        self.logger.info("SDK 状态轮询已启动 (间隔 {:.1f}s)".format(interval))
+        self.logger.info("SDK 状態ポーリング起動 (間隔 {:.1f}s)".format(interval))
 
     def stop_polling(self):
         """停止后台轮询"""
         self._stop_event.set()
         if self._poll_thread and self._poll_thread.is_alive():
             self._poll_thread.join(timeout=3.0)
-        self.logger.info("SDK 状态轮询已停止")
+        self.logger.info("SDK 状態ポーリング停止")
 
     def _poll_worker(self):
         """后台轮询线程"""
@@ -273,13 +273,13 @@ class SDKStateProvider:
             try:
                 self.query_state()
             except Exception as e:
-                self.logger.warning("SDK 状态轮询异常: {}".format(e))
+                self.logger.warning("SDK 状態ポーリング例外: {}".format(e))
                 with self._lock:
                     self._consecutive_failures += 1
                     if self._consecutive_failures >= 5:
                         self._cached_state = self._make_conservative_fallback()
                         self.logger.warning(
-                            "连续 {} 次轮询失败，切换到 conservative fallback".format(
+                            "連続 {} 回ポーリング失敗、conservative fallback に切替".format(
                                 self._consecutive_failures
                             )
                         )

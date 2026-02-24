@@ -57,7 +57,7 @@ class AuditLogger:
         _cwd = Path.cwd().resolve()
         if not str(self.log_dir).startswith(str(_cwd)):
             raise ValueError(
-                "审计日志路径 {} 超出工作目录 {} 范围".format(self.log_dir, _cwd)
+                "監査ログパス {} がワークディレクトリ {} の範囲外".format(self.log_dir, _cwd)
             )
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.max_size_bytes = max_size_mb * 1024 * 1024
@@ -92,7 +92,7 @@ class AuditLogger:
                 # 检查日志文件是否需要轮转
                 current_file = self._get_current_log_file()
                 if current_file != self.current_log_file:
-                    self.logger.info(f"日志文件轮转: {self.current_log_file} -> {current_file}")
+                    self.logger.info(f"ログファイルローテーション: {self.current_log_file} -> {current_file}")
                     self.current_log_file = current_file
 
                 # 检查文件大小
@@ -103,7 +103,7 @@ class AuditLogger:
                             f".{datetime.now().strftime('%H%M%S')}.jsonl"
                         )
                         self.current_log_file.rename(archive_name)
-                        self.logger.warning(f"日志文件过大，归档为: {archive_name}")
+                        self.logger.warning(f"ログファイル過大、アーカイブ: {archive_name}")
 
                 # 追加JSONL条目
                 with self.current_log_file.open('a', encoding='utf-8') as f:
@@ -112,7 +112,7 @@ class AuditLogger:
             return True
 
         except Exception as e:
-            self.logger.error(f"审计日志写入失败: {e}")
+            self.logger.error(f"監査ログ書込失敗: {e}")
             return False
 
     def get_recent_entries(self, limit: int = 100) -> List[AuditEntry]:
@@ -136,7 +136,7 @@ class AuditLogger:
                     data = json.loads(line.strip())
                     entries.append(AuditEntry(**data))
         except Exception as e:
-            self.logger.error(f"读取审计日志失败: {e}")
+            self.logger.error(f"監査ログ読取失敗: {e}")
 
         return entries
 

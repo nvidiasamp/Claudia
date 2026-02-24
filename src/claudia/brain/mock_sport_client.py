@@ -42,7 +42,7 @@ class MockSportClient:
     def _simulate_action(self, action_name, duration=0.1):
         # type: (str, float) -> int
         """模拟动作执行（确定性返回）"""
-        self.logger.info("[模拟] 执行动作: {}".format(action_name))
+        self.logger.info("[シミュ] 動作実行: {}".format(action_name))
         time.sleep(duration)
         return 0
 
@@ -117,14 +117,14 @@ class MockSportClient:
     def Dance1(self):
         # type: () -> int
         """ダンス1 (1022) — 确定性返回 3104（异步动作触发码）"""
-        self.logger.info("[模拟] 执行动作: Dance1")
+        self.logger.info("[シミュ] 動作実行: Dance1")
         time.sleep(0.3)
         return 3104
 
     def Dance2(self):
         # type: () -> int
         """ダンス2 (1023) — 确定性返回 3104（异步动作触发码）"""
-        self.logger.info("[模拟] 执行动作: Dance2")
+        self.logger.info("[シミュ] 動作実行: Dance2")
         time.sleep(0.3)
         return 3104
 
