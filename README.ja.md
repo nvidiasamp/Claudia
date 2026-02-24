@@ -21,9 +21,22 @@
 
 ## デモ
 
-<!-- TODO: 録画完了後に動画リンクを差し替え -->
+> Claudia デモ動画は準備中 — 録画計画は [Demo Video Plan](docs/DEMO_VIDEO_PLAN.md) を参照。
 
-> 動画準備中 — 録画計画は [Demo Video Plan](docs/DEMO_VIDEO_PLAN.md) を参照。
+### Go2 動作プレビュー
+
+<p align="center">
+  <img src="docs/images/go2-dance.gif" alt="ダンス" width="260">
+  <img src="docs/images/go2-flip.gif" alt="バク転" width="260">
+  <img src="docs/images/go2-run.gif" alt="走行" width="260">
+</p>
+<p align="center">
+  <img src="docs/images/go2-avoid.gif" alt="障害物回避" width="260">
+  <img src="docs/images/go2-lidar.gif" alt="4D LiDAR" width="260">
+</p>
+<p align="center">
+  <sub>GIF 提供: <a href="https://www.unitree.com/go2">Unitree Robotics</a></sub>
+</p>
 
 | デモ | 内容 | 状態 |
 |------|------|------|

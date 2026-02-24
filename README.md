@@ -21,9 +21,22 @@
 
 ## Demo
 
-<!-- TODO: Replace with actual video links after recording -->
+> Claudia demo videos coming soon — see [Demo Video Plan](docs/DEMO_VIDEO_PLAN.md) for the recording checklist.
 
-> Videos coming soon — see [Demo Video Plan](docs/DEMO_VIDEO_PLAN.md) for the recording checklist.
+### Go2 in Action
+
+<p align="center">
+  <img src="docs/images/go2-dance.gif" alt="Dance" width="260">
+  <img src="docs/images/go2-flip.gif" alt="Flip" width="260">
+  <img src="docs/images/go2-run.gif" alt="Run" width="260">
+</p>
+<p align="center">
+  <img src="docs/images/go2-avoid.gif" alt="Obstacle Avoidance" width="260">
+  <img src="docs/images/go2-lidar.gif" alt="4D LiDAR" width="260">
+</p>
+<p align="center">
+  <sub>GIF source: <a href="https://www.unitree.com/go2">Unitree Robotics</a></sub>
+</p>
 
 | Demo | Description | Status |
 |------|-------------|--------|

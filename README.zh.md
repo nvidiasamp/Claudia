@@ -21,9 +21,22 @@
 
 ## 演示
 
-<!-- TODO: 录制完成后替换为实际视频链接 -->
+> Claudia 演示视频准备中 —— 录制计划详见 [Demo Video Plan](docs/DEMO_VIDEO_PLAN.md)。
 
-> 视频准备中 —— 录制计划详见 [Demo Video Plan](docs/DEMO_VIDEO_PLAN.md)。
+### Go2 动作预览
+
+<p align="center">
+  <img src="docs/images/go2-dance.gif" alt="舞蹈" width="260">
+  <img src="docs/images/go2-flip.gif" alt="空翻" width="260">
+  <img src="docs/images/go2-run.gif" alt="奔跑" width="260">
+</p>
+<p align="center">
+  <img src="docs/images/go2-avoid.gif" alt="障碍回避" width="260">
+  <img src="docs/images/go2-lidar.gif" alt="4D LiDAR" width="260">
+</p>
+<p align="center">
+  <sub>GIF 来源: <a href="https://www.unitree.com/go2">Unitree Robotics</a></sub>
+</p>
 
 | 演示 | 内容 | 状态 |
 |------|------|------|
