@@ -21,7 +21,12 @@
 
 ## デモ
 
-> Claudia デモ動画は準備中 — 録画計画は [Demo Video Plan](docs/DEMO_VIDEO_PLAN.md) を参照。
+### Claudia 音声パイプライン
+
+[![Voice Demo](https://img.youtube.com/vi/C67kufhKB_0/maxresdefault.jpg)](https://youtu.be/C67kufhKB_0)
+
+> 音声 → ASR → ローカル LLM → ロボット実行 — 完全オンデバイス、クラウド不要。
+> 実演コマンド: 立って / 座って / 伏せて（日本語音声入力、Unitree Go2 実機）
 
 ### Go2 動作プレビュー
 
