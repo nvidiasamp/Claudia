@@ -16,6 +16,7 @@ from claudia.audio.asr_service.ipc_protocol import (
     AUDIO_SOCKET,
     ASR_RESULT_SOCKET,
     ASR_CTRL_SOCKET,
+    SESSION_TOKEN_FILE,
     MSG_READY,
     MSG_HEARTBEAT,
     MSG_TRANSCRIPT,
@@ -35,6 +36,11 @@ from claudia.audio.asr_service.ipc_protocol import (
     create_vad_event,
     create_error_msg,
     create_gate_timeout_audit,
+    # セッション認証
+    generate_session_token,
+    create_ctrl_message,
+    validate_session_token,
+    read_session_token,
     # 协议
     validate_proto_version,
     encode_message,
@@ -62,10 +68,10 @@ class TestEncodeDecode:
         assert decoded == msg
 
     def test_roundtrip_unicode(self):
-        msg = {"type": "transcript", "text": "止まれ", "confidence": 0.95}
+        msg = {"type": "transcript", "text": "\u6b62\u307e\u308c", "confidence": 0.95}
         encoded = encode_message(msg)
         decoded = decode_message(encoded)
-        assert decoded["text"] == "止まれ"
+        assert decoded["text"] == "\u6b62\u307e\u308c"
 
     def test_encode_produces_single_line(self):
         msg = {"key": "value", "nested": {"a": 1}}
@@ -98,11 +104,11 @@ class TestMessageFactoryTypes:
         assert msg["type"] == MSG_READY
 
     def test_transcript_type(self):
-        msg = create_transcript_msg("座って", 0.95, 1200, 650, "utt_001")
+        msg = create_transcript_msg("\u5ea7\u3063\u3066", 0.95, 1200, 650, "utt_001")
         assert msg["type"] == MSG_TRANSCRIPT
 
     def test_emergency_type(self):
-        msg = create_emergency_msg("とまれ", 0.85, "utt_002")
+        msg = create_emergency_msg("\u3068\u307e\u308c", 0.85, "utt_002")
         assert msg["type"] == MSG_EMERGENCY
 
     def test_heartbeat_type(self):
@@ -151,21 +157,20 @@ class TestCreateTranscriptMsg:
 
     def test_all_required_fields(self):
         msg = create_transcript_msg(
-            text="座って",
+            text="\u5ea7\u3063\u3066",
             confidence=0.95,
             duration_ms=1200,
             asr_latency_ms=650,
             utterance_id="utt_20260216_134500_001",
         )
-        assert msg["text"] == "座って"
+        assert msg["text"] == "\u5ea7\u3063\u3066"
         assert msg["confidence"] == 0.95
         assert msg["duration_ms"] == 1200
         assert msg["asr_latency_ms"] == 650
         assert msg["utterance_id"] == "utt_20260216_134500_001"
 
     def test_matches_plan_format(self):
-        """消息格式与 plan section 1.3 一致"""
-        msg = create_transcript_msg("座って", 0.95, 1200, 650, "utt_001")
+        msg = create_transcript_msg("\u5ea7\u3063\u3066", 0.95, 1200, 650, "utt_001")
         required_keys = {"type", "text", "confidence", "duration_ms",
                          "asr_latency_ms", "utterance_id"}
         assert required_keys.issubset(msg.keys())
@@ -178,13 +183,13 @@ class TestCreateTranscriptMsg:
 class TestCreateEmergencyMsg:
 
     def test_all_required_fields(self):
-        msg = create_emergency_msg("とまれ", 0.85, "utt_002")
-        assert msg["keyword"] == "とまれ"
+        msg = create_emergency_msg("\u3068\u307e\u308c", 0.85, "utt_002")
+        assert msg["keyword"] == "\u3068\u307e\u308c"
         assert msg["confidence"] == 0.85
         assert msg["utterance_id"] == "utt_002"
 
     def test_matches_plan_format(self):
-        msg = create_emergency_msg("とまれ", 0.85, "utt_002")
+        msg = create_emergency_msg("\u3068\u307e\u308c", 0.85, "utt_002")
         required_keys = {"type", "keyword", "confidence", "utterance_id"}
         assert required_keys.issubset(msg.keys())
 
@@ -219,7 +224,6 @@ class TestCreateVadEvent:
         assert msg["duration_ms"] == 800
 
     def test_vad_end_without_duration(self):
-        """duration_ms 未指定时不含该字段"""
         msg = create_vad_event("vad_end")
         assert "duration_ms" not in msg
 
@@ -276,7 +280,7 @@ class TestValidateProtoVersion:
         assert validate_proto_version(None) is False
 
     def test_no_dot(self):
-        # "1" → split(".")[0] = "1" → matches "1"
+        # "1" -> split(".")[0] = "1" -> matches "1"
         assert validate_proto_version("1") is True
 
     def test_non_numeric(self):
@@ -323,7 +327,6 @@ class TestCleanupSocket:
 
     def test_no_error_if_missing(self, tmp_path):
         sock_path = str(tmp_path / "nonexistent.sock")
-        # 不应抛出异常
         cleanup_socket(sock_path)
 
     def test_no_error_if_dir_missing(self):
@@ -331,81 +334,195 @@ class TestCleanupSocket:
 
 
 # ============================================================
-# UDS server/client + JSON Lines (集成式)
+# セッション認証: token 生成 / 検証 / 読取
 # ============================================================
 
+class TestGenerateSessionToken:
+
+    def test_returns_hex_string(self):
+        token = generate_session_token()
+        assert isinstance(token, str)
+        int(token, 16)  # must parse as hex
+
+    def test_length_is_32_hex_chars(self):
+        """16 bytes = 32 hex chars"""
+        token = generate_session_token()
+        assert len(token) == 32
+
+    def test_uniqueness(self):
+        tokens = {generate_session_token() for _ in range(10)}
+        assert len(tokens) == 10
+
+
+class TestCreateCtrlMessage:
+
+    def test_includes_type_and_token(self):
+        msg = create_ctrl_message("shutdown", "abc123")
+        assert msg["type"] == "shutdown"
+        assert msg["token"] == "abc123"
+
+    def test_extra_kwargs_included(self):
+        msg = create_ctrl_message("shutdown", "abc", reason="exit")
+        assert msg["reason"] == "exit"
+
+    def test_no_extra_keys_without_kwargs(self):
+        msg = create_ctrl_message("tts_start", "tok")
+        assert set(msg.keys()) == {"type", "token"}
+
+
+class TestValidateSessionToken:
+
+    def test_valid_token(self):
+        assert validate_session_token({"token": "abc"}, "abc") is True
+
+    def test_invalid_token(self):
+        assert validate_session_token({"token": "abc"}, "xyz") is False
+
+    def test_missing_token_field(self):
+        assert validate_session_token({"type": "shutdown"}, "abc") is False
+
+    def test_empty_message(self):
+        assert validate_session_token({}, "abc") is False
+
+
+class TestReadSessionToken:
+
+    def test_reads_from_file(self, tmp_path):
+        token_file = tmp_path / "test_token"
+        token_file.write_text("deadbeef1234")
+        import claudia.audio.asr_service.ipc_protocol as proto
+        orig = proto.SESSION_TOKEN_FILE
+        try:
+            proto.SESSION_TOKEN_FILE = str(token_file)
+            result = read_session_token()
+            assert result == "deadbeef1234"
+        finally:
+            proto.SESSION_TOKEN_FILE = orig
+
+    def test_returns_none_on_missing_file(self, tmp_path):
+        import claudia.audio.asr_service.ipc_protocol as proto
+        orig = proto.SESSION_TOKEN_FILE
+        try:
+            proto.SESSION_TOKEN_FILE = str(tmp_path / "nonexistent")
+            result = read_session_token()
+            assert result is None
+        finally:
+            proto.SESSION_TOKEN_FILE = orig
+
+    def test_strips_whitespace(self, tmp_path):
+        token_file = tmp_path / "test_token"
+        token_file.write_text("  abc123  \n")
+        import claudia.audio.asr_service.ipc_protocol as proto
+        orig = proto.SESSION_TOKEN_FILE
+        try:
+            proto.SESSION_TOKEN_FILE = str(token_file)
+            result = read_session_token()
+            assert result == "abc123"
+        finally:
+            proto.SESSION_TOKEN_FILE = orig
+
+
+class TestSessionTokenFilePath:
+
+    def test_token_file_in_socket_dir(self):
+        assert os.path.dirname(SESSION_TOKEN_FILE) == os.path.dirname(ASR_CTRL_SOCKET)
+
+    def test_token_file_is_hidden(self):
+        assert os.path.basename(SESSION_TOKEN_FILE).startswith(".")
+
+
+# ============================================================
+# UDS server/client + JSON Lines (集成式)
+# pytest 4.6.9 互換: loop.run_until_complete() で実行
+# (pytest-asyncio は pytest >= 7.0 が必要で ROS2 環境と非互換)
+# ============================================================
+
+def _run_async(coro):
+    """Python 3.8 / pytest 4.6.9 互換の async テストランナー"""
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
 class TestUdsServerClient:
-    """asyncio UDS 服务器 + 客户端 + JSON Lines 读写集成测试"""
 
-    @pytest.mark.asyncio
-    async def test_server_client_roundtrip(self, tmp_path):
-        sock_path = str(tmp_path / "test_roundtrip.sock")
-        received = []
+    def test_server_client_roundtrip(self, tmp_path):
+        async def _test():
+            sock_path = str(tmp_path / "test_roundtrip.sock")
+            received = []
 
-        async def handler(reader, writer):
-            async for msg in read_json_lines(reader):
-                received.append(msg)
+            async def handler(reader, writer):
+                async for msg in read_json_lines(reader):
+                    received.append(msg)
+                writer.close()
+
+            server = await create_uds_server(sock_path, handler)
+
+            reader, writer = await connect_uds(sock_path, retries=3, delay=0.1)
+            await write_json_line(writer, {"type": "heartbeat", "ts": 1.0})
+            await write_json_line(writer, {"type": "transcript", "text": "\u5ea7\u3063\u3066"})
             writer.close()
+            await asyncio.sleep(0.1)
 
-        server = await create_uds_server(sock_path, handler)
+            server.close()
+            await server.wait_closed()
 
-        reader, writer = await connect_uds(sock_path, retries=3, delay=0.1)
-        await write_json_line(writer, {"type": "heartbeat", "ts": 1.0})
-        await write_json_line(writer, {"type": "transcript", "text": "座って"})
-        writer.close()
-        await asyncio.sleep(0.1)
+            assert len(received) == 2
+            assert received[0]["type"] == "heartbeat"
+            assert received[1]["text"] == "\u5ea7\u3063\u3066"
 
-        server.close()
-        await server.wait_closed()
+        _run_async(_test())
 
-        assert len(received) == 2
-        assert received[0]["type"] == "heartbeat"
-        assert received[1]["text"] == "座って"
+    def test_connect_uds_retries_on_missing_socket(self, tmp_path):
+        async def _test():
+            sock_path = str(tmp_path / "missing.sock")
+            with pytest.raises(ConnectionError):
+                await connect_uds(sock_path, retries=2, delay=0.05)
 
-    @pytest.mark.asyncio
-    async def test_connect_uds_retries_on_missing_socket(self, tmp_path):
-        sock_path = str(tmp_path / "missing.sock")
-        with pytest.raises(ConnectionError):
-            await connect_uds(sock_path, retries=2, delay=0.05)
+        _run_async(_test())
 
-    @pytest.mark.asyncio
-    async def test_read_json_lines_skips_invalid(self, tmp_path):
-        """不正な JSON 行はスキップ、有効な行のみ yield"""
-        sock_path = str(tmp_path / "test_invalid.sock")
-        received = []
+    def test_read_json_lines_skips_invalid(self, tmp_path):
+        async def _test():
+            sock_path = str(tmp_path / "test_invalid.sock")
+            received = []
 
-        async def handler(reader, writer):
-            async for msg in read_json_lines(reader):
-                received.append(msg)
+            async def handler(reader, writer):
+                async for msg in read_json_lines(reader):
+                    received.append(msg)
+                writer.close()
+
+            server = await create_uds_server(sock_path, handler)
+
+            reader, writer = await connect_uds(sock_path, retries=3, delay=0.1)
+            writer.write(encode_message({"type": "first"}))
+            writer.write(b"this is not json\n")
+            writer.write(encode_message({"type": "third"}))
+            await writer.drain()
             writer.close()
+            await asyncio.sleep(0.1)
 
-        server = await create_uds_server(sock_path, handler)
+            server.close()
+            await server.wait_closed()
 
-        reader, writer = await connect_uds(sock_path, retries=3, delay=0.1)
-        # 有効 → 不正 → 有効
-        writer.write(encode_message({"type": "first"}))
-        writer.write(b"this is not json\n")
-        writer.write(encode_message({"type": "third"}))
-        await writer.drain()
-        writer.close()
-        await asyncio.sleep(0.1)
+            assert len(received) == 2
+            assert received[0]["type"] == "first"
+            assert received[1]["type"] == "third"
 
-        server.close()
-        await server.wait_closed()
+        _run_async(_test())
 
-        assert len(received) == 2
-        assert received[0]["type"] == "first"
-        assert received[1]["type"] == "third"
+    def test_create_uds_server_cleans_stale_socket(self, tmp_path):
+        async def _test():
+            sock_path = str(tmp_path / "stale.sock")
+            with open(sock_path, "w") as f:
+                f.write("stale")
 
-    @pytest.mark.asyncio
-    async def test_create_uds_server_cleans_stale_socket(self, tmp_path):
-        sock_path = str(tmp_path / "stale.sock")
-        with open(sock_path, "w") as f:
-            f.write("stale")
+            async def handler(reader, writer):
+                writer.close()
 
-        async def handler(reader, writer):
-            writer.close()
+            server = await create_uds_server(sock_path, handler)
+            server.close()
+            await server.wait_closed()
 
-        server = await create_uds_server(sock_path, handler)
-        server.close()
-        await server.wait_closed()
+        _run_async(_test())
