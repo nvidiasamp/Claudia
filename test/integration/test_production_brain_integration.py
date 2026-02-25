@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Production Brain Integration Test — 端到端管道验证
+Production Brain Integration Test -- End-to-end Pipeline Verification
 
-验证 ProductionBrain 的完整处理流程:
-  用户输入 → emergency/cache/LLM → SafetyCompiler → 执行/模拟
-不依赖 Ollama、ROS2、CycloneDDS 或真实硬件（全部 mock）。
+Verifies the complete processing flow of ProductionBrain:
+  User input -> emergency/cache/LLM -> SafetyCompiler -> execution/simulation
+Does not depend on Ollama, ROS2, CycloneDDS, or real hardware (all mocked).
 """
 
 import asyncio
@@ -13,8 +13,8 @@ import sys
 import unittest
 from unittest.mock import MagicMock
 
-# 在 import ProductionBrain 之前 mock 重量级依赖，避免 OOM
-# conftest.py 已做同样的 mock，但直接运行时 conftest 不一定先加载
+# Mock heavy dependencies before importing ProductionBrain to avoid OOM
+# conftest.py performs the same mocking, but conftest may not load first when running directly
 for _mod in [
     'ollama',
     'cyclonedds', 'cyclonedds.core', 'cyclonedds.domain',
@@ -30,7 +30,7 @@ for _mod in [
 
 
 class TestProductionBrainIntegration(unittest.TestCase):
-    """ProductionBrain 集成测试 — 模拟模式"""
+    """ProductionBrain integration test -- simulation mode"""
 
     @classmethod
     def setUpClass(cls):
@@ -48,7 +48,7 @@ class TestProductionBrainIntegration(unittest.TestCase):
         self.brain._ensure_model_loaded = _mock_ensure
 
     def tearDown(self):
-        # 清理 state_monitor 防止资源累积（尤其在非 mock 环境下）
+        # Clean up state_monitor to prevent resource accumulation (especially in non-mock environments)
         if hasattr(self.brain, 'state_monitor') and self.brain.state_monitor is not None:
             if hasattr(self.brain.state_monitor, 'stop_monitoring'):
                 try:
@@ -63,7 +63,7 @@ class TestProductionBrainIntegration(unittest.TestCase):
             self.brain.state_monitor = None
 
     def _run(self, coro):
-        """同步执行异步协程"""
+        """Synchronously execute an async coroutine"""
         loop = asyncio.new_event_loop()
         try:
             return loop.run_until_complete(coro)
@@ -97,8 +97,8 @@ class TestProductionBrainIntegration(unittest.TestCase):
 
     def test_cache_sit(self):
         r = self._run(self.brain.process_and_execute("座って"))
-        # 模拟模式: is_standing=False → SafetyCompiler 先插 StandUp(1004)
-        # 结果: api_code=None, sequence=[1004, 1009]
+        # Simulation mode: is_standing=False -> SafetyCompiler inserts StandUp(1004) first
+        # Result: api_code=None, sequence=[1004, 1009]
         self.assertIn(1009, r.sequence or [r.api_code])
 
     def test_cache_stand(self):

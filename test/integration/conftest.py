@@ -13,14 +13,14 @@ from unittest.mock import MagicMock
 # unitree_sdk2py: depends on cyclonedds
 _HEAVY_MODS = [
     'ollama',
-    # CycloneDDS: C 层 bad_alloc
+    # CycloneDDS: C layer bad_alloc
     'cyclonedds', 'cyclonedds.core', 'cyclonedds.domain',
     'cyclonedds.idl', 'cyclonedds.pub', 'cyclonedds.sub',
     'cyclonedds._clayer',
-    # ROS2: rclpy 节点初始化分配大量内存
+    # ROS2: rclpy node initialization allocates large amounts of memory
     'rclpy', 'rclpy.node', 'rclpy.executors', 'rclpy.qos',
     'rclpy.callback_groups', 'rclpy.parameter',
-    # unitree SDK: 依赖 cyclonedds
+    # unitree SDK: depends on cyclonedds
     'unitree_sdk2py', 'unitree_sdk2py.go2',
     'unitree_sdk2py.go2.sport', 'unitree_sdk2py.go2.sport.sport_client',
     'unitree_sdk2py.idl', 'unitree_sdk2py.rpc',

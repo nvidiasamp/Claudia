@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Claudia LED模式定义模块
-基于VUI客户端实现5种专用LED状态指示器
+Claudia LED Pattern Definition Module
+Implements 5 dedicated LED status indicators based on VUI client
 
 Author: Claudia AI System
 Generated: 2025-06-30
-Purpose: 子任务6.2 - LED模式定义与状态机实现
+Purpose: Subtask 6.2 - LED pattern definition and state machine implementation
 """
 
 import os
@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from enum import Enum
 import math
 
-# 添加项目路径（从模块位置推导，避免硬编码）
+# Add project path (derived from module location, avoiding hardcoded paths)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 # Unitree SDK2 VUI imports
@@ -28,49 +28,50 @@ try:
     from unitree_sdk2py.go2.vui.vui_client import VuiClient
     VUI_AVAILABLE = True
 except ImportError as e:
-    print(f"⚠️ VUI客户端导入失败: {e}")
+    print(f"WARNING: VUI client import failed: {e}")
     VUI_AVAILABLE = False
 
 class ClaudiaLEDMode(Enum):
     """
-    Claudia专用LED模式枚举
-    
-    每种模式对应特定的交互状态，用于向用户传达机器人当前状态
+    Claudia dedicated LED mode enumeration
+
+    Each mode corresponds to a specific interaction state,
+    used to convey the robot's current status to the user
     """
-    # 系统状态模式
-    OFF = "off"                          # 关闭状态
-    
-    # Claudia专用状态指示器
-    WAKE_CONFIRM = "wake_confirm"        # 🟢 绿色双闪 (唤醒确认)
-    PROCESSING_VOICE = "processing"      # 🔵 蓝色常亮 (处理语音)
-    EXECUTING_ACTION = "executing"       # 🟠 橙色常亮 (执行动作)
-    ACTION_COMPLETE = "action_complete"  # ⚪ 白色短闪3次 (动作完成)
-    ERROR_STATE = "error"                # 🔴 红色三闪 (错误/无法理解)
-    
-    # 系统兼容性模式（避免干扰默认状态）
-    SYSTEM_BOOT = "system_boot"          # 🟢 绿色常亮 (开机) - 保留兼容
-    SYSTEM_CALIBRATION = "calibration"   # 🔵 蓝色闪烁 (校准) - 保留兼容
-    LOW_BATTERY = "low_battery"          # 🟡 黄色闪烁 (低电量) - 保留兼容
-    SEARCH_LIGHT = "search_light"        # ⚪ 白色常亮 (搜索灯) - 保留兼容
+    # System state modes
+    OFF = "off"                          # Off state
+
+    # Claudia dedicated status indicators
+    WAKE_CONFIRM = "wake_confirm"        # Green double flash (wake confirmation)
+    PROCESSING_VOICE = "processing"      # Blue steady (processing voice)
+    EXECUTING_ACTION = "executing"       # Orange steady (executing action)
+    ACTION_COMPLETE = "action_complete"  # White short flash x3 (action complete)
+    ERROR_STATE = "error"                # Red triple flash (error/cannot understand)
+
+    # System compatibility modes (avoid interfering with default states)
+    SYSTEM_BOOT = "system_boot"          # Green steady (boot) - retained for compatibility
+    SYSTEM_CALIBRATION = "calibration"   # Blue flashing (calibration) - retained for compatibility
+    LOW_BATTERY = "low_battery"          # Yellow flashing (low battery) - retained for compatibility
+    SEARCH_LIGHT = "search_light"        # White steady (search light) - retained for compatibility
 
 @dataclass
 class LEDPattern:
-    """LED模式参数"""
-    color: Tuple[int, int, int]          # RGB颜色 (0-255)
-    brightness: int                      # 亮度 (0-10, VUI标准)
-    flash_count: int                     # 闪烁次数 (0=常亮)
-    flash_interval: float                # 闪烁间隔 (秒)
-    duration: float                      # 模式持续时间 (秒, 0=无限)
-    priority: int                        # 优先级 (1-10, 10最高)
+    """LED pattern parameters"""
+    color: Tuple[int, int, int]          # RGB color (0-255)
+    brightness: int                      # Brightness (0-10, VUI standard)
+    flash_count: int                     # Flash count (0=steady)
+    flash_interval: float                # Flash interval (seconds)
+    duration: float                      # Pattern duration (seconds, 0=infinite)
+    priority: int                        # Priority (1-10, 10 is highest)
 
 class ClaudiaLEDModeDefinitions:
     """
-    Claudia LED模式定义类
-    
-    定义所有LED模式的视觉参数和行为逻辑
+    Claudia LED Mode Definition Class
+
+    Defines all LED mode visual parameters and behavioral logic
     """
-    
-    # Claudia专用LED模式定义
+
+    # Claudia dedicated LED mode definitions
     PATTERNS = {
         ClaudiaLEDMode.OFF: LEDPattern(
             color=(0, 0, 0),
@@ -80,58 +81,58 @@ class ClaudiaLEDModeDefinitions:
             duration=0.0,
             priority=1
         ),
-        
-        # 🟢 绿色双闪 (唤醒确认)
+
+        # Green double flash (wake confirmation)
         ClaudiaLEDMode.WAKE_CONFIRM: LEDPattern(
-            color=(0, 255, 0),               # 鲜绿色
-            brightness=8,                    # 较高亮度确保可见
-            flash_count=2,                   # 双闪
-            flash_interval=0.3,              # 300ms间隔
-            duration=2.0,                    # 2秒后自动结束
-            priority=7                       # 高优先级
+            color=(0, 255, 0),               # Bright green
+            brightness=8,                    # High brightness for visibility
+            flash_count=2,                   # Double flash
+            flash_interval=0.3,              # 300ms interval
+            duration=2.0,                    # Auto-end after 2 seconds
+            priority=7                       # High priority
         ),
-        
-        # 🔵 蓝色常亮 (处理语音)
+
+        # Blue steady (processing voice)
         ClaudiaLEDMode.PROCESSING_VOICE: LEDPattern(
-            color=(0, 100, 255),             # 柔和蓝色
-            brightness=6,                    # 中等亮度避免刺眼
-            flash_count=0,                   # 常亮
+            color=(0, 100, 255),             # Soft blue
+            brightness=6,                    # Medium brightness to avoid glare
+            flash_count=0,                   # Steady
             flash_interval=0.0,
-            duration=0.0,                    # 无限持续直到状态改变
-            priority=6                       # 中高优先级
+            duration=0.0,                    # Infinite until state change
+            priority=6                       # Medium-high priority
         ),
-        
-        # 🟠 橙色常亮 (执行动作)
+
+        # Orange steady (executing action)
         ClaudiaLEDMode.EXECUTING_ACTION: LEDPattern(
-            color=(255, 165, 0),             # 标准橙色
-            brightness=7,                    # 较高亮度表示活跃状态
-            flash_count=0,                   # 常亮
+            color=(255, 165, 0),             # Standard orange
+            brightness=7,                    # Higher brightness for active state
+            flash_count=0,                   # Steady
             flash_interval=0.0,
-            duration=0.0,                    # 无限持续直到动作完成
-            priority=8                       # 高优先级
+            duration=0.0,                    # Infinite until action complete
+            priority=8                       # High priority
         ),
-        
-        # ⚪ 白色短闪3次 (动作完成)
+
+        # White short flash x3 (action complete)
         ClaudiaLEDMode.ACTION_COMPLETE: LEDPattern(
-            color=(255, 255, 255),           # 纯白色
-            brightness=9,                    # 高亮度确保注意
-            flash_count=3,                   # 三闪
-            flash_interval=0.2,              # 200ms快速闪烁
-            duration=1.5,                    # 1.5秒完成
-            priority=9                       # 很高优先级
+            color=(255, 255, 255),           # Pure white
+            brightness=9,                    # High brightness for attention
+            flash_count=3,                   # Triple flash
+            flash_interval=0.2,              # 200ms rapid flash
+            duration=1.5,                    # Complete in 1.5 seconds
+            priority=9                       # Very high priority
         ),
-        
-        # 🔴 红色三闪 (错误/无法理解)
+
+        # Red triple flash (error/cannot understand)
         ClaudiaLEDMode.ERROR_STATE: LEDPattern(
-            color=(255, 0, 0),               # 鲜红色
-            brightness=10,                   # 最高亮度警示
-            flash_count=3,                   # 三闪
-            flash_interval=0.4,              # 400ms较慢表示错误
-            duration=2.5,                    # 2.5秒确保用户注意
-            priority=10                      # 最高优先级
+            color=(255, 0, 0),               # Bright red
+            brightness=10,                   # Maximum brightness for warning
+            flash_count=3,                   # Triple flash
+            flash_interval=0.4,              # 400ms slower for error indication
+            duration=2.5,                    # 2.5 seconds to ensure user notice
+            priority=10                      # Highest priority
         ),
-        
-        # 系统兼容性模式（保留但不主动使用）
+
+        # System compatibility modes (retained but not actively used)
         ClaudiaLEDMode.SYSTEM_BOOT: LEDPattern(
             color=(0, 255, 0),
             brightness=5,
@@ -140,56 +141,56 @@ class ClaudiaLEDModeDefinitions:
             duration=0.0,
             priority=3
         ),
-        
+
         ClaudiaLEDMode.SYSTEM_CALIBRATION: LEDPattern(
             color=(0, 0, 255),
             brightness=5,
-            flash_count=10,                  # 持续闪烁
+            flash_count=10,                  # Continuous flashing
             flash_interval=0.5,
             duration=0.0,
             priority=4
         ),
-        
+
         ClaudiaLEDMode.LOW_BATTERY: LEDPattern(
-            color=(255, 255, 0),             # 黄色
+            color=(255, 255, 0),             # Yellow
             brightness=6,
-            flash_count=10,                  # 持续闪烁
-            flash_interval=1.0,              # 慢闪警告
+            flash_count=10,                  # Continuous flashing
+            flash_interval=1.0,              # Slow flash warning
             duration=0.0,
             priority=5
         ),
-        
+
         ClaudiaLEDMode.SEARCH_LIGHT: LEDPattern(
             color=(255, 255, 255),
-            brightness=10,                   # 最高亮度
+            brightness=10,                   # Maximum brightness
             flash_count=0,
             flash_interval=0.0,
             duration=0.0,
             priority=2
         )
     }
-    
+
     @classmethod
     def get_pattern(cls, mode: ClaudiaLEDMode) -> LEDPattern:
         """
-        获取指定模式的LED模式参数
-        
+        Get LED pattern parameters for the specified mode
+
         Args:
-            mode: LED模式
-            
+            mode: LED mode
+
         Returns:
-            LEDPattern: LED模式参数
+            LEDPattern: LED pattern parameters
         """
         return cls.PATTERNS.get(mode, cls.PATTERNS[ClaudiaLEDMode.OFF])
-    
+
     @classmethod
     def get_all_modes(cls) -> List[ClaudiaLEDMode]:
-        """获取所有可用的LED模式"""
+        """Get all available LED modes"""
         return list(cls.PATTERNS.keys())
-    
+
     @classmethod
     def get_claudia_modes(cls) -> List[ClaudiaLEDMode]:
-        """获取Claudia专用的LED模式（排除系统兼容模式）"""
+        """Get Claudia-dedicated LED modes (excluding system compatibility modes)"""
         claudia_modes = [
             ClaudiaLEDMode.WAKE_CONFIRM,
             ClaudiaLEDMode.PROCESSING_VOICE,
@@ -198,125 +199,125 @@ class ClaudiaLEDModeDefinitions:
             ClaudiaLEDMode.ERROR_STATE
         ]
         return claudia_modes
-    
+
     @classmethod
     def validate_pattern(cls, pattern: LEDPattern) -> bool:
         """
-        验证LED模式参数的有效性
-        
+        Validate LED pattern parameter validity
+
         Args:
-            pattern: LED模式参数
-            
+            pattern: LED pattern parameters
+
         Returns:
-            bool: 参数是否有效
+            bool: Whether parameters are valid
         """
-        # 验证颜色范围
+        # Validate color range
         r, g, b = pattern.color
         if not all(0 <= c <= 255 for c in [r, g, b]):
             return False
-        
-        # 验证亮度范围（VUI标准：0-10）
+
+        # Validate brightness range (VUI standard: 0-10)
         if not (0 <= pattern.brightness <= 10):
             return False
-        
-        # 验证其他参数
+
+        # Validate other parameters
         if pattern.flash_count < 0 or pattern.flash_interval < 0 or pattern.duration < 0:
             return False
-        
+
         if not (1 <= pattern.priority <= 10):
             return False
-            
+
         return True
 
 class LEDModeRenderer:
     """
-    LED模式渲染器
-    
-    负责将LED模式转换为具体的VUI控制指令
+    LED Mode Renderer
+
+    Responsible for converting LED modes into concrete VUI control commands
     """
-    
+
     def __init__(self):
-        """初始化渲染器"""
+        """Initialize renderer"""
         self.logger = logging.getLogger(__name__)
         self.vui_client = None
         self.is_initialized = False
-        
-        # 渲染状态
+
+        # Rendering state
         self.current_mode = ClaudiaLEDMode.OFF
         self.current_pattern = None
         self.render_thread = None
         self.render_active = False
         self.render_lock = threading.Lock()
-        
-        # 环境自适应参数
-        self.environmental_brightness_factor = 1.0  # 环境亮度调节因子
+
+        # Environmental adaptation parameters
+        self.environmental_brightness_factor = 1.0  # Environmental brightness adjustment factor
         self.auto_brightness_enabled = True
-        
+
     def initialize_vui(self) -> bool:
         """
-        初始化VUI客户端
-        
+        Initialize VUI client
+
         Returns:
-            bool: 初始化是否成功
+            bool: Whether initialization succeeded
         """
         if not VUI_AVAILABLE:
-            self.logger.error("VUI客户端不可用")
+            self.logger.error("VUI client not available")
             return False
-            
+
         try:
-            self.logger.info("初始化VUI客户端...")
-            
-            # 初始化通道
+            self.logger.info("Initializing VUI client...")
+
+            # Initialize channel
             ChannelFactoryInitialize(0)
-            
-            # 创建VUI客户端
+
+            # Create VUI client
             self.vui_client = VuiClient()
             self.vui_client.SetTimeout(3.0)
             self.vui_client.Init()
-            
-            # 测试连接
+
+            # Test connection
             code, current_brightness = self.vui_client.GetBrightness()
             if code == 0:
-                self.logger.info(f"✅ VUI客户端初始化成功，当前LED亮度: {current_brightness}")
+                self.logger.info(f"VUI client initialized successfully, current LED brightness: {current_brightness}")
                 self.is_initialized = True
                 return True
             else:
-                self.logger.error(f"VUI客户端连接测试失败，错误码: {code}")
+                self.logger.error(f"VUI client connection test failed, error code: {code}")
                 return False
-                
+
         except Exception as e:
-            self.logger.error(f"VUI客户端初始化失败: {e}")
+            self.logger.error(f"VUI client initialization failed: {e}")
             return False
-    
+
     def render_mode(self, mode: ClaudiaLEDMode, duration_override: Optional[float] = None) -> bool:
         """
-        渲染指定的LED模式
-        
+        Render the specified LED mode
+
         Args:
-            mode: 要渲染的LED模式
-            duration_override: 可选的持续时间覆盖
-            
+            mode: LED mode to render
+            duration_override: Optional duration override
+
         Returns:
-            bool: 渲染是否成功开始
+            bool: Whether rendering started successfully
         """
         if not self.is_initialized:
-            self.logger.error("VUI客户端未初始化")
+            self.logger.error("VUI client not initialized")
             return False
-            
+
         pattern = ClaudiaLEDModeDefinitions.get_pattern(mode)
         if not ClaudiaLEDModeDefinitions.validate_pattern(pattern):
-            self.logger.error(f"无效的LED模式参数: {mode}")
+            self.logger.error(f"Invalid LED pattern parameters: {mode}")
             return False
-        
+
         with self.render_lock:
-            # 停止当前渲染
+            # Stop current rendering
             self._stop_current_render()
-            
-            # 设置新模式
+
+            # Set new mode
             self.current_mode = mode
             self.current_pattern = pattern
-            
-            # 应用持续时间覆盖
+
+            # Apply duration override
             if duration_override is not None:
                 pattern = LEDPattern(
                     color=pattern.color,
@@ -327,8 +328,8 @@ class LEDModeRenderer:
                     priority=pattern.priority
                 )
                 self.current_pattern = pattern
-            
-            # 启动渲染线程
+
+            # Start rendering thread
             self.render_active = True
             self.render_thread = threading.Thread(
                 target=self._render_pattern_worker,
@@ -336,207 +337,207 @@ class LEDModeRenderer:
                 daemon=True
             )
             self.render_thread.start()
-            
-            self.logger.info(f"开始渲染LED模式: {mode.value}")
+
+            self.logger.info(f"Started rendering LED mode: {mode.value}")
             return True
-    
+
     def _render_pattern_worker(self, pattern: LEDPattern) -> None:
         """
-        LED模式渲染工作线程
-        
+        LED mode rendering worker thread
+
         Args:
-            pattern: 要渲染的LED模式
+            pattern: LED pattern to render
         """
         try:
             start_time = time.time()
             r, g, b = pattern.color
-            
-            # 应用环境自适应亮度
+
+            # Apply environmental adaptive brightness
             effective_brightness = self._calculate_effective_brightness(pattern.brightness)
-            
+
             if pattern.flash_count == 0:
-                # 常亮模式
+                # Steady mode
                 self._set_led_color_brightness(r, g, b, effective_brightness)
-                
-                # 如果有持续时间限制，等待后关闭
+
+                # If there is a duration limit, wait then turn off
                 if pattern.duration > 0:
                     elapsed = 0
                     while elapsed < pattern.duration and self.render_active:
                         time.sleep(0.1)
                         elapsed = time.time() - start_time
-                    
-                    # 时间到，关闭LED
+
+                    # Time expired, turn off LED
                     if self.render_active:
                         self._set_led_color_brightness(0, 0, 0, 0)
-                        
+
             else:
-                # 闪烁模式
+                # Flash mode
                 for flash_num in range(pattern.flash_count):
                     if not self.render_active:
                         break
-                    
-                    # 亮
+
+                    # On
                     self._set_led_color_brightness(r, g, b, effective_brightness)
                     time.sleep(pattern.flash_interval / 2)
-                    
+
                     if not self.render_active:
                         break
-                    
-                    # 灭
+
+                    # Off
                     self._set_led_color_brightness(0, 0, 0, 0)
-                    
-                    # 如果不是最后一次闪烁，等待间隔
+
+                    # Wait interval if not the last flash
                     if flash_num < pattern.flash_count - 1:
                         time.sleep(pattern.flash_interval / 2)
-                
-                # 闪烁完成后，根据持续时间决定是否保持状态
+
+                # After flashing complete, decide whether to maintain state based on duration
                 if pattern.duration > 0:
                     elapsed = time.time() - start_time
                     remaining = pattern.duration - elapsed
                     if remaining > 0 and self.render_active:
                         time.sleep(remaining)
-                
-                # 最终关闭LED
+
+                # Finally turn off LED
                 if self.render_active:
                     self._set_led_color_brightness(0, 0, 0, 0)
-            
+
         except Exception as e:
-            self.logger.error(f"LED模式渲染失败: {e}")
+            self.logger.error(f"LED mode rendering failed: {e}")
         finally:
             with self.render_lock:
                 self.render_active = False
                 self.current_mode = ClaudiaLEDMode.OFF
-    
+
     def _set_led_color_brightness(self, r: int, g: int, b: int, brightness: int) -> bool:
         """
-        设置LED颜色和亮度
-        
+        Set LED color and brightness
+
         Args:
-            r, g, b: RGB颜色值 (0-255)
-            brightness: 亮度值 (0-10)
-            
+            r, g, b: RGB color values (0-255)
+            brightness: Brightness value (0-10)
+
         Returns:
-            bool: 设置是否成功
+            bool: Whether setting succeeded
         """
         try:
             if self.vui_client is None:
                 return False
-            
-            # 设置亮度
+
+            # Set brightness
             brightness_code = self.vui_client.SetBrightness(brightness)
-            
-            # 注意：VUI客户端可能没有直接的RGB控制方法
-            # 需要根据实际SDK能力调整
-            # 这里假设使用AudioClient的LedControl方法
-            
+
+            # Note: VUI client may not have direct RGB control method
+            # Needs adjustment based on actual SDK capabilities
+            # Assuming use of AudioClient's LedControl method here
+
             if brightness_code != 0:
-                self.logger.warning(f"设置亮度失败，错误码: {brightness_code}")
+                self.logger.warning(f"Set brightness failed, error code: {brightness_code}")
                 return False
-            
-            # TODO: 实现RGB颜色控制
-            # 可能需要使用AudioClient或其他接口
-            
+
+            # TODO: Implement RGB color control
+            # May need to use AudioClient or other interface
+
             return True
-            
+
         except Exception as e:
-            self.logger.error(f"设置LED颜色亮度失败: {e}")
+            self.logger.error(f"Set LED color/brightness failed: {e}")
             return False
-    
+
     def _calculate_effective_brightness(self, target_brightness: int) -> int:
         """
-        计算环境自适应后的有效亮度
-        
+        Calculate environmentally adapted effective brightness
+
         Args:
-            target_brightness: 目标亮度 (0-10)
-            
+            target_brightness: Target brightness (0-10)
+
         Returns:
-            int: 有效亮度 (0-10)
+            int: Effective brightness (0-10)
         """
         if not self.auto_brightness_enabled:
             return target_brightness
-        
-        # 应用环境亮度调节因子
+
+        # Apply environmental brightness adjustment factor
         effective = int(target_brightness * self.environmental_brightness_factor)
         return max(0, min(10, effective))
-    
+
     def _stop_current_render(self) -> None:
-        """停止当前渲染"""
+        """Stop current rendering"""
         if self.render_thread and self.render_thread.is_alive():
             self.render_active = False
             self.render_thread.join(timeout=1.0)
-    
+
     def stop_all_rendering(self) -> None:
-        """停止所有LED渲染"""
+        """Stop all LED rendering"""
         with self.render_lock:
             self._stop_current_render()
-            # 关闭所有LED
+            # Turn off all LEDs
             if self.is_initialized:
                 self._set_led_color_brightness(0, 0, 0, 0)
             self.current_mode = ClaudiaLEDMode.OFF
-    
+
     def get_current_mode(self) -> ClaudiaLEDMode:
-        """获取当前LED模式"""
+        """Get current LED mode"""
         with self.render_lock:
             return self.current_mode
-    
+
     def set_environmental_brightness_factor(self, factor: float) -> None:
         """
-        设置环境亮度调节因子
-        
+        Set environmental brightness adjustment factor
+
         Args:
-            factor: 调节因子 (0.1-2.0, 1.0为正常)
+            factor: Adjustment factor (0.1-2.0, 1.0 is normal)
         """
         self.environmental_brightness_factor = max(0.1, min(2.0, factor))
-        self.logger.info(f"环境亮度调节因子设置为: {self.environmental_brightness_factor}")
-    
+        self.logger.info(f"Environmental brightness adjustment factor set to: {self.environmental_brightness_factor}")
+
     def cleanup(self) -> None:
-        """清理资源"""
-        self.logger.info("清理LED模式渲染器...")
+        """Clean up resources"""
+        self.logger.info("Cleaning up LED mode renderer...")
         self.stop_all_rendering()
         self.is_initialized = False
 
 
-# 工厂函数
+# Factory function
 def create_led_mode_renderer() -> LEDModeRenderer:
     """
-    创建LED模式渲染器实例
-    
+    Create LED mode renderer instance
+
     Returns:
-        LEDModeRenderer: 渲染器实例
+        LEDModeRenderer: Renderer instance
     """
     return LEDModeRenderer()
 
 
 if __name__ == "__main__":
-    # 基础测试
+    # Basic test
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    
-    print("🧪 LED模式定义测试")
+
+    print("LED Pattern Definition Test")
     print("=" * 50)
-    
-    # 测试模式定义
-    print("\n📋 Claudia专用LED模式:")
+
+    # Test pattern definitions
+    print("\nClaudia Dedicated LED Modes:")
     for mode in ClaudiaLEDModeDefinitions.get_claudia_modes():
         pattern = ClaudiaLEDModeDefinitions.get_pattern(mode)
-        print(f"   {mode.value}: RGB{pattern.color} 亮度={pattern.brightness} 优先级={pattern.priority}")
-    
-    # 测试渲染器（需要真实硬件）
+        print(f"   {mode.value}: RGB{pattern.color} brightness={pattern.brightness} priority={pattern.priority}")
+
+    # Test renderer (requires real hardware)
     renderer = create_led_mode_renderer()
-    
+
     try:
         if renderer.initialize_vui():
-            print("✅ VUI客户端初始化成功")
-            
-            # 测试唤醒确认模式
-            print("\n🟢 测试唤醒确认模式...")
+            print("VUI client initialized successfully")
+
+            # Test wake confirmation mode
+            print("\nTesting wake confirmation mode...")
             renderer.render_mode(ClaudiaLEDMode.WAKE_CONFIRM)
             time.sleep(3)
-            
-            print("测试完成！")
+
+            print("Test complete!")
         else:
-            print("❌ VUI客户端初始化失败（可能未连接机器人）")
-            
+            print("VUI client initialization failed (robot may not be connected)")
+
     except KeyboardInterrupt:
-        print("\n⚠️ 用户中断测试")
+        print("\nUser interrupted test")
     finally:
-        renderer.cleanup() 
+        renderer.cleanup()

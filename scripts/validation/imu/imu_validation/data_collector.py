@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # scripts/validation/imu/imu_validation/data_collector.py
-# Generated: 2025-06-27 11:54:45 CST  
-# Purpose: Unitree Go2 IMU实时数据采集和处理
+# Generated: 2025-06-27 11:54:45 CST
+# Purpose: Unitree Go2 IMU real-time data collection and processing
 
 import time
 import threading
@@ -16,7 +16,7 @@ import csv
 from pathlib import Path
 from datetime import datetime
 
-# Unitree SDK2 imports - 使用正确的导入路径
+# Unitree SDK2 imports - using the correct import path
 from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelFactoryInitialize
 from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowState_
 
@@ -24,7 +24,7 @@ from imu_config import IMUConfig, IMUReading
 
 @dataclass
 class CollectionMetrics:
-    """数据采集指标"""
+    """Data collection metrics"""
     start_time: float = 0.0
     end_time: float = 0.0
     total_samples: int = 0
@@ -33,56 +33,56 @@ class CollectionMetrics:
     avg_sampling_rate: float = 0.0
     data_rate_std: float = 0.0
     collection_duration: float = 0.0
-    
-    # 数据质量指标
+
+    # Data quality metrics
     accelerometer_stats: Dict[str, float] = field(default_factory=dict)
     gyroscope_stats: Dict[str, float] = field(default_factory=dict)
     quaternion_stats: Dict[str, float] = field(default_factory=dict)
-    
-    # 实时统计
+
+    # Real-time statistics
     real_time_fps: List[float] = field(default_factory=list)
     latency_history: List[float] = field(default_factory=list)
 
 @dataclass
 class IMUData:
-    """IMU数据结构"""
+    """IMU data structure"""
     timestamp: float
     quaternion: List[float]  # [w, x, y, z]
     gyroscope: List[float]   # [x, y, z] rad/s
-    accelerometer: List[float]  # [x, y, z] m/s²
+    accelerometer: List[float]  # [x, y, z] m/s^2
     temperature: int
 
 class IMUDataCollector:
-    """IMU数据收集器类"""
-    
+    """IMU data collector class"""
+
     def __init__(self, config: Dict, imu_config=None):
         """
-        初始化IMU数据收集器
-        
+        Initialize IMU data collector
+
         Args:
-            config: 配置字典
-            imu_config: IMUConfig实例，如果提供则使用其连接
+            config: Configuration dictionary
+            imu_config: IMUConfig instance, uses its connection if provided
         """
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.imu_config = imu_config
-        
-        # 数据存储
+
+        # Data storage
         self.raw_data: List[IMUData] = []
         self.is_collecting = False
         self.collection_thread: Optional[threading.Thread] = None
-        
-        # 回调函数
+
+        # Callback functions
         self.data_callbacks: List[Callable[[IMUData], None]] = []
-        
-        self.logger.info("IMU数据收集器初始化完成")
-    
+
+        self.logger.info("IMU data collector initialization complete")
+
     def add_data_callback(self, callback: Callable[[IMUData], None]):
-        """添加数据回调函数"""
+        """Add data callback function"""
         self.data_callbacks.append(callback)
-    
+
     def _extract_imu_data_from_reading(self, reading) -> IMUData:
-        """从IMUReading对象中提取数据"""
+        """Extract data from IMUReading object"""
         return IMUData(
             timestamp=reading.timestamp,
             quaternion=list(reading.quaternion),
@@ -90,128 +90,128 @@ class IMUDataCollector:
             accelerometer=list(reading.accelerometer),
             temperature=getattr(reading, 'temperature', 0)
         )
-    
+
     def _collection_worker(self):
-        """数据收集工作线程 - 使用IMUConfig的数据"""
-        self.logger.info("开始IMU数据收集")
-        
+        """Data collection worker thread - uses IMUConfig data"""
+        self.logger.info("Starting IMU data collection")
+
         sampling_rate = self.config.get('imu_config', {}).get('sampling_rate_hz', 100)
         sleep_interval = 1.0 / sampling_rate
-        
+
         while self.is_collecting:
             try:
                 if self.imu_config:
-                    # 从IMUConfig获取最新读数
+                    # Get latest reading from IMUConfig
                     reading = self.imu_config.get_latest_reading()
                     if reading:
                         imu_data = self._extract_imu_data_from_reading(reading)
-                        
-                        # 存储数据
+
+                        # Store data
                         self.raw_data.append(imu_data)
-                        
-                        # 调用回调函数
+
+                        # Call callback functions
                         for callback in self.data_callbacks:
                             try:
                                 callback(imu_data)
                             except Exception as e:
-                                self.logger.error(f"数据回调错误: {e}")
+                                self.logger.error(f"Data callback error: {e}")
                 else:
-                    self.logger.warning("没有IMUConfig实例，无法收集数据")
-                
-                # 控制采样频率
+                    self.logger.warning("No IMUConfig instance, cannot collect data")
+
+                # Control sampling frequency
                 time.sleep(sleep_interval)
-                
+
             except Exception as e:
-                self.logger.error(f"数据收集错误: {e}")
+                self.logger.error(f"Data collection error: {e}")
                 time.sleep(0.1)
-        
-        self.logger.info("IMU数据收集结束")
-    
+
+        self.logger.info("IMU data collection ended")
+
     def start_collection(self, duration_seconds: Optional[float] = None) -> bool:
         """
-        开始数据收集
-        
+        Start data collection
+
         Args:
-            duration_seconds: 可选的收集持续时间（秒），如果不指定则持续收集直到手动停止
+            duration_seconds: Optional collection duration (seconds); if not specified, collection continues until manually stopped
         """
         try:
             if not self.imu_config:
-                self.logger.error("没有IMUConfig实例，无法开始数据收集")
+                self.logger.error("No IMUConfig instance, cannot start data collection")
                 return False
-            
+
             if not self.imu_config.is_initialized:
-                self.logger.error("IMUConfig未初始化，无法开始数据收集")
+                self.logger.error("IMUConfig is not initialized, cannot start data collection")
                 return False
-            
-            # 清空数据
+
+            # Clear data
             self.raw_data.clear()
-            
-            # 启动收集线程
+
+            # Start collection thread
             self.is_collecting = True
             self.collection_thread = threading.Thread(target=self._collection_worker)
             self.collection_thread.start()
-            
+
             if duration_seconds is not None:
-                self.logger.info(f"IMU数据收集已启动，持续时间: {duration_seconds}秒")
-                
-                # 启动定时停止线程
+                self.logger.info(f"IMU data collection started, duration: {duration_seconds} seconds")
+
+                # Start auto-stop timer thread
                 def auto_stop():
                     time.sleep(duration_seconds)
                     if self.is_collecting:
                         self.stop_collection()
-                        self.logger.info(f"自动停止数据收集，已收集 {duration_seconds} 秒")
-                
+                        self.logger.info(f"Automatically stopped data collection after {duration_seconds} seconds")
+
                 auto_stop_thread = threading.Thread(target=auto_stop)
                 auto_stop_thread.daemon = True
                 auto_stop_thread.start()
             else:
-                self.logger.info("IMU数据收集已启动，手动停止模式")
-            
+                self.logger.info("IMU data collection started, manual stop mode")
+
             return True
-            
+
         except Exception as e:
-            self.logger.error(f"启动数据收集失败: {e}")
+            self.logger.error(f"Failed to start data collection: {e}")
             return False
-    
+
     def stop_collection(self) -> CollectionMetrics:
-        """停止数据收集并返回采集指标"""
+        """Stop data collection and return collection metrics"""
         try:
-            # 停止收集线程
+            # Stop collection thread
             self.is_collecting = False
             if self.collection_thread:
                 self.collection_thread.join(timeout=5.0)
-            
-            # 计算采集指标
+
+            # Calculate collection metrics
             metrics = self._calculate_collection_metrics()
-            
-            self.logger.info("IMU数据收集已停止")
+
+            self.logger.info("IMU data collection stopped")
             return metrics
-            
+
         except Exception as e:
-            self.logger.error(f"停止数据收集失败: {e}")
-            # 返回空的metrics对象
+            self.logger.error(f"Failed to stop data collection: {e}")
+            # Return empty metrics object
             return CollectionMetrics()
-    
+
     def _calculate_collection_metrics(self) -> CollectionMetrics:
-        """计算采集指标"""
+        """Calculate collection metrics"""
         metrics = CollectionMetrics()
-        
+
         if self.raw_data:
             metrics.start_time = self.raw_data[0].timestamp
             metrics.end_time = self.raw_data[-1].timestamp
             metrics.total_samples = len(self.raw_data)
-            metrics.valid_samples = len(self.raw_data)  # 假设所有数据都有效
+            metrics.valid_samples = len(self.raw_data)  # Assume all data is valid
             metrics.collection_duration = metrics.end_time - metrics.start_time
-            
+
             if metrics.collection_duration > 0:
                 metrics.avg_sampling_rate = metrics.total_samples / metrics.collection_duration
-            
-            # 简化的数据质量统计
+
+            # Simplified data quality statistics
             try:
                 accelerometers = np.array([data.accelerometer for data in self.raw_data])
                 gyroscopes = np.array([data.gyroscope for data in self.raw_data])
                 quaternions = np.array([data.quaternion for data in self.raw_data])
-                
+
                 metrics.accelerometer_stats = {
                     'mean': accelerometers.mean(axis=0).tolist(),
                     'std': accelerometers.std(axis=0).tolist()
@@ -225,21 +225,21 @@ class IMUDataCollector:
                     'std': quaternions.std(axis=0).tolist()
                 }
             except Exception as e:
-                self.logger.error(f"计算数据质量统计失败: {e}")
-        
+                self.logger.error(f"Failed to calculate data quality statistics: {e}")
+
         return metrics
-    
+
     def get_collected_data(self) -> List[IMUReading]:
-        """获取收集的数据并转换为IMUReading格式"""
+        """Get collected data and convert to IMUReading format"""
         from imu_config import IMUReading
-        
+
         readings = []
         for data in self.raw_data:
-            # 确保数据长度正确
+            # Ensure correct data length
             accel = data.accelerometer[:3] if len(data.accelerometer) >= 3 else data.accelerometer + [0.0] * (3 - len(data.accelerometer))
             gyro = data.gyroscope[:3] if len(data.gyroscope) >= 3 else data.gyroscope + [0.0] * (3 - len(data.gyroscope))
             quat = data.quaternion[:4] if len(data.quaternion) >= 4 else data.quaternion + [0.0] * (4 - len(data.quaternion))
-            
+
             reading = IMUReading(
                 timestamp=data.timestamp,
                 accelerometer=(accel[0], accel[1], accel[2]),
@@ -248,15 +248,15 @@ class IMUDataCollector:
                 temperature=data.temperature
             )
             readings.append(reading)
-        
+
         return readings
-    
+
     def get_real_time_metrics(self) -> Dict[str, float]:
-        """获取实时采集指标"""
+        """Get real-time collection metrics"""
         if not self.raw_data:
             return {'current_fps': 0.0, 'total_samples': 0}
-        
-        # 计算当前采样率（基于最近的样本）
+
+        # Calculate current sampling rate (based on recent samples)
         recent_count = min(100, len(self.raw_data))
         if recent_count > 1:
             recent_data = self.raw_data[-recent_count:]
@@ -264,28 +264,28 @@ class IMUDataCollector:
             current_fps = (recent_count - 1) / time_span if time_span > 0 else 0
         else:
             current_fps = 0
-        
+
         return {
             'current_fps': current_fps,
             'total_samples': len(self.raw_data),
             'last_timestamp': self.raw_data[-1].timestamp if self.raw_data else 0
         }
-    
+
     def get_data(self) -> List[IMUData]:
-        """获取收集的数据"""
+        """Get collected data"""
         return self.raw_data.copy()
-    
+
     def get_latest_data(self) -> Optional[IMUData]:
-        """获取最新的IMU数据"""
+        """Get the latest IMU data"""
         if self.raw_data:
             return self.raw_data[-1]
         return None
-    
+
     def save_data(self, filepath: str) -> bool:
-        """保存数据到文件"""
+        """Save data to file"""
         try:
             data_dict = [asdict(data) for data in self.raw_data]
-            
+
             with open(filepath, 'w') as f:
                 json.dump({
                     'metadata': {
@@ -295,25 +295,25 @@ class IMUDataCollector:
                     },
                     'data': data_dict
                 }, f, indent=2)
-            
-            self.logger.info(f"数据已保存到: {filepath}")
+
+            self.logger.info(f"Data saved to: {filepath}")
             return True
-            
+
         except Exception as e:
-            self.logger.error(f"保存数据失败: {e}")
+            self.logger.error(f"Failed to save data: {e}")
             return False
-    
+
     def get_statistics(self) -> Dict:
-        """获取数据统计信息"""
+        """Get data statistics"""
         if not self.raw_data:
             return {}
-        
-        # 提取数据数组
+
+        # Extract data arrays
         quaternions = np.array([data.quaternion for data in self.raw_data])
         gyroscopes = np.array([data.gyroscope for data in self.raw_data])
         accelerometers = np.array([data.accelerometer for data in self.raw_data])
         temperatures = np.array([data.temperature for data in self.raw_data])
-        
+
         return {
             'total_samples': len(self.raw_data),
             'duration_seconds': (self.raw_data[-1].timestamp - self.raw_data[0].timestamp) if len(self.raw_data) > 1 else 0,
@@ -341,4 +341,4 @@ class IMUDataCollector:
                 'min': int(temperatures.min()),
                 'max': int(temperatures.max())
             }
-        } 
+        }

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-USB 麦克風音声キャプチャ — arecord 非同期サブプロセス
+USB Microphone Audio Capture -- arecord async subprocess
 
-AT2020USB-XP (hw:2,0, 44100Hz) → resample 16kHz → UDS audio.sock
-フレーム単位 (960 bytes = 30ms @ 16kHz 16bit mono) で ASR サーバーに送信。
+AT2020USB-XP (hw:2,0, 44100Hz) -> resample 16kHz -> UDS audio.sock
+Sends frames (960 bytes = 30ms @ 16kHz 16bit mono) to the ASR server.
 """
 
 import asyncio
@@ -19,31 +19,31 @@ from .asr_service.ipc_protocol import AUDIO_SOCKET, connect_uds
 
 logger = logging.getLogger("claudia.audio.capture")
 
-# PCM 定数
-SRC_RATE = 44100       # USB マイクネイティブレート
-DST_RATE = 16000       # ASR サーバー入力レート
+# PCM constants
+SRC_RATE = 44100       # USB microphone native rate
+DST_RATE = 16000       # ASR server input rate
 FRAME_SAMPLES = 480    # 30ms @ 16kHz
 FRAME_BYTES = FRAME_SAMPLES * 2  # 960 bytes (16-bit mono)
 
-# arecord から 1 回に読むサイズ: 100ms @ 44100Hz 16bit mono = 8820 bytes
+# Chunk size to read from arecord at once: 100ms @ 44100Hz 16bit mono = 8820 bytes
 ARECORD_CHUNK_SAMPLES = 4410  # 100ms
 ARECORD_CHUNK_BYTES = ARECORD_CHUNK_SAMPLES * 2  # 8820 bytes
 
-# 再試行設定
+# Retry settings
 RETRY_DELAY_INIT = 1.0
 RETRY_DELAY_MAX = 30.0
 
 
 class AudioCapture:
-    """USB マイク音声キャプチャ
+    """USB Microphone Audio Capture
 
-    arecord 非同期サブプロセスで PCM を取得し、16kHz にリサンプル後、
-    UDS audio socket にフレーム単位で送信する。
+    Captures PCM via an arecord async subprocess, resamples to 16kHz,
+    and sends frame-by-frame to the UDS audio socket.
 
     Args:
-        device: ALSA デバイス名 (例: "hw:2,0")。None で自動検出。
-        mock: True の場合、無音フレームを生成 (マイク不要)
-        socket_path: 音声ソケットパス (デフォルト: ipc_protocol.AUDIO_SOCKET)
+        device: ALSA device name (e.g., "hw:2,0"). None for auto-detection.
+        mock: If True, generates silent frames (no microphone needed)
+        socket_path: Audio socket path (default: ipc_protocol.AUDIO_SOCKET)
     """
 
     def __init__(
@@ -62,39 +62,39 @@ class AudioCapture:
         self._frame_buffer = b""
 
     # ------------------------------------------------------------------
-    # 公開 API
+    # Public API
     # ------------------------------------------------------------------
 
     async def run(self) -> None:
-        """メインループ: デバイス検出 → ソケット接続 → キャプチャ
+        """Main loop: device detection -> socket connection -> capture
 
-        USB 抜き差し時は指数バックオフでリトライ。
+        Retries with exponential backoff on USB disconnect/reconnect.
         """
         self._running = True
         retry_delay = RETRY_DELAY_INIT
 
         while self._running:
             try:
-                # 1. デバイス検出 (mock の場合スキップ)
+                # 1. Device detection (skipped in mock mode)
                 if not self._mock and not self._device:
                     self._device = await self._discover_device()
 
-                # 2. ソケット接続
+                # 2. Socket connection
                 await self._connect_socket()
 
-                # 3. キャプチャループ
+                # 3. Capture loop
                 await self._capture_loop()
 
-                # 正常終了 (running=False)
+                # Normal exit (running=False)
                 break
 
             except (ConnectionError, OSError) as e:
                 if not self._running:
                     break
-                logger.warning("キャプチャエラー: %s — %.1fs 後リトライ", e, retry_delay)
+                logger.warning("Capture error: %s -- retrying in %.1fs", e, retry_delay)
                 await asyncio.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, RETRY_DELAY_MAX)
-                # 明示指定がなければ再検出 (指定デバイスは保持)
+                # Re-detect if no explicit device specified (keep explicit device)
                 if not self._explicit_device:
                     self._device = None
 
@@ -104,30 +104,30 @@ class AudioCapture:
             except Exception as e:
                 if not self._running:
                     break
-                logger.error("予期せぬキャプチャエラー: %s", e, exc_info=True)
+                logger.error("Unexpected capture error: %s", e, exc_info=True)
                 await asyncio.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, RETRY_DELAY_MAX)
 
         await self._cleanup()
 
     async def shutdown(self) -> None:
-        """優雅なシャットダウン"""
-        logger.info("AudioCapture シャットダウン中...")
+        """Graceful shutdown"""
+        logger.info("AudioCapture shutting down...")
         self._running = False
         await self._cleanup()
 
     # ------------------------------------------------------------------
-    # デバイス検出
+    # Device Detection
     # ------------------------------------------------------------------
 
     async def _discover_device(self) -> str:
-        """arecord -l 解析で AT2020 USB マイクを自動検出
+        """Auto-detect AT2020 USB microphone by parsing arecord -l output
 
         Returns:
-            ALSA デバイス名 (例: "hw:2,0")
+            ALSA device name (e.g., "hw:2,0")
 
         Raises:
-            RuntimeError: デバイスが見つからない場合
+            RuntimeError: Device not found
         """
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -138,29 +138,29 @@ class AudioCapture:
             stdout, _ = await proc.communicate()
             output = stdout.decode("utf-8", errors="replace")
         except FileNotFoundError:
-            raise RuntimeError("arecord コマンドが見つかりません (alsa-utils 未インストール?)")
+            raise RuntimeError("arecord command not found (alsa-utils not installed?)")
 
-        # card N: ... [AT2020...] の行を探す
+        # Look for lines matching "card N: ... [AT2020...]"
         pattern = re.compile(r"card\s+(\d+):.*AT2020", re.IGNORECASE)
         for line in output.splitlines():
             m = pattern.search(line)
             if m:
                 card_num = m.group(1)
                 device = "hw:{},0".format(card_num)
-                logger.info("AT2020 USB マイク検出: %s", device)
+                logger.info("AT2020 USB microphone detected: %s", device)
                 return device
 
         raise RuntimeError(
-            "AT2020 USB マイクが見つかりません。"
-            "CLAUDIA_AUDIO_DEVICE 環境変数でデバイスを指定してください。"
+            "AT2020 USB microphone not found. "
+            "Please specify the device via CLAUDIA_AUDIO_DEVICE environment variable."
         )
 
     # ------------------------------------------------------------------
-    # ソケット接続
+    # Socket Connection
     # ------------------------------------------------------------------
 
     async def _connect_socket(self) -> None:
-        """audio.sock に接続"""
+        """Connect to audio.sock"""
         if self._writer:
             try:
                 self._writer.close()
@@ -171,19 +171,19 @@ class AudioCapture:
         _, writer = await connect_uds(self._socket_path, retries=10, delay=1.0)
         self._writer = writer
         self._frame_buffer = b""
-        logger.info("audio.sock 接続完了: %s", self._socket_path)
+        logger.info("audio.sock connection established: %s", self._socket_path)
 
     # ------------------------------------------------------------------
-    # キャプチャループ
+    # Capture Loop
     # ------------------------------------------------------------------
 
     async def _capture_loop(self) -> None:
-        """arecord → 読取 → リサンプル → フレーム送信"""
+        """arecord -> read -> resample -> send frames"""
         if self._mock:
             await self._mock_capture_loop()
             return
 
-        # arecord 起動
+        # Start arecord
         self._process = await asyncio.create_subprocess_exec(
             "arecord",
             "-D", self._device,
@@ -195,16 +195,16 @@ class AudioCapture:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        logger.info("arecord 起動: device=%s, rate=%d", self._device, SRC_RATE)
+        logger.info("arecord started: device=%s, rate=%d", self._device, SRC_RATE)
 
         loop = asyncio.get_event_loop()
 
         try:
             while self._running and self._process.returncode is None:
-                # 非同期で 100ms 分読取
+                # Async read 100ms of data
                 data = await self._process.stdout.readexactly(ARECORD_CHUNK_BYTES)
 
-                # リサンプル (CPU バウンド → スレッドプール)
+                # Resample (CPU bound -> thread pool)
                 import numpy as np
                 samples_in = np.frombuffer(data, dtype=np.int16)
                 samples_out = await loop.run_in_executor(
@@ -212,20 +212,20 @@ class AudioCapture:
                 )
                 resampled_bytes = samples_out.tobytes()
 
-                # フレームバッファに追加 → 完全フレーム送信
+                # Add to frame buffer -> send complete frames
                 await self._send_frames(resampled_bytes)
 
         except asyncio.IncompleteReadError:
             if self._running:
-                logger.warning("arecord 予期せず終了 (USB 切断?)")
-                raise ConnectionError("arecord プロセス終了")
+                logger.warning("arecord terminated unexpectedly (USB disconnected?)")
+                raise ConnectionError("arecord process terminated")
         finally:
             await self._kill_process()
 
     async def _mock_capture_loop(self) -> None:
-        """Mock モード: 30ms 間隔で無音フレームを送信"""
+        """Mock mode: send silent frames at 30ms intervals"""
         silent_frame = b"\x00" * FRAME_BYTES
-        logger.info("mock キャプチャモード開始")
+        logger.info("Mock capture mode started")
 
         while self._running:
             try:
@@ -238,11 +238,11 @@ class AudioCapture:
             await asyncio.sleep(0.03)  # 30ms
 
     # ------------------------------------------------------------------
-    # フレーム送信
+    # Frame Sending
     # ------------------------------------------------------------------
 
     async def _send_frames(self, resampled_bytes: bytes) -> None:
-        """残差バッファと合わせて完全 960 byte フレームを送信"""
+        """Combine with residual buffer and send complete 960 byte frames"""
         self._frame_buffer += resampled_bytes
 
         while len(self._frame_buffer) >= FRAME_BYTES:
@@ -253,15 +253,15 @@ class AudioCapture:
                 await self._writer.drain()
             except (ConnectionError, OSError) as e:
                 if self._running:
-                    raise ConnectionError("audio.sock 書き込み失敗: {}".format(e))
+                    raise ConnectionError("audio.sock write failed: {}".format(e))
                 break
 
     # ------------------------------------------------------------------
-    # クリーンアップ
+    # Cleanup
     # ------------------------------------------------------------------
 
     async def _kill_process(self) -> None:
-        """arecord プロセスを終了"""
+        """Terminate the arecord process"""
         if self._process and self._process.returncode is None:
             try:
                 self._process.terminate()
@@ -275,7 +275,7 @@ class AudioCapture:
             self._process = None
 
     async def _cleanup(self) -> None:
-        """全リソース解放"""
+        """Release all resources"""
         await self._kill_process()
 
         if self._writer:

@@ -1,317 +1,317 @@
-# Claudia硬件测试指南
+# Claudia Hardware Test Guide
 
-**日期**: 2025-11-14
-**版本**: v2.0
-**前置条件**: DDS符号问题已修复 + 7个Critical问题已修复
+**Date**: 2025-11-14
+**Version**: v2.0
+**Prerequisites**: DDS symbol issue fixed + 7 Critical issues fixed
 
 ---
 
-## 问题诊断和修复
+## Issue Diagnosis and Fixes
 
-### 问题1：ROS2初始化失败 ✅ 无需处理
+### Issue 1: ROS2 Initialization Failure - No Action Needed
 ```
 [ERROR] [rmw_cyclonedds_cpp]: rmw_create_node: failed to create domain, error Precondition Not Met
-ROS2初始化失败，启用模拟模式
+ROS2 initialization failed, enabling simulation mode
 ```
 
-**根本原因**：
-- LD_LIBRARY_PATH=~/cyclonedds/install/lib 导致ROS2 rmw加载了CycloneDDS 0.10.x
-- ROS2 Foxy的rmw_cyclonedds_cpp编译针对CycloneDDS 0.7.0，库不兼容
+**Root Cause**:
+- LD_LIBRARY_PATH=~/cyclonedds/install/lib causes ROS2 rmw to load CycloneDDS 0.10.x
+- ROS2 Foxy's rmw_cyclonedds_cpp was compiled against CycloneDDS 0.7.0, libraries incompatible
 
-**影响评估**：
-- ✅ **无功能影响**：代码已有fallback机制，自动切换模拟模式
-- ✅ unitree_sdk2py仍正常工作（使用0.10.x）
-- ✅ ProductionBrain功能完整（不依赖ROS2）
+**Impact Assessment**:
+- **No functional impact**: Code has fallback mechanism, automatically switches to simulation mode
+- unitree_sdk2py still works normally (uses 0.10.x)
+- ProductionBrain functionality complete (does not depend on ROS2)
 
-**为什么可以忽略**：
-1. SystemStateMonitor的ROS2功能是**可选增强**，非核心依赖
-2. 模拟模式提供相同API接口，默认电池100%，姿态模拟
-3. 真实硬件控制通过unitree_sdk2py（已成功初始化）
+**Why it can be ignored**:
+1. SystemStateMonitor's ROS2 functionality is **optional enhancement**, not a core dependency
+2. Simulation mode provides the same API interface, default battery 100%, simulated posture
+3. Real hardware control via unitree_sdk2py (successfully initialized)
 
-**日志解读**：
+**Log interpretation**:
 ```bash
-🧠 📡 初始化DDS通道工厂 (eth0)...
-🧠 ✅ 真实SportClient初始化成功 - 机器人已连接  # ← 关键成功
-[ERROR] [rmw_cyclonedds_cpp]: ...                      # ← 可忽略
-ROS2初始化失败，启用模拟模式                           # ← 预期fallback
-🧠 ✅ 状态监控器已启动                                 # ← 模拟模式正常
+Initializing DDS channel factory (eth0)...
+Real SportClient initialization successful - Robot connected  # <- Key success
+[ERROR] [rmw_cyclonedds_cpp]: ...                             # <- Can be ignored
+ROS2 initialization failed, enabling simulation mode          # <- Expected fallback
+Status monitor started                                        # <- Simulation mode normal
 ```
 
-### 问题2：BrainOutput TypeError ✅ 已修复
+### Issue 2: BrainOutput TypeError - Fixed
 ```
 TypeError: __init__() got an unexpected keyword argument 'reasoning'
 TypeError: __init__() got an unexpected keyword argument 'success'
 ```
 
-**修复内容**：
-- 第一次修复（Commit d252ab3）：添加`reasoning`字段
-- 第二次修复（Commit 221e9b3）：添加`success`字段
-- 文件：`src/claudia/brain/production_brain.py:54-55`
+**Fix Content**:
+- First fix (Commit d252ab3): Added `reasoning` field
+- Second fix (Commit 221e9b3): Added `success` field
+- File: `src/claudia/brain/production_brain.py:54-55`
 
-**根本原因**：
-热路径SafetyValidator集成时添加了新参数，但dataclass定义未同步更新
+**Root Cause**:
+Hot path SafetyValidator integration added new parameters, but dataclass definition was not updated synchronously
 
-**验证结果**：
+**Verification Results**:
 ```python
-✅ BrainOutput创建成功（含reasoning和success参数）
-✅ to_dict()正确包含所有字段
-✅ 默认值正确设置（reasoning="", success=True）
+BrainOutput creation successful (with reasoning and success parameters)
+to_dict() correctly includes all fields
+Default values correctly set (reasoning="", success=True)
 ```
 
-### 问题3：Python 3.8兼容性 - asyncio.to_thread ✅ 已修复
+### Issue 3: Python 3.8 Compatibility - asyncio.to_thread - Fixed
 ```
-🧠 Ollama调用错误: module 'asyncio' has no attribute 'to_thread'
+Ollama call error: module 'asyncio' has no attribute 'to_thread'
 ```
 
-**修复内容**：
-- Commit c14935e：替换`asyncio.to_thread`为`loop.run_in_executor`
-- 文件：`src/claudia/brain/production_brain.py:634-640`
+**Fix Content**:
+- Commit c14935e: Replaced `asyncio.to_thread` with `loop.run_in_executor`
+- File: `src/claudia/brain/production_brain.py:634-640`
 
-**根本原因**：
-- `asyncio.to_thread`是Python 3.9+新增API
-- 系统运行Python 3.8.10，不支持此API
+**Root Cause**:
+- `asyncio.to_thread` is a Python 3.9+ new API
+- System runs Python 3.8.10, does not support this API
 
-**影响范围**：
-- ❌ 非热路径、非缓存的LLM调用失败（如"可愛ね"、"あなたは誰"）
-- ✅ 热路径命令不受影响（不调用LLM）
-- ✅ 缓存命中不受影响（跳过LLM）
+**Impact Scope**:
+- Non-hot-path, non-cached LLM calls failed (e.g., "可愛ね", "あなたは誰")
+- Hot path commands unaffected (don't call LLM)
+- Cache hits unaffected (skip LLM)
 
-**验证结果**：
+**Verification Results**:
 ```python
-✅ loop.run_in_executor在Python 3.8.10正常工作
-✅ 异步超时控制保持不变
-✅ 与热路径、缓存逻辑完全兼容
+loop.run_in_executor works normally on Python 3.8.10
+Async timeout control remains unchanged
+Fully compatible with hot path and cache logic
 ```
 
-### 问题4：重复执行动作 ✅ 已修复
+### Issue 4: Duplicate Action Execution - Fixed
 ```
-🧠 ✅ 热路径执行完成 (7055ms, success=True)  # 已经执行
+Hot path execution complete (7055ms, success=True)  # Already executed
 ...
-🚀 执行动作...  # 又执行一遍！
+Executing action...  # Executed again!
 ```
 
-**修复内容**：
-- Commit 8df3710：移除热路径中的execute_action调用
-- 文件：`src/claudia/brain/production_brain.py:849`
+**Fix Content**:
+- Commit 8df3710: Removed execute_action call from hot path
+- File: `src/claudia/brain/production_brain.py:849`
 
-**根本原因**：
-- 热路径在`process_command`中调用了`await self.execute_action(brain_output)`
-- `production_commander.py`中也调用了`await self.brain.execute_action(brain_output)`
-- 导致相同动作执行两次
+**Root Cause**:
+- Hot path called `await self.execute_action(brain_output)` in `process_command`
+- `production_commander.py` also called `await self.brain.execute_action(brain_output)`
+- Resulted in the same action being executed twice
 
-**修复方案**：
-- 热路径只返回`BrainOutput`，不执行动作
-- 统一由`production_commander.py`执行所有动作
+**Fix Approach**:
+- Hot path only returns `BrainOutput`, does not execute actions
+- All actions uniformly executed by `production_commander.py`
 
-**验证结果**：
+**Verification Results**:
 ```python
-✅ 热路径只返回BrainOutput(success=True)标记待执行
-✅ Commander检测到BrainOutput后单次执行
-✅ 审计日志正确记录单次执行
+Hot path only returns BrainOutput(success=True) marked as pending execution
+Commander detects BrainOutput and executes once
+Audit log correctly records single execution
 ```
 
-### 问题5：状态快照不准确 ✅ 已修复
+### Issue 5: Inaccurate State Snapshot - Fixed
 ```
-🧠 📊 状态快照: 电池100%, 姿态非站立  # 明明已经站立了
+State snapshot: Battery 100%, posture not standing  # Was clearly already standing
 ```
 
-**修复内容**：
-- Commit 8df3710：添加姿态跟踪机制
-- 文件：`src/claudia/brain/production_brain.py:283-285,729-730,1195-1207`
+**Fix Content**:
+- Commit 8df3710: Added posture tracking mechanism
+- File: `src/claudia/brain/production_brain.py:283-285,729-730,1195-1207`
 
-**根本原因**：
-- 模拟模式下SystemStateMonitor不跟踪姿态变化
-- 每次get_current_state()都返回默认值（is_standing=False）
-- SafetyValidator基于错误的姿态判断，导致不必要的自动站立
+**Root Cause**:
+- SystemStateMonitor in simulation mode does not track posture changes
+- Each get_current_state() returns default value (is_standing=False)
+- SafetyValidator makes incorrect posture judgments, causing unnecessary auto-stand
 
-**修复方案**：
-1. 添加跟踪字段：`self.last_posture_standing`，`self.last_executed_api`
-2. 在`execute_action`中更新姿态（Stand→True, Sit/Down→False）
-3. 状态快照使用跟踪的姿态而非SystemStateMonitor默认值
+**Fix Approach**:
+1. Added tracking fields: `self.last_posture_standing`, `self.last_executed_api`
+2. Updated posture in `execute_action` (Stand->True, Sit/Down->False)
+3. State snapshot uses tracked posture instead of SystemStateMonitor default
 
-**验证结果**：
+**Verification Results**:
 ```python
-✅ 初始状态: last_posture_standing=False（假设坐姿）
-✅ 执行Stand(1004)后: last_posture_standing=True
-✅ 状态快照正确显示"姿态站立"
-✅ 后续Heart命令不再自动插入Stand
+Initial state: last_posture_standing=False (assumes sitting)
+After executing Stand(1004): last_posture_standing=True
+State snapshot correctly shows "posture standing"
+Subsequent Heart command no longer auto-inserts Stand
 ```
 
-### 问题6：ROS2错误信息暴露 ✅ 已修复
+### Issue 6: ROS2 Error Message Exposure - Fixed
 ```
 [ERROR] [rmw_cyclonedds_cpp]: rmw_create_node: failed to create domain, error Precondition Not Met
-ROS2初始化失败，启用模拟模式
+ROS2 initialization failed, enabling simulation mode
 ```
 
-**修复内容**：
-- Commit 8df3710：抑制ROS2错误输出
-- 文件：`src/claudia/robot_controller/system_state_monitor.py:183-221`
+**Fix Content**:
+- Commit 8df3710: Suppressed ROS2 error output
+- File: `src/claudia/robot_controller/system_state_monitor.py:183-221`
 
-**根本原因**：
-- ROS2库本身打印错误到stderr（代码无法直接控制）
-- 虽然有fallback机制，但用户仍看到底层技术错误
+**Root Cause**:
+- ROS2 library prints errors to stderr (code cannot directly control)
+- Although fallback mechanism exists, users still see underlying technical errors
 
-**修复方案**：
-1. 使用`contextlib.redirect_stderr(open(os.devnull, 'w'))`抑制stderr
-2. 设置ROS2环境变量抑制日志：`RCUTILS_CONSOLE_OUTPUT_FORMAT=''`
-3. 移除_initialize_ros2的详细错误日志（返回False即可）
+**Fix Approach**:
+1. Used `contextlib.redirect_stderr(open(os.devnull, 'w'))` to suppress stderr
+2. Set ROS2 environment variable to suppress logs: `RCUTILS_CONSOLE_OUTPUT_FORMAT=''`
+3. Removed detailed error logging from _initialize_ros2 (returning False is sufficient)
 
-**验证结果**：
+**Verification Results**:
 ```bash
-✅ ROS2错误不再显示给用户
-✅ Fallback机制正常工作（自动切换模拟模式）
-✅ unitree_sdk2py不受影响（独立通道）
+ROS2 errors no longer displayed to users
+Fallback mechanism works normally (auto-switches to simulation mode)
+unitree_sdk2py unaffected (independent channel)
 ```
 
-### 问题7：LLM将对话误解为动作 ✅ 已修复
+### Issue 7: LLM Misinterpreting Dialog as Actions - Fixed
 ```
 くら> あなたは誰  # "Who are you?"
-💬 回复: こんにちは  # 错误：返回"Hello"
-📋 序列: [1004, 1016]  # 错误：执行Stand+Hello动作
+Response: こんにちは  # Error: Returns "Hello"
+Sequence: [1004, 1016]  # Error: Executes Stand+Hello actions
 ```
 
-**修复内容**：
-- Commit 8df3710：添加对话查询检测
-- 文件：`src/claudia/brain/production_brain.py:593-673,952-973`
+**Fix Content**:
+- Commit 8df3710: Added conversational query detection
+- File: `src/claudia/brain/production_brain.py:593-673,952-973`
 
-**根本原因**：
-- LLM训练为将所有输入映射到动作API
-- 缺少对话型查询的预处理检测
-- "あなたは誰"被LLM误解为打招呼需求
+**Root Cause**:
+- LLM trained to map all inputs to action APIs
+- Lacked preprocessing detection for dialog-type queries
+- "あなたは誰" was misinterpreted by LLM as a greeting need
 
-**修复方案**：
-1. 添加`_is_conversational_query()`检测对话关键词
-2. 添加`_generate_conversational_response()`生成友好回复
-3. 在热路径后、LLM前执行对话检测
-4. 对话查询返回`BrainOutput(api_code=None, response="...")`
+**Fix Approach**:
+1. Added `_is_conversational_query()` to detect dialog keywords
+2. Added `_generate_conversational_response()` to generate friendly replies
+3. Executes dialog detection after hot path, before LLM
+4. Dialog queries return `BrainOutput(api_code=None, response="...")`
 
-**对话关键词覆盖**：
-- 身份：あなた、誰、名前、who、你是、你叫
-- 赞美：可愛い、すごい、cute、cool、可爱、厉害
-- 感谢：ありがとう、thank you、谢谢
-- 问候：おはよう、こんばんは、さようなら、good morning
+**Dialog Keyword Coverage**:
+- Identity: あなた, 誰, 名前, who, etc.
+- Praise: 可愛い, すごい, cute, cool, etc.
+- Thanks: ありがとう, thank you, etc.
+- Greetings: おはよう, こんばんは, さようなら, good morning, etc.
 
-**验证结果**：
+**Verification Results**:
 ```python
-✅ "あなたは誰" → "私はClaudiaです。Unitree Go2のAIアシスタントです。"
-✅ "可愛いね" → "ありがとうございます！"
-✅ api_code=None, sequence=None（不执行动作）
-✅ 审计日志route="conversational", model_used="dialog_detector"
+"あなたは誰" -> "私はClaudiaです。Unitree Go2のAIアシスタントです。"
+"可愛いね" -> "ありがとうございます！"
+api_code=None, sequence=None (no action executed)
+Audit log route="conversational", model_used="dialog_detector"
 ```
 
 ---
 
-## 硬件测试准备
+## Hardware Test Preparation
 
-### 1. 环境检查
+### 1. Environment Check
 ```bash
-# 确认LD_LIBRARY_PATH配置
+# Confirm LD_LIBRARY_PATH configuration
 echo $LD_LIBRARY_PATH
-# 应包含: ~/cyclonedds/install/lib
+# Should contain: ~/cyclonedds/install/lib
 
-# 确认网络连接
+# Confirm network connection
 ping -c 3 192.168.123.161
 
-# 确认Ollama服务
+# Confirm Ollama service
 curl http://localhost:11434/api/tags
 ```
 
-### 2. 启动测试
+### 2. Start Test
 ```bash
 ./start_production_brain_v2.sh
-# 选择模式2（真实硬件模式）
+# Select mode 2 (real hardware mode)
 ```
 
-### 3. 预期日志模式
+### 3. Expected Log Pattern
 ```
-✅ 真实SportClient初始化成功 - 机器人已连接
-[ERROR] [rmw_cyclonedds_cpp]: ...  # ← 预期错误，可忽略
-ROS2初始化失败，启用模拟模式      # ← 预期fallback
-🧠 ✅ 状态监控器已启动             # ← 模拟模式
-🧠 ✅ 安全验证器已加载
-🧠 ✅ 审计日志器已启动
+Real SportClient initialization successful - Robot connected
+[ERROR] [rmw_cyclonedds_cpp]: ...  # <- Expected error, can be ignored
+ROS2 initialization failed, enabling simulation mode  # <- Expected fallback
+Status monitor started              # <- Simulation mode
+Safety validator loaded
+Audit logger started
 ```
 
 ---
 
-## 硬件测试场景
+## Hardware Test Scenarios
 
-### 场景1：坐姿 → Heart（自动补Stand）
-**目标**：验证SafetyValidator站立需求检查
+### Scenario 1: Sitting -> Heart (Auto-Add Stand)
+**Goal**: Verify SafetyValidator standing requirement check
 
-**步骤**：
-1. 确保机器人处于**坐姿**（手动或发送"座って"）
-2. 输入命令：`ハート` 或 `比心` 或 `hello`
+**Steps**:
+1. Ensure robot is in **sitting position** (manually or send "座って")
+2. Enter command: `ハート` or `比心` or `hello`
 
-**预期行为**：
+**Expected Behavior**:
 ```bash
-🧠 📥 接收指令: 'ハート'
-🧠 📊 状态快照: 电池100%, 姿态非站立
-🧠 ⚡ 热路径命中: ハート → 1036
-🧠 🔧 热路径自动补全序列: [1004, 1036]  # ← 自动插入Stand
-🧠 ✅ 序列执行: Stand(1004) → Heart(1036)
+Received command: 'ハート'
+State snapshot: Battery 100%, posture not standing
+Hot path hit: ハート -> 1036
+Hot path auto-complete sequence: [1004, 1036]  # <- Auto-insert Stand
+Sequence execution: Stand(1004) -> Heart(1036)
 ```
 
-**实际机器人动作**：
-1. 先站立（Stand, API 1004）
-2. 再做Heart手势（API 1036）
+**Actual Robot Actions**:
+1. Stand up first (Stand, API 1004)
+2. Then perform Heart gesture (API 1036)
 
-### 场景2：站立 → Heart（直接执行）
-**目标**：验证已站立时无需补前置
+### Scenario 2: Standing -> Heart (Direct Execution)
+**Goal**: Verify no prerequisite needed when already standing
 
-**步骤**：
-1. 确保机器人处于**站立姿态**
-2. 输入命令：`ハート`
+**Steps**:
+1. Ensure robot is in **standing posture**
+2. Enter command: `ハート`
 
-**预期行为**：
+**Expected Behavior**:
 ```bash
-🧠 📥 接收指令: 'ハート'
-🧠 📊 状态快照: 电池100%, 姿态站立
-🧠 ⚡ 热路径命中: ハート → 1036
-🧠 ✅ 直接执行: Heart(1036)  # ← 无需补Stand
+Received command: 'ハート'
+State snapshot: Battery 100%, posture standing
+Hot path hit: ハート -> 1036
+Direct execution: Heart(1036)  # <- No Stand needed
 ```
 
-### 场景3：低电量拒绝（模拟8%）
-**目标**：验证Final Safety Gate电量检查
+### Scenario 3: Low Battery Rejection (Simulated 8%)
+**Goal**: Verify Final Safety Gate battery check
 
-**步骤**：
-1. 修改代码临时模拟低电量：
+**Steps**:
+1. Modify code to temporarily simulate low battery:
    ```python
    # production_brain.py get_current_state()
    return SystemStateInfo(
-       battery_level=0.08,  # ← 修改此处
+       battery_level=0.08,  # <- Modify here
        is_standing=True,
        ...
    )
    ```
-2. 输入高能命令：`前転` 或 `FrontFlip`
+2. Enter high-energy command: `前転` or `FrontFlip`
 
-**预期行为**：
+**Expected Behavior**:
 ```bash
-🧠 📥 接收指令: '前転'
-🧠 📊 状态快照: 电池8%, 姿态站立
-🧠 ⚠️ Quick precheck拒绝: 電池残量が極めて低い状態です (8%)
-❌ 动作被拒绝
+Received command: '前転'
+State snapshot: Battery 8%, posture standing
+Quick precheck rejection: Battery level extremely low (8%)
+Action rejected
 ```
 
-### 场景4：复杂序列（"座ってから挨拶"）
-**目标**：验证LLM理解复杂语义
+### Scenario 4: Complex Sequence ("座ってから挨拶")
+**Goal**: Verify LLM understanding of complex semantics
 
-**步骤**：
-1. 输入命令：`座ってから挨拶` 或 `先坐下再打招呼`
+**Steps**:
+1. Enter command: `座ってから挨拶`
 
-**预期行为**：
+**Expected Behavior**:
 ```bash
-🧠 📥 接收指令: '座ってから挨拶'
-🧠 🧠 使用3B模型推理...
-🧠 ✅ LLM返回: {"r":"座ってから挨拶します","a":null,"seq":[1009,1016]}
-🧠 ✅ 序列执行: Sit(1009) → Hello(1016)
+Received command: '座ってから挨拶'
+Using 3B model for inference...
+LLM returned: {"r":"座ってから挨拶します","a":null,"seq":[1009,1016]}
+Sequence execution: Sit(1009) -> Hello(1016)
 ```
 
-### 场景5：热路径高频命令
-**目标**：验证热路径性能
+### Scenario 5: Hot Path High-Frequency Commands
+**Goal**: Verify hot path performance
 
-**连续输入**：
+**Sequential input**:
 ```
 座って
 立って
@@ -320,77 +320,77 @@ ROS2初始化失败，启用模拟模式      # ← 预期fallback
 ハート
 ```
 
-**预期行为**：每个命令都应该命中热路径（⚡标记），延迟<0.01ms
+**Expected Behavior**: Each command should hit the hot path, latency <0.01ms
 
 ---
 
-## 故障排查
+## Troubleshooting
 
-### SportClient初始化失败
-**症状**：
+### SportClient Initialization Failure
+**Symptoms**:
 ```
-❌ SportClient初始化失败
+SportClient initialization failed
 ```
 
-**检查项**：
-1. 机器人是否开机：`ping 192.168.123.161`
-2. Unitree App是否关闭（避免占用冲突）
-3. 网络接口：`ip addr show eth0`
-4. DDS域ID：`echo $ROS_DOMAIN_ID` (应为0)
+**Checks**:
+1. Is robot powered on: `ping 192.168.123.161`
+2. Is Unitree App closed (avoid occupancy conflict)
+3. Network interface: `ip addr show eth0`
+4. DDS domain ID: `echo $ROS_DOMAIN_ID` (should be 0)
 
-### LD_LIBRARY_PATH未设置
-**症状**：
+### LD_LIBRARY_PATH Not Set
+**Symptoms**:
 ```
 ImportError: undefined symbol: ddsi_sertype_v0
 ```
 
-**修复**：
+**Fix**:
 ```bash
 export LD_LIBRARY_PATH=~/cyclonedds/install/lib:$LD_LIBRARY_PATH
 ```
 
-### Ollama模型未加载
-**症状**：
+### Ollama Model Not Loaded
+**Symptoms**:
 ```
-❌ 模型不存在: claudia-go2-3b:v11.2
+Model does not exist: claudia-go2-3b:v11.2
 ```
 
-**修复**：
+**Fix**:
 ```bash
 ollama list | grep claudia
-# 如果缺失：
+# If missing:
 ollama pull claudia-go2-3b:v11.2
 ```
 
 ---
 
-## 性能基准
+## Performance Benchmarks
 
-### 热路径性能
-- **命中判断**：< 0.01ms（字典查找）
-- **SafetyValidator检查**：< 0.05ms
-- **总延迟（坐姿→Heart+Stand）**：< 0.1ms（不含SDK通信）
+### Hot Path Performance
+- **Hit judgment**: < 0.01ms (dictionary lookup)
+- **SafetyValidator check**: < 0.05ms
+- **Total latency (sitting->Heart+Stand)**: < 0.1ms (excluding SDK communication)
 
-### LLM推理性能
-- **3B模型**：800-1500ms（简单命令）
-- **7B模型**：2000-4000ms（复杂序列）
-- **参数收敛**：temperature=0.1, num_predict=30
+### LLM Inference Performance
+- **3B model**: 800-1500ms (simple commands)
+- **7B model**: 2000-4000ms (complex sequences)
+- **Parameter convergence**: temperature=0.1, num_predict=30
 
-### 安全检查性能
-- **Quick Precheck**：< 0.01ms（LLM前）
-- **SafetyValidator**：< 0.05ms（动作前）
-- **Final Safety Gate**：< 0.01ms（执行前）
+### Safety Check Performance
+- **Quick Precheck**: < 0.01ms (before LLM)
+- **SafetyValidator**: < 0.05ms (before action)
+- **Final Safety Gate**: < 0.01ms (before execution)
 
 ---
 
-## 审计日志
+## Audit Logs
 
-### 日志位置
+### Log Location
 ```bash
 logs/audit/audit_YYYYMMDD.jsonl
 ```
 
-### 关键字段
+### Key Fields
 ```json
 {
   "timestamp": "2025-11-14T17:10:45.123",
@@ -407,86 +407,86 @@ logs/audit/audit_YYYYMMDD.jsonl
 }
 ```
 
-### 分析命令
+### Analysis Commands
 ```bash
-# 统计热路径命中率
+# Count hot path hit rate
 grep "hotpath_executed" logs/audit/*.jsonl | wc -l
 
-# 查看拒绝案例
+# View rejection cases
 grep "rejected" logs/audit/*.jsonl | jq .
 
-# 延迟P95
+# Latency P95
 jq -r '.latency_ms' logs/audit/*.jsonl | sort -n | tail -n 5
 ```
 
 ---
 
-## 下一步
+## Next Steps
 
-### 已完成修复（Commit 8df3710）✅
-1. ✅ 重复执行动作问题 - 热路径不再执行，统一由commander执行
-2. ✅ 状态快照不准确 - 添加姿态跟踪，模拟模式准确反映Stand/Sit状态
-3. ✅ ROS2错误信息暴露 - 抑制stderr输出，用户不再看到底层错误
-4. ✅ LLM对话误解 - 添加对话检测，"あなたは誰"等返回友好回复而非动作
+### Completed Fixes (Commit 8df3710)
+1. Duplicate action execution - Hot path no longer executes, unified execution by commander
+2. Inaccurate state snapshot - Added posture tracking, simulation mode accurately reflects Stand/Sit state
+3. ROS2 error message exposure - Suppressed stderr output, users no longer see underlying errors
+4. LLM dialog misinterpretation - Added dialog detection, "あなたは誰" etc. return friendly replies instead of actions
 
-### 立即可执行（P0 - 今天）
-1. ⏳ 执行场景1-5完整测试（验证修复效果）
-2. ⏳ 测试对话查询："あなたは誰"、"可愛いね"、"ありがとう"
-3. ⏳ 验证状态跟踪：Stand→Heart（无重复站立）
-4. ⏳ 收集审计日志（验证route="conversational"、"hotpath"）
+### Immediately Executable (P0 - Today)
+1. Execute scenario 1-5 complete test (verify fix effects)
+2. Test dialog queries: "あなたは誰", "可愛いね", "ありがとう"
+3. Verify state tracking: Stand->Heart (no duplicate standing)
+4. Collect audit logs (verify route="conversational", "hotpath")
 
-### 优化方向（P1 - 本周）
-1. 扩展热路径覆盖（添加10-15个变体）
-2. 扩展对话关键词（更多对话场景）
-3. 外部化电量阈值配置（config/default.yaml）
-4. 每日审计报告脚本
+### Optimization Direction (P1 - This Week)
+1. Expand hot path coverage (add 10-15 variants)
+2. Expand dialog keywords (more dialog scenarios)
+3. Externalize battery threshold configuration (config/default.yaml)
+4. Daily audit report script
 
-### 生产部署准备（P2 - 下周）
-1. 性能压测（1000条命令，包含对话和动作混合）
-2. 边界条件测试（网络断开、低电量、异常姿态）
-3. LED状态同步验证
-4. 真实状态监控集成（SportClient API查询实际姿态）
+### Production Deployment Preparation (P2 - Next Week)
+1. Performance stress test (1000 commands, mixed dialog and actions)
+2. Boundary condition test (network disconnect, low battery, abnormal posture)
+3. LED status sync verification
+4. Real state monitoring integration (SportClient API query actual posture)
 
 ---
 
-## 常见问题
+## FAQ
 
-### Q1：ROS2错误影响功能吗？
-**A**：不影响。unitree_sdk2py独立工作，SystemStateMonitor已fallback到模拟模式。
+### Q1: Does the ROS2 error affect functionality?
+**A**: No. unitree_sdk2py works independently, SystemStateMonitor has fallen back to simulation mode.
 
-### Q2：模拟模式的状态准确吗？
-**A**：✅ **已优化**（Commit 8df3710）：模拟模式现在跟踪姿态变化（Stand/Sit/Down），状态快照准确反映最后执行的动作。电池仍为默认100%。真实电量/IMU需要通过SportClient API查询（已计划集成P2）。
+### Q2: Is the simulation mode state accurate?
+**A**: **Optimized** (Commit 8df3710): Simulation mode now tracks posture changes (Stand/Sit/Down), state snapshot accurately reflects the last executed action. Battery remains at default 100%. Real battery/IMU requires SportClient API query (P2 integration planned).
 
-### Q3：如何完全禁用ROS2警告？
-**A**：✅ **已自动处理**（Commit 8df3710）：系统自动抑制ROS2错误输出，用户不再看到`[ERROR] [rmw_cyclonedds_cpp]`信息。如需手动禁用其他ROS2日志：
+### Q3: How to completely disable ROS2 warnings?
+**A**: **Already handled automatically** (Commit 8df3710): System automatically suppresses ROS2 error output, users no longer see `[ERROR] [rmw_cyclonedds_cpp]` messages. To manually disable other ROS2 logs:
 ```bash
 export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}] {message}"
 export RCUTILS_LOGGING_BUFFERED_STREAM=0
 ```
 
-### Q4：LD_LIBRARY_PATH会影响其他程序吗？
-**A**：不会。LD_LIBRARY_PATH只在当前shell会话生效，不影响全局环境。
+### Q4: Does LD_LIBRARY_PATH affect other programs?
+**A**: No. LD_LIBRARY_PATH only takes effect in the current shell session, does not affect the global environment.
 
-### Q5：如何验证CycloneDDS版本？
-**A**：
+### Q5: How to verify CycloneDDS version?
+**A**:
 ```bash
 ldd ~/.local/lib/python3.8/site-packages/cyclonedds/_clayer.so | grep ddsc
-# 应显示: ~/cyclonedds/install/lib/libddsc.so.0
+# Should show: ~/cyclonedds/install/lib/libddsc.so.0
 ```
 
 ---
 
-**状态**: 🚀 **Ready for Full Hardware Testing (7 Critical Fixes Complete)**
-**修复汇总**:
-- ✅ DDS符号问题（Commit 54fd322）
-- ✅ BrainOutput TypeError（Commits d252ab3, 221e9b3）
-- ✅ Python 3.8兼容性（Commit c14935e）
-- ✅ 重复执行动作（Commit 8df3710）
-- ✅ 状态快照不准确（Commit 8df3710）
-- ✅ ROS2错误暴露（Commit 8df3710）
-- ✅ LLM对话误解（Commit 8df3710）
+**Status**: **Ready for Full Hardware Testing (7 Critical Fixes Complete)**
+**Fix Summary**:
+- DDS symbol issue (Commit 54fd322)
+- BrainOutput TypeError (Commits d252ab3, 221e9b3)
+- Python 3.8 compatibility (Commit c14935e)
+- Duplicate action execution (Commit 8df3710)
+- Inaccurate state snapshot (Commit 8df3710)
+- ROS2 error exposure (Commit 8df3710)
+- LLM dialog misinterpretation (Commit 8df3710)
 
-**下一步**: 执行硬件测试场景1-5 + 对话查询测试
+**Next Step**: Execute hardware test scenarios 1-5 + dialog query test
 
-**作者**: Claude + User
-**最后更新**: 2025-11-14 17:45 UTC
+**Author**: Claude + User
+**Last Updated**: 2025-11-14 17:45 UTC

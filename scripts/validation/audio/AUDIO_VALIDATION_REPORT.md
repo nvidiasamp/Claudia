@@ -1,134 +1,134 @@
-# Unitree Go2 音频I/O系统验证报告
+# Unitree Go2 Audio I/O System Validation Report
 
-## 📊 项目信息
+## Project Information
 
-| 项目 | 信息 |
-|------|------|
-| **验证系统名称** | Unitree Go2 音频I/O系统验证 |
-| **开发状态** | ✅ Phase A,B 完成 / 🔄 Phase C,D,E 开发中 |
-| **生成时间** | 2025-06-30 13:06:45 |
-| **平台支持** | Ubuntu 20.04 - aarch64 |
-| **开发者** | Claudia AI System |
-| **版本** | v1.0 |
-
----
-
-## 🎯 验证目标
-
-本音频验证系统旨在全面测试Unitree Go2机器人的音频输入输出能力，确保：
-
-1. **硬件连接稳定性** - 音频设备正确识别与连接
-2. **麦克风阵列性能** - 多通道采集、空间定位、噪声抑制
-3. **扬声器音质** - 频率响应、失真控制、音量一致性
-4. **ROS2集成兼容性** - 音频话题发布、实时数据流
-5. **系统综合性能** - 端到端延迟、稳定性、可视化
+| Item | Details |
+|------|---------|
+| **Validation System Name** | Unitree Go2 Audio I/O System Validation |
+| **Development Status** | Phase A,B Complete / Phase C,D,E In Development |
+| **Generated** | 2025-06-30 13:06:45 |
+| **Platform** | Ubuntu 20.04 - aarch64 |
+| **Developer** | Claudia AI System |
+| **Version** | v1.0 |
 
 ---
 
-## 🏗️ 系统架构
+## Validation Objectives
 
-### 验证阶段设计
+This audio validation system aims to comprehensively test the Unitree Go2 robot's audio input/output capabilities, ensuring:
+
+1. **Hardware connection stability** - Audio devices correctly identified and connected
+2. **Microphone array performance** - Multi-channel capture, spatial positioning, noise suppression
+3. **Speaker audio quality** - Frequency response, distortion control, volume consistency
+4. **ROS2 integration compatibility** - Audio topic publishing, real-time data streaming
+5. **Overall system performance** - End-to-end latency, stability, visualization
+
+---
+
+## System Architecture
+
+### Validation Phase Design
 
 ```
-🎵 音频I/O系统验证
-├── Phase A: 硬件连接与基础采集验证 ✅
-│   ├── 1️⃣ 音频设备检测与枚举
-│   ├── 2️⃣ 基础录音功能验证
-│   ├── 3️⃣ 基础播放功能验证
-│   └── 4️⃣ 音频系统延迟测试
-├── Phase B: 麦克风阵列全方位测试 ✅
-│   ├── 1️⃣ 通道一致性测试
-│   ├── 2️⃣ 频率响应分析
-│   └── 3️⃣ 噪声特性评估
-├── Phase C: 扬声器校准与音质评估 🔄
-│   ├── 1️⃣ 频率响应校准
-│   ├── 2️⃣ 最大音压级测试
-│   ├── 3️⃣ 总谐波失真(THD)分析
-│   └── 4️⃣ 音量一致性验证
-├── Phase D: ROS2音频话题集成验证 🔄
-│   ├── 1️⃣ audio_common_msgs集成
-│   ├── 2️⃣ 多通道数据发布
-│   ├── 3️⃣ 实时数据流测试
-│   └── 4️⃣ 时间戳同步验证
-└── Phase E: 综合可视化与性能报告生成 🔄
-    ├── 1️⃣ 音频波形可视化
-    ├── 2️⃣ 频谱分析图表
-    ├── 3️⃣ 性能指标仪表板
-    └── 4️⃣ 自动化测试报告
+Audio I/O System Validation
++-- Phase A: Hardware Connection and Basic Capture Verification [DONE]
+|   +-- 1. Audio device detection and enumeration
+|   +-- 2. Basic recording function verification
+|   +-- 3. Basic playback function verification
+|   +-- 4. Audio system latency test
++-- Phase B: Microphone Array Full-Range Test [DONE]
+|   +-- 1. Channel consistency test
+|   +-- 2. Frequency response analysis
+|   +-- 3. Noise characteristics assessment
++-- Phase C: Speaker Calibration and Audio Quality Assessment [IN PROGRESS]
+|   +-- 1. Frequency response calibration
+|   +-- 2. Maximum sound pressure level test
+|   +-- 3. Total harmonic distortion (THD) analysis
+|   +-- 4. Volume consistency verification
++-- Phase D: ROS2 Audio Topic Integration Verification [IN PROGRESS]
+|   +-- 1. audio_common_msgs integration
+|   +-- 2. Multi-channel data publishing
+|   +-- 3. Real-time data stream testing
+|   +-- 4. Timestamp synchronization verification
++-- Phase E: Comprehensive Visualization and Performance Report Generation [IN PROGRESS]
+    +-- 1. Audio waveform visualization
+    +-- 2. Spectrum analysis charts
+    +-- 3. Performance metric dashboard
+    +-- 4. Automated test report
 ```
 
-### 技术栈
+### Technology Stack
 
-| 层级 | 技术组件 | 用途 |
-|------|----------|------|
-| **硬件层** | PortAudio, ALSA, PulseAudio | 底层音频设备访问 |
-| **信号处理层** | SciPy, NumPy, LibROSA | 音频信号分析与处理 |
-| **可视化层** | Matplotlib, Plotly (计划) | 数据可视化与图表生成 |
-| **ROS2集成层** | audio_common_msgs, rclpy | 机器人系统集成 |
-| **应用层** | SoundDevice, JSON配置 | 用户接口与配置管理 |
+| Layer | Components | Purpose |
+|-------|-----------|---------|
+| **Hardware Layer** | PortAudio, ALSA, PulseAudio | Low-level audio device access |
+| **Signal Processing Layer** | SciPy, NumPy, LibROSA | Audio signal analysis and processing |
+| **Visualization Layer** | Matplotlib, Plotly (planned) | Data visualization and chart generation |
+| **ROS2 Integration Layer** | audio_common_msgs, rclpy | Robot system integration |
+| **Application Layer** | SoundDevice, JSON configuration | User interface and configuration management |
 
 ---
 
-## 🛠️ 安装与配置
+## Installation and Configuration
 
-### 系统要求
+### System Requirements
 
-- **操作系统**: Ubuntu 20.04 LTS (aarch64)
-- **Python版本**: 3.8+
-- **内存**: 最低 2GB RAM
-- **存储**: 500MB 可用空间
-- **音频设备**: 支持ALSA/PulseAudio的音频设备
+- **OS**: Ubuntu 20.04 LTS (aarch64)
+- **Python**: 3.8+
+- **Memory**: Minimum 2GB RAM
+- **Storage**: 500MB available space
+- **Audio Device**: Audio device supporting ALSA/PulseAudio
 
-### 快速安装
+### Quick Installation
 
 ```bash
-# 1. 进入音频验证目录
+# 1. Navigate to audio validation directory
 cd scripts/validation/audio/
 
-# 2. 安装所有依赖 (自动化)
+# 2. Install all dependencies (automated)
 ./run_audio_validation.sh --install
 
-# 3. 验证安装
+# 3. Verify installation
 ./run_audio_validation.sh --help
 ```
 
-### 手动安装 (可选)
+### Manual Installation (Optional)
 
 ```bash
-# 系统依赖
+# System dependencies
 sudo apt update
 sudo apt install -y portaudio19-dev libasound2-dev libsndfile1-dev libfftw3-dev python3-pip python3-dev
 
-# Python依赖
+# Python dependencies
 pip3 install --user sounddevice scipy librosa matplotlib numpy
 
-# ROS2依赖 (可选)
+# ROS2 dependencies (optional)
 pip3 install --user audio-common-msgs
 ```
 
 ---
 
-## 🚀 使用指南
+## Usage Guide
 
-### 基本用法
+### Basic Usage
 
 ```bash
-# 运行默认验证 (Phase A + B)
+# Run default validation (Phase A + B)
 ./run_audio_validation.sh
 
-# 运行特定阶段
+# Run specific phases
 ./run_audio_validation.sh --phases A,B
 
-# 自定义音频参数
+# Custom audio parameters
 ./run_audio_validation.sh --sample-rate 48000 --channels 2 --duration 10.0
 
-# 使用配置文件
+# Use configuration file
 ./run_audio_validation.sh --config my_config.json
 ```
 
-### 高级配置
+### Advanced Configuration
 
-创建自定义配置文件 `audio_config.json`:
+Create a custom configuration file `audio_config.json`:
 
 ```json
 {
@@ -146,113 +146,113 @@ pip3 install --user audio-common-msgs
 }
 ```
 
-### 命令行参数详解
+### Command Line Arguments
 
-| 参数 | 简写 | 默认值 | 说明 |
-|------|------|--------|------|
-| `--phases` | `-p` | A,B | 要执行的验证阶段 |
-| `--config` | `-c` | - | 配置文件路径 |
-| `--sample-rate` | `-sr` | 44100 | 音频采样率 (Hz) |
-| `--channels` | `-ch` | 2 | 音频通道数 |
-| `--duration` | `-d` | 5.0 | 测试持续时间 (秒) |
-| `--install` | `-i` | - | 安装依赖包 |
-| `--help` | `-h` | - | 显示帮助信息 |
-
----
-
-## 📋 验证阶段详解
-
-### Phase A: 硬件连接与基础采集验证 ✅
-
-**目标**: 确认音频硬件正常工作，基础I/O功能可用
-
-#### 测试项目
-
-1. **设备检测** - 枚举并验证音频输入输出设备
-   - 检测项: 可用设备数量、设备名称、支持通道数
-   - 通过标准: 至少1个输入设备和1个输出设备
-
-2. **基础录音测试** - 验证音频采集功能
-   - 检测项: 录音幅度、RMS电平、过零率
-   - 通过标准: 最大幅度 > 0.001
-
-3. **基础播放测试** - 验证音频播放功能
-   - 检测项: 1kHz正弦波播放成功
-   - 通过标准: 无异常错误
-
-4. **延迟测试** - 评估音频系统延迟
-   - 检测项: 估算端到端延迟
-   - 通过标准: 延迟 < 100ms (估计值)
-
-#### 输出文件
-
-- `phase_a_recording_sample.wav` - 录音测试样本
-- `audio_validation_results_YYYYMMDD_HHMMSS.json` - 详细测试结果
-
-### Phase B: 麦克风阵列全方位测试 ✅
-
-**目标**: 全面测试麦克风阵列性能，包括一致性、频响、噪声特性
-
-#### 测试项目
-
-1. **通道一致性测试** - 验证多通道麦克风响应一致性
-   - 方法: 播放白噪声，同时录制所有通道
-   - 分析: RMS电平、峰值、信噪比估算
-   - 通过标准: 通道间一致性比率 > 0.8
-
-2. **频率响应测试** - 测试麦克风频率特性
-   - 方法: 播放多个频率的正弦波信号
-   - 测试频率: 100Hz, 440Hz, 1kHz, 5kHz, 10kHz
-   - 通过标准: 平均频率检测精度 > 95%
-
-3. **噪声特性测试** - 评估环境噪声和系统噪声
-   - 方法: 录制静音环境，分析噪声底限
-   - 通过标准: 噪声底限 < -40dB
-
-#### 性能指标
-
-| 指标 | 目标值 | 测量方法 |
-|------|--------|----------|
-| 通道一致性 | > 0.8 | RMS比值 |
-| 频率精度 | > 95% | FFT分析 |
-| 噪声底限 | < -40dB | RMS功率谱 |
-| 信噪比 | > 40dB | 信号/噪声比 |
-
-### Phase C: 扬声器校准与音质评估 🔄 (开发中)
-
-**计划功能**:
-- 频率响应校准
-- 最大音压级测试
-- 总谐波失真(THD)分析
-- 音量一致性验证
-
-### Phase D: ROS2音频话题集成验证 🔄 (开发中)
-
-**计划功能**:
-- audio_common_msgs集成测试
-- 多通道音频数据发布
-- 实时数据流性能测试
-- 时间戳同步验证
-
-### Phase E: 综合可视化与性能报告生成 🔄 (开发中)
-
-**计划功能**:
-- 交互式音频波形可视化
-- 实时频谱分析图表
-- 性能指标仪表板
-- 自动化HTML/PDF报告生成
+| Argument | Short | Default | Description |
+|----------|-------|---------|-------------|
+| `--phases` | `-p` | A,B | Validation phases to execute |
+| `--config` | `-c` | - | Configuration file path |
+| `--sample-rate` | `-sr` | 44100 | Audio sample rate (Hz) |
+| `--channels` | `-ch` | 2 | Number of audio channels |
+| `--duration` | `-d` | 5.0 | Test duration (seconds) |
+| `--install` | `-i` | - | Install dependencies |
+| `--help` | `-h` | - | Show help information |
 
 ---
 
-## 📊 测试结果解读
+## Validation Phase Details
 
-### 结果文件结构
+### Phase A: Hardware Connection and Basic Capture Verification [DONE]
+
+**Objective**: Confirm audio hardware is working properly and basic I/O functions are available
+
+#### Test Items
+
+1. **Device Detection** - Enumerate and verify audio input/output devices
+   - Checks: Available device count, device names, supported channels
+   - Pass criteria: At least 1 input device and 1 output device
+
+2. **Basic Recording Test** - Verify audio capture functionality
+   - Checks: Recording amplitude, RMS level, zero-crossing rate
+   - Pass criteria: Maximum amplitude > 0.001
+
+3. **Basic Playback Test** - Verify audio playback functionality
+   - Checks: 1kHz sine wave playback success
+   - Pass criteria: No abnormal errors
+
+4. **Latency Test** - Evaluate audio system latency
+   - Checks: Estimated end-to-end latency
+   - Pass criteria: Latency < 100ms (estimated)
+
+#### Output Files
+
+- `phase_a_recording_sample.wav` - Recording test sample
+- `audio_validation_results_YYYYMMDD_HHMMSS.json` - Detailed test results
+
+### Phase B: Microphone Array Full-Range Test [DONE]
+
+**Objective**: Comprehensively test microphone array performance, including consistency, frequency response, noise characteristics
+
+#### Test Items
+
+1. **Channel Consistency Test** - Verify multi-channel microphone response consistency
+   - Method: Play white noise and record all channels simultaneously
+   - Analysis: RMS level, peak value, SNR estimation
+   - Pass criteria: Inter-channel consistency ratio > 0.8
+
+2. **Frequency Response Test** - Test microphone frequency characteristics
+   - Method: Play sine wave signals at multiple frequencies
+   - Test frequencies: 100Hz, 440Hz, 1kHz, 5kHz, 10kHz
+   - Pass criteria: Average frequency detection accuracy > 95%
+
+3. **Noise Characteristics Test** - Evaluate environmental and system noise
+   - Method: Record in a quiet environment, analyze noise floor
+   - Pass criteria: Noise floor < -40dB
+
+#### Performance Metrics
+
+| Metric | Target Value | Measurement Method |
+|--------|-------------|-------------------|
+| Channel consistency | > 0.8 | RMS ratio |
+| Frequency accuracy | > 95% | FFT analysis |
+| Noise floor | < -40dB | RMS power spectrum |
+| Signal-to-noise ratio | > 40dB | Signal/noise ratio |
+
+### Phase C: Speaker Calibration and Audio Quality Assessment [IN PROGRESS]
+
+**Planned features**:
+- Frequency response calibration
+- Maximum sound pressure level test
+- Total harmonic distortion (THD) analysis
+- Volume consistency verification
+
+### Phase D: ROS2 Audio Topic Integration Verification [IN PROGRESS]
+
+**Planned features**:
+- audio_common_msgs integration test
+- Multi-channel audio data publishing
+- Real-time data stream performance test
+- Timestamp synchronization verification
+
+### Phase E: Comprehensive Visualization and Performance Report Generation [IN PROGRESS]
+
+**Planned features**:
+- Interactive audio waveform visualization
+- Real-time spectrum analysis charts
+- Performance metric dashboard
+- Automated HTML/PDF report generation
+
+---
+
+## Test Result Interpretation
+
+### Result File Structure
 
 ```json
 {
   "validation_info": {
     "start_time": "2025-06-30T13:06:45",
-    "end_time": "2025-06-30T13:07:15", 
+    "end_time": "2025-06-30T13:07:15",
     "total_duration": 30.5,
     "overall_success_rate": 0.85,
     "overall_status": "pass"
@@ -260,221 +260,221 @@ pip3 install --user audio-common-msgs
   "phases": {
     "A": {
       "phase": "A",
-      "name": "硬件连接与基础采集验证",
+      "name": "Hardware Connection and Basic Capture Verification",
       "success_rate": 1.0,
       "overall_status": "pass",
-      "tests": { /* 详细测试结果 */ }
+      "tests": { /* detailed test results */ }
     }
   }
 }
 ```
 
-### 状态解释
+### Status Descriptions
 
-| 状态 | 含义 | 建议操作 |
-|------|------|----------|
-| `pass` | 测试通过 | 继续下一阶段 |
-| `fail` | 测试失败 | 检查错误信息，修复问题 |
-| `warning` | 警告状态 | 可继续，但建议优化 |
-| `pending` | 待实现 | 等待功能开发完成 |
+| Status | Meaning | Suggested Action |
+|--------|---------|-----------------|
+| `pass` | Test passed | Continue to next phase |
+| `fail` | Test failed | Check error message, fix the issue |
+| `warning` | Warning state | Can continue, but optimization recommended |
+| `pending` | Not yet implemented | Wait for feature development |
 
-### 常见问题排查
+### Common Troubleshooting
 
-#### 1. 音频设备未找到
+#### 1. Audio Devices Not Found
 
 ```bash
-# 检查音频设备
-aplay -l    # 播放设备
-arecord -l  # 录制设备
+# Check audio devices
+aplay -l    # Playback devices
+arecord -l  # Recording devices
 
-# 检查用户权限
+# Check user permissions
 groups | grep audio
 
-# 添加用户到audio组
+# Add user to audio group
 sudo usermod -a -G audio $USER
 ```
 
-#### 2. 依赖安装失败
+#### 2. Dependency Installation Failure
 
 ```bash
-# 更新包管理器
+# Update package manager
 sudo apt update
 
-# 安装构建工具
+# Install build tools
 sudo apt install build-essential
 
-# 重新安装依赖
+# Reinstall dependencies
 ./run_audio_validation.sh --install
 ```
 
-#### 3. 录音幅度过低
+#### 3. Low Recording Amplitude
 
-- 检查麦克风是否正确连接
-- 调整系统音量设置
-- 确认麦克风未被静音
+- Check if microphone is properly connected
+- Adjust system volume settings
+- Confirm microphone is not muted
 
 ---
 
-## 🔧 开发与扩展
+## Development and Extension
 
-### 添加新测试项目
+### Adding New Test Items
 
-1. 在 `AudioValidationMain` 类中添加新的测试方法
-2. 在 `run_validation()` 中调用新方法
-3. 更新配置文件支持新参数
-4. 添加相应的命令行参数
+1. Add a new test method in the `AudioValidationMain` class
+2. Call the new method in `run_validation()`
+3. Update configuration file to support new parameters
+4. Add corresponding command line arguments
 
-### 自定义信号处理
+### Custom Signal Processing
 
 ```python
 def custom_signal_analysis(self, audio_data, sample_rate):
-    """自定义信号分析函数"""
-    # 实现您的分析逻辑
+    """Custom signal analysis function"""
+    # Implement your analysis logic
     result = {}
-    
-    # 例: 计算频谱质心
+
+    # Example: calculate spectral centroid
     fft_data = np.abs(np.fft.fft(audio_data))
     freqs = np.fft.fftfreq(len(audio_data), 1/sample_rate)
     spectral_centroid = np.sum(freqs * fft_data) / np.sum(fft_data)
-    
+
     result['spectral_centroid'] = spectral_centroid
     return result
 ```
 
-### 集成新的可视化
+### Integrating New Visualizations
 
 ```python
 import plotly.graph_objects as go
 
 def create_interactive_spectrum(self, frequencies, magnitudes):
-    """创建交互式频谱图"""
+    """Create interactive spectrum chart"""
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=frequencies,
         y=magnitudes,
         mode='lines',
-        name='频谱'
+        name='Spectrum'
     ))
-    
+
     fig.update_layout(
-        title='音频频谱分析',
-        xaxis_title='频率 (Hz)',
-        yaxis_title='幅度 (dB)'
+        title='Audio Spectrum Analysis',
+        xaxis_title='Frequency (Hz)',
+        yaxis_title='Amplitude (dB)'
     )
-    
+
     return fig
 ```
 
 ---
 
-## 📁 文件结构
+## File Structure
 
 ```
 scripts/validation/audio/
-├── audio_validation_main.py      # 主验证脚本
-├── run_audio_validation.sh       # 启动脚本
-├── AUDIO_VALIDATION_REPORT.md    # 本文档
-├── results/                      # 测试结果目录
-│   ├── audio_validation_results_*.json
-│   └── phase_a_recording_sample.wav
-└── logs/                        # 日志目录 (自动创建)
-    └── audio_validation_*.log
++-- audio_validation_main.py      # Main validation script
++-- run_audio_validation.sh       # Startup script
++-- AUDIO_VALIDATION_REPORT.md    # This document
++-- results/                      # Test results directory
+|   +-- audio_validation_results_*.json
+|   +-- phase_a_recording_sample.wav
++-- logs/                         # Log directory (auto-created)
+    +-- audio_validation_*.log
 ```
 
 ---
 
-## 🎓 技术参考
+## Technical Reference
 
-### 音频处理理论
+### Audio Processing Theory
 
-1. **采样定理**: 采样率必须大于信号最高频率的2倍
-2. **窗函数**: 用于减少频谱泄漏的数学函数
-3. **FFT分析**: 快速傅里叶变换，用于频域分析
-4. **信噪比**: SNR = 20 * log10(信号RMS / 噪声RMS)
+1. **Sampling Theorem**: Sample rate must be greater than twice the highest signal frequency
+2. **Window Functions**: Mathematical functions used to reduce spectral leakage
+3. **FFT Analysis**: Fast Fourier Transform for frequency domain analysis
+4. **Signal-to-Noise Ratio**: SNR = 20 * log10(Signal RMS / Noise RMS)
 
-### Unitree Go2音频规格
+### Unitree Go2 Audio Specifications
 
-| 规格项 | 参数 |
-|--------|------|
-| 麦克风类型 | 全向电容麦克风阵列 |
-| 采样率 | 16kHz/44.1kHz |
-| 位深度 | 16-bit |
-| 通道数 | 2通道 (立体声) |
-| 频响范围 | 20Hz - 20kHz |
-| 信噪比 | > 60dB |
+| Specification | Value |
+|--------------|-------|
+| Microphone type | Omnidirectional condenser microphone array |
+| Sample rate | 16kHz/44.1kHz |
+| Bit depth | 16-bit |
+| Channels | 2-channel (stereo) |
+| Frequency response | 20Hz - 20kHz |
+| Signal-to-noise ratio | > 60dB |
 
-### 相关标准
+### Related Standards
 
-- **IEC 61672**: 声级计标准
-- **AES17**: 数字音频设备测量标准
-- **ITU-T P.862**: PESQ语音质量评估标准
+- **IEC 61672**: Sound level meter standard
+- **AES17**: Digital audio device measurement standard
+- **ITU-T P.862**: PESQ voice quality assessment standard
 
 ---
 
-## 📝 更新日志
+## Changelog
 
 ### v1.0 (2025-06-30)
 
-#### ✅ 已完成
-- Phase A: 硬件连接与基础采集验证
-- Phase B: 麦克风阵列全方位测试
-- 完整的启动脚本和依赖管理
-- JSON格式结果输出
-- 详细的错误处理和日志记录
+#### Completed
+- Phase A: Hardware connection and basic capture verification
+- Phase B: Microphone array full-range test
+- Complete startup script and dependency management
+- JSON format result output
+- Detailed error handling and logging
 
-#### 🔄 开发中
-- Phase C: 扬声器校准与音质评估
-- Phase D: ROS2音频话题集成验证
-- Phase E: 综合可视化与性能报告生成
+#### In Development
+- Phase C: Speaker calibration and audio quality assessment
+- Phase D: ROS2 audio topic integration verification
+- Phase E: Comprehensive visualization and performance report generation
 
-#### 📅 计划功能
-- 实时音频可视化界面
-- Web端监控仪表板
-- 自动化持续集成测试
-- 音频质量机器学习评估
-
----
-
-## 🤝 贡献指南
-
-欢迎贡献代码和改进建议！
-
-### 提交流程
-
-1. Fork 本项目
-2. 创建功能分支: `git checkout -b feature/new-audio-test`
-3. 提交更改: `git commit -am 'Add new audio test'`
-4. 推送分支: `git push origin feature/new-audio-test`
-5. 创建 Pull Request
-
-### 代码规范
-
-- 遵循 PEP 8 Python 代码规范
-- 添加详细的文档字符串
-- 包含单元测试
-- 更新相关文档
+#### Planned Features
+- Real-time audio visualization interface
+- Web-based monitoring dashboard
+- Automated continuous integration testing
+- Machine learning audio quality assessment
 
 ---
 
-## 📞 支持与反馈
+## Contributing
 
-### 技术支持
+Contributions and improvement suggestions are welcome!
 
-- **项目仓库**: [Claudia Robot Project](https://github.com/your-repo/claudia)
-- **问题报告**: GitHub Issues
-- **文档问题**: 请在相关文档页面留言
+### Submission Process
 
-### 常见问题
+1. Fork this project
+2. Create a feature branch: `git checkout -b feature/new-audio-test`
+3. Commit changes: `git commit -am 'Add new audio test'`
+4. Push branch: `git push origin feature/new-audio-test`
+5. Create Pull Request
 
-1. **Q**: 为什么某些依赖安装失败？
-   **A**: 请确保系统已更新，并具有适当的编译工具。
+### Code Standards
 
-2. **Q**: 音频设备权限错误怎么解决？
-   **A**: 将用户添加到audio组：`sudo usermod -a -G audio $USER`
-
-3. **Q**: 如何自定义测试参数？
-   **A**: 创建JSON配置文件，使用`--config`参数指定。
+- Follow PEP 8 Python code style
+- Add detailed docstrings
+- Include unit tests
+- Update related documentation
 
 ---
 
-**© 2025 Claudia AI System. 本文档将持续更新以反映最新的开发进展。** 
+## Support and Feedback
+
+### Technical Support
+
+- **Repository**: [Claudia Robot Project](https://github.com/your-repo/claudia)
+- **Issue Reporting**: GitHub Issues
+- **Documentation Issues**: Please comment on the relevant documentation page
+
+### FAQ
+
+1. **Q**: Why do some dependencies fail to install?
+   **A**: Please ensure the system is updated and has the appropriate compilation tools.
+
+2. **Q**: How to resolve audio device permission errors?
+   **A**: Add the user to the audio group: `sudo usermod -a -G audio $USER`
+
+3. **Q**: How to customize test parameters?
+   **A**: Create a JSON configuration file and specify it with the `--config` argument.
+
+---
+
+**Copyright 2025 Claudia AI System. This document will be continuously updated to reflect the latest development progress.**

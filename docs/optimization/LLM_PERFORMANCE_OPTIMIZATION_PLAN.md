@@ -1,99 +1,99 @@
-# Claudia LLM性能优化方案
+# Claudia LLM Performance Optimization Plan
 
-**日期**: 2025-11-14
-**版本**: v1.0
-**问题来源**: 硬件测试发现3个Critical问题
-
----
-
-## 问题总结
-
-### 1. LLM性能瓶颈严重 🔴 Critical
-
-**症状**:
-```
-🧠 ✅ 3B模型响应 (2866ms)  # 2.8秒延迟
-🧠 ✅ 3B模型响应 (3600ms)  # 3.6秒延迟
-🧠 模型超时(5s): claudia-go2-3b:v11.2  # 超时
-```
-
-**影响**:
-- 实时机器人控制延迟不可接受（应<500ms）
-- 用户体验极差（3秒等待）
-- 热路径命中率低时系统不可用
-
-**根本原因**:
-1. ❌ **3B模型太小**，理解能力不足导致多次retry
-2. ⚠️ **Ollama配置未优化**（batch_size, ctx_size可能不够）
-3. ⚠️ **Jetson GPU利用率低**（GR3D_FREQ显示0%，可能统计延迟）
-4. ❌ **本地推理架构限制**（Qwen2.5-3B量化后仍有3B参数）
+**Date**: 2025-11-14
+**Version**: v1.0
+**Problem Source**: 3 Critical issues found during hardware testing
 
 ---
 
-### 2. LLM输出语言混乱 🟡 High
+## Problem Summary
 
-**症状**:
+### 1. Severe LLM Performance Bottleneck - Critical
+
+**Symptoms**:
 ```
-💬 回复: 立ちます然后は挨拶します  # 混用日语+中文
-💬 回复: 前扑します  # "扑"是中文字
+3B model response (2866ms)  # 2.8s delay
+3B model response (3600ms)  # 3.6s delay
+Model timeout(5s): claudia-go2-3b:v11.2  # Timeout
 ```
 
-**影响**:
-- TTS播报可能失败（日语TTS无法读中文）
-- 用户体验不专业
-- 多语言混乱显得智能水平低
+**Impact**:
+- Real-time robot control delay is unacceptable (should be <500ms)
+- Extremely poor user experience (3-second wait)
+- System unusable when hot path hit rate is low
 
-**根本原因**:
+**Root Causes**:
+1. **3B model too small**, insufficient understanding causes multiple retries
+2. **Ollama configuration not optimized** (batch_size, ctx_size may be insufficient)
+3. **Low Jetson GPU utilization** (GR3D_FREQ shows 0%, may be monitoring delay)
+4. **Local inference architecture limitation** (Qwen2.5-3B still has 3B parameters even after quantization)
+
+---
+
+### 2. LLM Output Language Confusion - High
+
+**Symptoms**:
+```
+Response: 立ちます然后は挨拶します  # Mixed Japanese + Chinese
+Response: 前扑します  # "扑" is a Chinese character
+```
+
+**Impact**:
+- TTS playback may fail (Japanese TTS cannot read Chinese)
+- Unprofessional user experience
+- Multilingual confusion makes intelligence appear low
+
+**Root Causes**:
 ```bash
-# 当前Modelfile SYSTEM prompt
+# Current Modelfile SYSTEM prompt
 SYSTEM Claudia dog. Reply one JSON.
-pounce→{"r":"前扑します","a":1032}  # ❌ "前扑"是中文
-scrape→{"r":"擦ります","a":1029}    # ✅ 正确日语
+pounce→{"r":"前扑します","a":1032}  # "前扑" is Chinese
+scrape→{"r":"擦ります","a":1029}    # Correct Japanese
 ```
 
-1. ❌ **Modelfile训练数据混用中日文**
-2. ❌ **SYSTEM prompt未明确约束"必须纯日语"**
-3. ❌ **示例中就有错误**（"前扑します"）
+1. **Modelfile training data mixes Chinese and Japanese**
+2. **SYSTEM prompt doesn't explicitly constrain "must be pure Japanese"**
+3. **Examples themselves contain errors** ("前扑します")
 
 ---
 
-### 3. 智能理解能力不足 🟡 High
+### 3. Insufficient Intelligent Understanding - High
 
-**症状**:
+**Symptoms**:
 ```
-くら> 立ってそして挨拶して  # "站立然后问候"
-💬 回复: 立ちます然后は挨拶します
-🔧 API: 1018  # ❌ 不存在的API（正确应该是序列[1004,1016]）
-❌ 执行失败
-```
-
-```
-くら> 可愛いいね  # "真可爱"
-💬 回复: ありがとうございます！  # 只回复，不做动作
-# ❓ 用户可能期望做可爱动作（如Heart）
+くら> 立ってそして挨拶して  # "Stand then greet"
+Response: 立ちます然后は挨拶します
+API: 1018  # Non-existent API (correct should be sequence [1004,1016])
+Execution failed
 ```
 
-**影响**:
-- 复杂序列理解失败
-- 无法正确分解多步任务
-- 对话vs动作意图判断不够智能
+```
+くら> 可愛いいね  # "So cute"
+Response: ありがとうございます！  # Only replies, no action
+# User may expect a cute action (e.g., Heart)
+```
 
-**根本原因**:
-1. ❌ **3B模型容量太小**，无法理解复杂语义
-2. ❌ **训练数据缺少序列样本**（"立ってそして挨拶"→[1004,1016]）
-3. ⚠️ **对话检测规则太简单**（"可愛いね"可能需要动作+回复）
+**Impact**:
+- Complex sequence understanding failure
+- Cannot correctly decompose multi-step tasks
+- Dialog vs action intent judgment not intelligent enough
+
+**Root Causes**:
+1. **3B model capacity too small**, cannot understand complex semantics
+2. **Training data lacks sequence samples** ("立ってそして挨拶" -> [1004,1016])
+3. **Dialog detection rules too simple** ("可愛いね" may need action + reply)
 
 ---
 
-## 优化方案
+## Optimization Plan
 
-### P0 - 紧急修复（今天完成）⚡
+### P0 - Emergency Fix (Complete Today)
 
-#### 1.1 修复Modelfile语言混乱
+#### 1.1 Fix Modelfile Language Confusion
 
-**操作**:
+**Operation**:
 ```bash
-# 创建新的纯日语Modelfile
+# Create new pure Japanese Modelfile
 cat > ClaudiaGo2_v11.3_Japanese <<'EOF'
 FROM claudia-go2-3b:v11.2
 
@@ -121,66 +121,66 @@ PARAMETER top_p 0.8
 PARAMETER num_ctx 2048
 EOF
 
-# 创建新模型
+# Create new model
 ollama create claudia-go2-3b:v11.3 -f ClaudiaGo2_v11.3_Japanese
 ```
 
-**验证**:
+**Verification**:
 ```bash
 echo "立ってそして挨拶して" | ollama run claudia-go2-3b:v11.3
-# 期望: {"r":"立ってから挨拶します","a":null,"seq":[1004,1016]}
-# 不应该出现中文字符
+# Expected: {"r":"立ってから挨拶します","a":null,"seq":[1004,1016]}
+# Should not contain Chinese characters
 ```
 
-**预期改进**: 消除中日混用，但性能仍慢（需P1解决）
+**Expected improvement**: Eliminates Chinese-Japanese mixing, but performance still slow (needs P1 solution)
 
 ---
 
-#### 1.2 扩展热路径覆盖（减少LLM调用）
+#### 1.2 Expand Hot Path Coverage (Reduce LLM Calls)
 
-**操作**: 修改`production_brain.py`
+**Operation**: Modify `production_brain.py`
 ```python
-# 当前热路径只有13个关键词
+# Current hot path only has 13 keywords
 HOTPATH_MAP = {
     '座って': 1009, 'すわって': 1009, '座る': 1009,
-    # ... 13个
+    # ... 13 entries
 }
 
-# 扩展到50+个变体
+# Expand to 50+ variants
 HOTPATH_MAP = {
-    # 座る变体
+    # Sit variants
     '座って': 1009, 'すわって': 1009, '座る': 1009,
     'おすわり': 1009, 'すわり': 1009, 'お座り': 1009,
     'sit': 1009, 'sit down': 1009, '坐下': 1009,
 
-    # 立つ变体
+    # Stand variants
     '立って': 1004, 'たって': 1004, '立つ': 1004,
     'お立ち': 1004, '起きて': 1004,
     'stand': 1004, 'stand up': 1004, '站立': 1004,
 
-    # 挨拶变体
+    # Greeting variants
     'こんにちは': 1016, 'ハロー': 1016, 'ハイ': 1016,
     'やあ': 1016, 'おはよう': 1016,
     'hello': 1016, 'hi': 1016, '你好': 1016,
 
-    # 可爱动作变体
+    # Cute action variants
     'ハート': 1036, 'はーと': 1036, 'いい子': 1036,
     '可愛い': 1036, 'かわいい': 1036,
     'heart': 1036, 'cute': 1036, '爱心': 1036,
 
-    # ... 更多变体
+    # ... more variants
 }
 ```
 
-**预期改进**: 热路径命中率从20%→80%，大部分命令<1ms响应
+**Expected improvement**: Hot path hit rate from 20% -> 80%, most commands <1ms response
 
 ---
 
-#### 1.3 修复API 1018错误（添加预定义序列）
+#### 1.3 Fix API 1018 Error (Add Predefined Sequences)
 
-**操作**: 添加常见序列到热路径
+**Operation**: Add common sequences to hot path
 ```python
-# 在process_command中添加序列热路径
+# Add sequence hot path in process_command
 SEQUENCE_HOTPATH = {
     '立ってから挨拶': [1004, 1016],
     '立って挨拶': [1004, 1016],
@@ -189,7 +189,7 @@ SEQUENCE_HOTPATH = {
     '座って挨拶': [1009, 1016],
 }
 
-# 在热路径检查后添加序列检查
+# Add sequence check after hot path check
 for key, seq in SEQUENCE_HOTPATH.items():
     if key in command:
         return BrainOutput(
@@ -199,138 +199,138 @@ for key, seq in SEQUENCE_HOTPATH.items():
         )
 ```
 
-**预期改进**: 常见序列命令不再调用LLM，避免1018错误
+**Expected improvement**: Common sequence commands no longer call LLM, avoiding 1018 error
 
 ---
 
-### P1 - 性能优化（本周完成）🚀
+### P1 - Performance Optimization (Complete This Week)
 
-#### 2.1 升级主模型到7B
+#### 2.1 Upgrade Main Model to 7B
 
-**当前状况**:
-- 3B: 快但理解能力差 → 导致错误需retry → 反而更慢
-- 7B: 理解好但慢 → 一次成功可能比3B多次retry更快
+**Current situation**:
+- 3B: Fast but poor understanding -> causes errors needing retry -> actually slower
+- 7B: Better understanding but slow -> one success may be faster than multiple 3B retries
 
-**操作**:
+**Operation**:
 ```python
-# 修改production_brain.py默认路由策略
-# 当前: 简单命令→3B, 复杂命令→7B
-# 优化: 所有非热路径→7B（避免3B理解错误）
+# Modify production_brain.py default routing strategy
+# Current: Simple commands -> 3B, Complex commands -> 7B
+# Optimized: All non-hot-path -> 7B (avoid 3B understanding errors)
 
 # Line 968-976
 if len(command) > 20 or "そして" in command or "から" in command:
-    # 复杂命令 → 7B
+    # Complex commands -> 7B
     selected_7b = self.model_7b_pool[0]
     enhanced_cmd = self._build_enhanced_prompt(command, selected_7b, state_snapshot)
     result = await self._call_ollama_v2(selected_7b, enhanced_cmd, timeout=10)
 else:
-    # 改为: 所有命令都用7B（3B理解能力不足）
+    # Changed to: All commands use 7B (3B understanding insufficient)
     selected_7b = self.model_7b_pool[0]
     enhanced_cmd = self._build_enhanced_prompt(command, selected_7b, state_snapshot)
     result = await self._call_ollama_v2(selected_7b, enhanced_cmd, timeout=8)
 ```
 
-**A/B测试**:
+**A/B Testing**:
 ```bash
-# 测试样本
+# Test samples
 commands = [
-    "立ってそして挨拶して",  # 复杂序列
-    "可愛い動作して",        # 语义理解
-    "疲れた",               # 隐喻
+    "立ってそして挨拶して",  # Complex sequence
+    "可愛い動作して",        # Semantic understanding
+    "疲れた",               # Metaphor
 ]
 
-# 对比
+# Comparison
 python3 test/test_3b_vs_7b_performance.py
 ```
 
-**预期改进**:
-- 准确率：60% → 90%
-- 平均延迟：3000ms（3B retry） → 5000ms（7B一次成功）
-- **总体体验更好**（准确性>速度）
+**Expected improvement**:
+- Accuracy: 60% -> 90%
+- Average latency: 3000ms (3B retry) -> 5000ms (7B one-shot success)
+- **Better overall experience** (accuracy > speed)
 
 ---
 
-#### 2.2 Ollama性能调优
+#### 2.2 Ollama Performance Tuning
 
-**检查当前配置**:
+**Check current configuration**:
 ```bash
-# 已确认GPU启用: --n-gpu-layers 37
-# 但其他参数可能不够优化
+# Confirmed GPU enabled: --n-gpu-layers 37
+# But other parameters may not be optimal
 
-# 当前
---ctx-size 1024        # 可能太小
---batch-size 512       # 可以增大
---threads 4            # Jetson有8核（4核在线）
---parallel 2           # 并发请求数
+# Current
+--ctx-size 1024        # May be too small
+--batch-size 512       # Can be increased
+--threads 4            # Jetson has 8 cores (4 online)
+--parallel 2           # Concurrent request count
 ```
 
-**优化配置**:
+**Optimized configuration**:
 ```bash
-# 编辑 /etc/systemd/system/ollama.service
+# Edit /etc/systemd/system/ollama.service
 [Service]
-Environment="OLLAMA_NUM_PARALLEL=4"           # 增加并发
-Environment="OLLAMA_MAX_LOADED_MODELS=2"      # 同时加载3B+7B
-Environment="OLLAMA_FLASH_ATTENTION=1"        # 启用Flash Attention
-Environment="OLLAMA_NUM_GPU=99"               # 强制所有层上GPU
-Environment="OLLAMA_LLM_LIBRARY=cuda"         # 确保CUDA后端
+Environment="OLLAMA_NUM_PARALLEL=4"           # Increase concurrency
+Environment="OLLAMA_MAX_LOADED_MODELS=2"      # Load 3B+7B simultaneously
+Environment="OLLAMA_FLASH_ATTENTION=1"        # Enable Flash Attention
+Environment="OLLAMA_NUM_GPU=99"               # Force all layers to GPU
+Environment="OLLAMA_LLM_LIBRARY=cuda"         # Ensure CUDA backend
 
-# 重启
+# Restart
 sudo systemctl daemon-reload
 sudo systemctl restart ollama
 ```
 
-**验证GPU使用**:
+**Verify GPU usage**:
 ```bash
-# 测试时监控
+# Monitor during testing
 watch -n 0.5 tegrastats
 
-# 发送LLM请求
+# Send LLM request
 echo "立ってそして挨拶して" | ollama run claudia-go2-7b:v7
 
-# 应该看到 GR3D_FREQ 90%+
+# Should see GR3D_FREQ 90%+
 ```
 
-**预期改进**: 延迟减少30-50%（5000ms → 2500-3500ms）
+**Expected improvement**: Latency reduced by 30-50% (5000ms -> 2500-3500ms)
 
 ---
 
-#### 2.3 预加载模型到内存（消除冷启动）
+#### 2.3 Preload Models into Memory (Eliminate Cold Start)
 
-**问题**: 首次调用需要加载模型（+1-2秒）
+**Problem**: First call needs to load model (+1-2s)
 
-**操作**:
+**Operation**:
 ```python
-# 在ProductionBrain.__init__中添加预热
+# Add warmup in ProductionBrain.__init__
 async def _warmup_models(self):
-    """预热模型（加载到GPU内存）"""
+    """Warm up models (load into GPU memory)"""
     warmup_commands = ["hello", "座って", "立ってそして挨拶"]
 
     for cmd in warmup_commands:
-        # 7B预热
+        # 7B warmup
         await self._call_ollama_v2(self.model_7b_pool[0], cmd, timeout=10)
-        # 3B预热（如果还用）
+        # 3B warmup (if still used)
         await self._call_ollama_v2(self.model_3b_pool[0], cmd, timeout=5)
 
-    self.logger.info("✅ 模型预热完成")
+    self.logger.info("Model warmup complete")
 
-# 在初始化时调用
+# Call during initialization
 await self._warmup_models()
 ```
 
-**预期改进**: 首次响应时间一致，无冷启动惩罚
+**Expected improvement**: Consistent first response time, no cold start penalty
 
 ---
 
-### P2 - 架构升级（下周完成）🏗️
+### P2 - Architecture Upgrade (Complete Next Week)
 
-#### 3.1 混合架构：本地LLM + 云端API Fallback
+#### 3.1 Hybrid Architecture: Local LLM + Cloud API Fallback
 
-**动机**:
-- 本地LLM（Qwen 7B）: 快但理解有限
-- 云端API（Claude/GPT-4）: 慢但智能
-- **混合**: 90%本地处理，10%复杂情况云端
+**Motivation**:
+- Local LLM (Qwen 7B): Fast but limited understanding
+- Cloud API (Claude/GPT-4): Slower but intelligent
+- **Hybrid**: 90% local processing, 10% complex cases go to cloud
 
-**架构**:
+**Architecture**:
 ```python
 class HybridBrain:
     def __init__(self):
@@ -338,53 +338,53 @@ class HybridBrain:
         self.cloud_api = ClaudeAPI()        # Anthropic Claude
 
     async def process_command(self, cmd):
-        # 1. 热路径（<1ms）
+        # 1. Hot path (<1ms)
         if hotpath_hit := self._try_hotpath(cmd):
             return hotpath_hit
 
-        # 2. 本地LLM尝试（<3s）
+        # 2. Local LLM attempt (<3s)
         local_result = await self.local_llm.process(cmd, timeout=3)
 
-        # 3. 置信度检查
+        # 3. Confidence check
         if local_result.confidence > 0.8:
-            return local_result  # 本地成功
+            return local_result  # Local success
 
-        # 4. 云端Fallback（复杂情况）
-        self.logger.warning(f"本地LLM置信度低 ({local_result.confidence}), 使用云端API")
+        # 4. Cloud fallback (complex cases)
+        self.logger.warning(f"Local LLM confidence low ({local_result.confidence}), using cloud API")
         cloud_result = await self.cloud_api.process(cmd, timeout=10)
 
-        # 5. 缓存云端结果（下次本地可用）
+        # 5. Cache cloud result (available locally next time)
         self._cache_cloud_result(cmd, cloud_result)
 
         return cloud_result
 ```
 
-**成本控制**:
-- Claude API: ~$0.003/请求（1K tokens）
-- 每天100条命令 → $0.30/天 → $9/月
-- **可接受**（相比机器人硬件成本）
+**Cost control**:
+- Claude API: ~$0.003/request (1K tokens)
+- 100 commands/day -> $0.30/day -> $9/month
+- **Acceptable** (compared to robot hardware cost)
 
-**预期改进**:
-- 准确率: 90% → 99%
-- 复杂理解能力: ✅✅✅（Claude Sonnet级别）
-- 平均延迟: 2500ms（90%本地） + 5000ms*10%（云端） = 2750ms
+**Expected improvement**:
+- Accuracy: 90% -> 99%
+- Complex understanding capability: Excellent (Claude Sonnet level)
+- Average latency: 2500ms (90% local) + 5000ms*10% (cloud) = 2750ms
 
 ---
 
-#### 3.2 Fine-tuning专用模型（强化学习）
+#### 3.2 Fine-tuning a Dedicated Model (Reinforcement Learning)
 
-**当前问题**: 通用Qwen模型不适合机器人控制
+**Current problem**: General-purpose Qwen model is not ideal for robot control
 
-**方案**: 使用Go2实际交互数据fine-tune
+**Solution**: Fine-tune using Go2 actual interaction data
 ```bash
-# 收集真实对话数据
-logs/audit/*.jsonl  # 已有审计日志
+# Collect real dialog data
+logs/audit/*.jsonl  # Existing audit logs
 
-# 提取训练样本
+# Extract training samples
 {
     "input": "立ってそして挨拶して",
     "output": {"r":"立ってから挨拶します","a":null,"seq":[1004,1016]},
-    "feedback": "success"  # 用户是否满意
+    "feedback": "success"  # Whether user was satisfied
 }
 
 # Fine-tune Qwen 3B
@@ -394,39 +394,39 @@ python3 scripts/llm/finetune_qwen.py \
     --output models/claudia-go2-3b-v12 \
     --epochs 3
 
-# 部署
+# Deploy
 ollama create claudia-go2-3b:v12 -f models/claudia-go2-3b-v12
 ```
 
-**数据需求**: 至少1000条标注样本（目前有多少？）
+**Data requirements**: At least 1000 labeled samples (how many do we have currently?)
 
-**预期改进**:
-- 3B模型准确率: 60% → 85%
-- 日语纯度: 混用 → 99%纯日语
-- API映射错误: 降低90%
+**Expected improvement**:
+- 3B model accuracy: 60% -> 85%
+- Japanese purity: Mixed -> 99% pure Japanese
+- API mapping errors: Reduced by 90%
 
 ---
 
-#### 3.3 智能对话vs动作意图分类
+#### 3.3 Intelligent Dialog vs Action Intent Classification
 
-**问题**: "可愛いね"是赞美还是要求可爱动作？
+**Problem**: Is "可愛いね" praise or a request for a cute action?
 
-**方案**: 添加意图分类层
+**Solution**: Add an intent classification layer
 ```python
 def classify_intent(self, command: str) -> str:
     """
-    分类用户意图
+    Classify user intent
 
     Returns:
-        - "pure_dialog": 纯对话（如"你是谁"）
-        - "action_request": 动作命令（如"座って"）
-        - "dialog_with_action": 对话+动作（如"可愛いね"→赞美+做可爱动作）
+        - "pure_dialog": Pure dialog (e.g., "who are you")
+        - "action_request": Action command (e.g., "座って")
+        - "dialog_with_action": Dialog + action (e.g., "可愛いね" -> praise + cute action)
     """
-    # 使用轻量级分类模型（BERT-tiny, <100ms）
+    # Use lightweight classification model (BERT-tiny, <100ms)
     intent = self.intent_classifier.predict(command)
 
     if intent == "dialog_with_action":
-        # 同时返回回复和动作
+        # Return both reply and action
         return BrainOutput(
             response="ありがとうございます！",
             api_code=1036,  # Heart
@@ -434,75 +434,75 @@ def classify_intent(self, command: str) -> str:
         )
 ```
 
-**预期改进**: 用户满意度提升（更自然的交互）
+**Expected improvement**: Improved user satisfaction (more natural interaction)
 
 ---
 
-## 实施优先级
+## Implementation Priority
 
-### 今天立即执行（P0）
-1. ✅ 创建v11.3纯日语Modelfile（15分钟）
-2. ✅ 扩展热路径到50+关键词（30分钟）
-3. ✅ 添加常见序列预定义（15分钟）
-4. ✅ 测试验证（30分钟）
+### Execute Immediately Today (P0)
+1. Create v11.3 pure Japanese Modelfile (15 minutes)
+2. Expand hot path to 50+ keywords (30 minutes)
+3. Add common sequence predefinitions (15 minutes)
+4. Test verification (30 minutes)
 
-**预期**: 消除语言混乱，热路径命中率80%，部分性能改善
-
----
-
-### 本周完成（P1）
-1. ⏳ 升级主模型到7B（1小时测试+调整）
-2. ⏳ Ollama性能调优（2小时）
-3. ⏳ 模型预热机制（30分钟）
-4. ⏳ A/B测试验证（1小时）
-
-**预期**: 准确率90%，延迟<3秒，智能水平明显提升
+**Expected**: Eliminate language confusion, 80% hot path hit rate, partial performance improvement
 
 ---
 
-### 下周规划（P2）
-1. ⏳ 设计混合架构（2小时）
-2. ⏳ 集成Claude API（3小时）
-3. ⏳ 收集训练数据（持续）
-4. ⏳ Fine-tuning实验（1天）
+### Complete This Week (P1)
+1. Upgrade main model to 7B (1 hour testing + adjustment)
+2. Ollama performance tuning (2 hours)
+3. Model warmup mechanism (30 minutes)
+4. A/B test verification (1 hour)
 
-**预期**: 接近商业级智能水平
+**Expected**: 90% accuracy, latency <3s, noticeably improved intelligence
 
 ---
 
-## 性能指标对比
+### Next Week Planning (P2)
+1. Design hybrid architecture (2 hours)
+2. Integrate Claude API (3 hours)
+3. Collect training data (ongoing)
+4. Fine-tuning experiments (1 day)
 
-| 指标 | 当前 (v11.2) | P0优化后 | P1优化后 | P2目标 |
+**Expected**: Near commercial-grade intelligence
+
+---
+
+## Performance Metrics Comparison
+
+| Metric | Current (v11.2) | After P0 | After P1 | P2 Target |
 |------|-------------|----------|----------|--------|
-| **平均延迟** | 3000ms | 500ms* | 2500ms | 2000ms |
-| **准确率** | 60% | 65% | 90% | 99% |
-| **热路径命中率** | 20% | 80% | 80% | 85% |
-| **语言纯度** | 中日混用 | ✅纯日语 | ✅纯日语 | ✅纯日语 |
-| **序列理解** | ❌失败 | ⚠️预定义 | ✅7B成功 | ✅Claude级 |
-| **成本/天** | $0 | $0 | $0 | $0.30 |
+| **Avg latency** | 3000ms | 500ms* | 2500ms | 2000ms |
+| **Accuracy** | 60% | 65% | 90% | 99% |
+| **Hot path hit rate** | 20% | 80% | 80% | 85% |
+| **Language purity** | Chinese-Japanese mixed | Pure Japanese | Pure Japanese | Pure Japanese |
+| **Sequence understanding** | Failed | Predefined | 7B success | Claude-level |
+| **Cost/day** | $0 | $0 | $0 | $0.30 |
 
-*P0延迟改善主要靠热路径扩展（80%命中），非热路径仍3秒
-
----
-
-## 风险和限制
-
-### 技术限制
-1. **Jetson算力上限**: Orin NX无法运行13B+模型
-2. **本地LLM天花板**: Qwen 7B理解能力<Claude
-3. **网络依赖**: 云端fallback需要稳定互联网
-
-### 资源需求
-1. **开发时间**: P0 (2小时), P1 (1天), P2 (3天)
-2. **测试数据**: 需要收集1000+真实对话样本
-3. **云端成本**: P2方案每月~$10 API费用
-
-### 建议
-- **立即执行P0**: 快速改善用户体验
-- **本周完成P1**: 达到可接受的智能水平
-- **P2按需**: 如果P1满足需求，P2可推迟
+*P0 latency improvement mainly from hot path expansion (80% hit), non-hot-path still 3s
 
 ---
 
-**作者**: Claude Code
-**最后更新**: 2025-11-14 18:00 UTC
+## Risks and Limitations
+
+### Technical Limitations
+1. **Jetson compute ceiling**: Orin NX cannot run 13B+ models
+2. **Local LLM ceiling**: Qwen 7B understanding capability < Claude
+3. **Network dependency**: Cloud fallback requires stable internet
+
+### Resource Requirements
+1. **Development time**: P0 (2 hours), P1 (1 day), P2 (3 days)
+2. **Test data**: Need to collect 1000+ real dialog samples
+3. **Cloud cost**: P2 solution ~$10/month API fees
+
+### Recommendations
+- **Execute P0 immediately**: Quickly improve user experience
+- **Complete P1 this week**: Reach acceptable intelligence level
+- **P2 as needed**: If P1 meets requirements, P2 can be deferred
+
+---
+
+**Author**: Claude Code
+**Last Updated**: 2025-11-14 18:00 UTC

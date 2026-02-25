@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ASR ブリッジ — ASR サーバー結果を消費し ProductionBrain へ橋渡し
+ASR Bridge -- Consumes ASR server results and bridges to ProductionBrain
 
-result.sock から JSON Lines を読み取り、メッセージタイプに応じて分岐:
-  - emergency → 即時 brain 呼出 (キュー迂回) + キュー空化 + 冷却
-  - transcript → 信頼度フィルタ + 重複排除 → コマンドキュー
-  - heartbeat → watchdog 更新
-  - ready → プロトコルバージョン検証 + 準備完了シグナル
+Reads JSON Lines from result.sock, branching by message type:
+  - emergency -> Immediate brain call (queue bypass) + queue flush + cooldown
+  - transcript -> Confidence filter + deduplication -> command queue
+  - heartbeat -> Watchdog update
+  - ready -> Protocol version verification + ready signal
 
-コマンドキュー (bounded, maxsize=3) → ワーカーが直列消費 → brain.process_and_execute
+Command queue (bounded, maxsize=3) -> Worker serially consumes -> brain.process_and_execute
 """
 
 import asyncio
@@ -30,7 +30,7 @@ from .asr_service.ipc_protocol import (
 
 logger = logging.getLogger("claudia.asr.bridge")
 
-# 設定定数
+# Configuration constants
 QUEUE_MAXSIZE = 3
 MIN_CONFIDENCE = 0.35
 DEDUP_TTL_S = 10.0
@@ -38,7 +38,7 @@ HEARTBEAT_TIMEOUT_S = 15.0
 EMERGENCY_COOLDOWN_S = 0.5
 RECONNECT_DELAY_S = 2.0
 
-# E2E タイミングログ
+# E2E timing log
 _E2E_LOG_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "..", "..", "..", "logs",
@@ -47,12 +47,12 @@ _E2E_LOG_PATH = os.path.join(_E2E_LOG_DIR, "e2e_timing.jsonl")
 
 
 class ASRBridge:
-    """ASR 結果消費 + コマンドキュー管理
+    """ASR result consumer + command queue management
 
     Args:
-        brain: ProductionBrain インスタンス (process_and_execute を呼ぶ)
-        socket_path: result socket パス
-        on_result: 結果コールバック (デバッグ表示用, Optional)
+        brain: ProductionBrain instance (calls process_and_execute)
+        socket_path: Result socket path
+        on_result: Result callback (for debug display, Optional)
     """
 
     def __init__(
@@ -66,28 +66,28 @@ class ASRBridge:
         self._socket_path = socket_path
         self._on_result = on_result
 
-        # 唤醒词ゲート
+        # Wake word gate
         from .wake_word import WakeWordGate
         self._wake_gate = WakeWordGate(
             on_wake=self._make_wake_callback(on_wake),
         )
 
-        # 準備完了イベント (ready メッセージ受信で set)
+        # Ready event (set upon receiving ready message)
         self.ready_event = asyncio.Event()
 
-        # コマンドキュー (bounded, drop-oldest)
+        # Command queue (bounded, drop-oldest)
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=QUEUE_MAXSIZE)
 
-        # 重複排除: utterance_id → 処理時刻
+        # Deduplication: utterance_id -> processing timestamp
         self._processed_ids: Dict[str, float] = {}
 
-        # ハートビート watchdog
+        # Heartbeat watchdog
         self._last_heartbeat: float = time.monotonic()
 
-        # Emergency 冷却ウィンドウ
+        # Emergency cooldown window
         self._cooldown_until: float = 0.0
 
-        # タスク参照
+        # Task references
         self._consumer_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
         self._worker_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
         self._watchdog_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
@@ -96,7 +96,7 @@ class ASRBridge:
 
     def _make_wake_callback(self, external_on_wake):
         # type: (Any) -> Any
-        """唤醒詞コールバックを生成: 外部コールバック + "wake" イベント通知"""
+        """Generate wake word callback: external callback + "wake" event notification"""
         def _cb():
             if external_on_wake:
                 try:
@@ -111,26 +111,26 @@ class ASRBridge:
         return _cb
 
     # ------------------------------------------------------------------
-    # 公開 API
+    # Public API
     # ------------------------------------------------------------------
 
     async def start(self) -> None:
-        """ブリッジ開始: 結果消費 + コマンドワーカーを起動
+        """Start bridge: launch result consumer + command worker
 
-        watchdog は ready ハンドシェイク後に開始 (ASR モデル読込中の誤検知防止)。
+        Watchdog starts after ready handshake (prevents false detection during ASR model loading).
         """
         self._running = True
         self._last_heartbeat = time.monotonic()
 
         self._consumer_task = asyncio.ensure_future(self._result_consumer_loop())
         self._worker_task = asyncio.ensure_future(self._command_worker())
-        # watchdog は _handle_ready() 内で開始する
+        # Watchdog starts inside _handle_ready()
 
-        logger.info("ASRBridge 開始")
+        logger.info("ASRBridge started")
 
     async def stop(self) -> None:
-        """ブリッジ停止"""
-        logger.info("ASRBridge 停止中...")
+        """Stop bridge"""
+        logger.info("ASRBridge stopping...")
         self._running = False
 
         for task in (self._consumer_task, self._worker_task, self._watchdog_task):
@@ -146,17 +146,17 @@ class ASRBridge:
         self._watchdog_task = None
 
     # ------------------------------------------------------------------
-    # 結果消費ループ (自動再接続)
+    # Result consumer loop (auto-reconnect)
     # ------------------------------------------------------------------
 
     async def _result_consumer_loop(self) -> None:
-        """外層ループ: 接続断 → リトライ"""
+        """Outer loop: disconnect -> retry"""
         while self._running:
             try:
                 reader, writer = await connect_uds(
                     self._socket_path, retries=10, delay=1.0,
                 )
-                logger.info("result.sock 接続完了")
+                logger.info("result.sock connection established")
 
                 try:
                     await self._consume_results(reader)
@@ -171,17 +171,17 @@ class ASRBridge:
             except ConnectionError as e:
                 if not self._running:
                     break
-                logger.warning("result.sock 接続失敗: %s — %.1fs 後リトライ",
+                logger.warning("result.sock connection failed: %s -- retrying in %.1fs",
                                e, RECONNECT_DELAY_S)
                 await asyncio.sleep(RECONNECT_DELAY_S)
             except Exception as e:
                 if not self._running:
                     break
-                logger.error("結果消費エラー: %s", e, exc_info=True)
+                logger.error("Result consumer error: %s", e, exc_info=True)
                 await asyncio.sleep(RECONNECT_DELAY_S)
 
     async def _consume_results(self, reader: asyncio.StreamReader) -> None:
-        """JSON Lines 読取 → メッセージ分岐"""
+        """Read JSON Lines -> message dispatch"""
         async for msg in read_json_lines(reader):
             if not self._running:
                 break
@@ -202,32 +202,32 @@ class ASRBridge:
                         except Exception:
                             pass
                 elif msg_type in ("vad_end", "error", "gate_timeout_audit"):
-                    logger.debug("ASR イベント: %s", msg_type)
+                    logger.debug("ASR event: %s", msg_type)
                 else:
-                    logger.warning("未知メッセージタイプ: %s", msg_type)
+                    logger.warning("Unknown message type: %s", msg_type)
             except Exception as e:
-                logger.error("メッセージ処理エラー (%s): %s", msg_type, e)
+                logger.error("Message processing error (%s): %s", msg_type, e)
 
     # ------------------------------------------------------------------
-    # メッセージハンドラ
+    # Message handlers
     # ------------------------------------------------------------------
 
     async def _handle_ready(self, msg: dict) -> None:
-        """ready ハンドシェイク: プロトコルバージョン検証 + watchdog 開始"""
+        """Ready handshake: protocol version verification + watchdog start"""
         version = msg.get("proto_version", "")
         model = msg.get("model", "unknown")
 
         if not validate_proto_version(version):
             logger.error(
-                "プロトコルバージョン不一致: remote=%s, local=%s",
+                "Protocol version mismatch: remote=%s, local=%s",
                 version, PROTO_VERSION,
             )
             return
 
-        logger.info("ASR 準備完了: model=%s, version=%s", model, version)
+        logger.info("ASR ready: model=%s, version=%s", model, version)
 
-        # ready 受信後にハートビート watchdog を開始
-        # (ASR モデル読込中の誤検知を防ぐ)
+        # Start heartbeat watchdog after receiving ready
+        # (prevents false detection during ASR model loading)
         self._last_heartbeat = time.monotonic()
         if self._watchdog_task is None or self._watchdog_task.done():
             self._watchdog_task = asyncio.ensure_future(self._heartbeat_watchdog())
@@ -235,7 +235,7 @@ class ASRBridge:
         self.ready_event.set()
 
     async def _handle_transcript(self, msg: dict) -> None:
-        """transcript 処理: emergency 兜底復検 + 信頼度フィルタ + 重複排除 + キュー投入"""
+        """Transcript processing: emergency fallback recheck + confidence filter + deduplication + queue insertion"""
         text = msg.get("text", "").strip()
         confidence = msg.get("confidence", 0.0)
         utterance_id = msg.get("utterance_id", "")
@@ -243,34 +243,34 @@ class ASRBridge:
         if not text:
             return
 
-        # 兜底: transcript でも emergency キーワードチェック
+        # Fallback: check emergency keywords even in transcript
         try:
             from .asr_service.emergency_keywords import match_emergency
             emg = match_emergency(text)
             if emg is not None:
-                logger.warning("transcript 経由 emergency 検出: '%s'", text)
+                logger.warning("Emergency detected via transcript: '%s'", text)
                 await self._handle_emergency_action(utterance_id, text)
                 return
         except ImportError:
-            pass  # emergency_keywords が無い場合はスキップ
+            pass  # Skip if emergency_keywords unavailable
 
-        # 信頼度フィルタ
+        # Confidence filter
         if confidence < MIN_CONFIDENCE:
-            logger.info("低信頼度スキップ: '%s' (conf=%.2f < %.2f)", text, confidence, MIN_CONFIDENCE)
+            logger.info("Low confidence skip: '%s' (conf=%.2f < %.2f)", text, confidence, MIN_CONFIDENCE)
             return
 
-        # 唤醒詞ゲート (emergency は上で処理済み — ここには到達しない)
+        # Wake word gate (emergency handled above -- won't reach here)
         filtered_text = self._wake_gate.filter(text, confidence)
         if filtered_text is None:
             return
         text = filtered_text
 
-        # 重複排除 (emergency が先に処理済みの場合スキップ)
+        # Deduplication (skip if emergency already processed same ID)
         if self._is_processed(utterance_id):
-            logger.debug("重複排除: utt=%s", utterance_id)
+            logger.debug("Deduplication: utt=%s", utterance_id)
             return
 
-        # キューに投入 (mark_processed はワーカー実行時に行う)
+        # Enqueue (mark_processed done at worker execution time)
         asr_latency_ms = msg.get("asr_latency_ms", 0)
         await self._enqueue_command(text, utterance_id, asr_latency_ms)
 
@@ -281,11 +281,11 @@ class ASRBridge:
                 pass
 
     async def _handle_emergency(self, msg: dict) -> None:
-        """emergency 即時処理"""
+        """Emergency immediate processing"""
         keyword = msg.get("keyword", "")
         utterance_id = msg.get("utterance_id", "")
 
-        logger.warning("Emergency 受信: keyword='%s', utt=%s", keyword, utterance_id)
+        logger.warning("Emergency received: keyword='%s', utt=%s", keyword, utterance_id)
 
         await self._handle_emergency_action(utterance_id, keyword)
 
@@ -296,20 +296,20 @@ class ASRBridge:
                 pass
 
     async def _handle_emergency_action(self, utterance_id: str, keyword: str) -> None:
-        """Emergency 共通処理: キュー空化 → 冷却設定 → brain 呼出
+        """Emergency common processing: queue flush -> cooldown setup -> brain call
 
-        順序が重要: キュー空化と冷却を brain 呼出の前に行うことで、
-        brain の await 中にワーカーが古いコマンドを実行するのを防ぐ。
-        (emergency は _command_lock を取得しないため、ワーカーと並行実行される)
+        Order matters: queue flush and cooldown before brain call to prevent
+        the worker from executing old commands during brain's await.
+        (emergency does not acquire _command_lock, so it runs in parallel with worker)
         """
-        # 重複排除チェック
+        # Deduplication check
         if self._is_processed(utterance_id):
-            logger.debug("emergency 重複排除: utt=%s", utterance_id)
+            logger.debug("Emergency deduplication: utt=%s", utterance_id)
             return
 
         self._mark_processed(utterance_id)
 
-        # 先にキュー空化 + 冷却設定 (brain await 中のワーカー実行を防止)
+        # Flush queue + set cooldown first (prevent worker execution during brain await)
         flushed = 0
         while not self._queue.empty():
             try:
@@ -318,15 +318,15 @@ class ASRBridge:
             except asyncio.QueueEmpty:
                 break
         if flushed:
-            logger.info("Emergency キュー空化: %d 件破棄", flushed)
+            logger.info("Emergency queue flush: %d items discarded", flushed)
 
         self._cooldown_until = time.monotonic() + EMERGENCY_COOLDOWN_S
 
-        # 唤醒詞ゲートリセット (emergency 時は監聴窓を閉じる)
+        # Reset wake word gate (close listening window during emergency)
         self._wake_gate.reset()
 
-        # brain 呼出 (キュー迂回) + E2E 計測
-        logger.warning("Emergency 実行: '%s'", keyword)
+        # Brain call (queue bypass) + E2E measurement
+        logger.warning("Emergency execution: '%s'", keyword)
         brain_start = time.monotonic()
         try:
             result = await self._brain.process_and_execute("止まれ")
@@ -335,7 +335,7 @@ class ASRBridge:
             self._write_e2e_log(
                 command=keyword,
                 route="emergency",
-                asr_ms=0,  # emergency はキーワード検出、ASR full推論なし
+                asr_ms=0,  # Emergency is keyword detection, no ASR full inference
                 queue_ms=0,
                 brain_ms=brain_ms,
                 e2e_ms=brain_ms,
@@ -344,36 +344,36 @@ class ASRBridge:
                 utterance_id=utterance_id,
             )
 
-            logger.info("Emergency 結果: %s (brain=%.0fms)", result, brain_ms)
+            logger.info("Emergency result: %s (brain=%.0fms)", result, brain_ms)
         except Exception as e:
             brain_ms = (time.monotonic() - brain_start) * 1000
-            logger.error("Emergency brain 呼出失敗: %s (brain=%.0fms)", e, brain_ms)
+            logger.error("Emergency brain call failed: %s (brain=%.0fms)", e, brain_ms)
 
     def _handle_heartbeat(self, msg: dict) -> None:
-        """heartbeat 更新"""
+        """Heartbeat update"""
         self._last_heartbeat = time.monotonic()
 
     # ------------------------------------------------------------------
-    # 重複排除 (utterance_id)
+    # Deduplication (utterance_id)
     # ------------------------------------------------------------------
 
     def _is_processed(self, utterance_id: str) -> bool:
-        """utterance_id が処理済みか確認 (空文字列は常に未処理扱い)"""
+        """Check if utterance_id has been processed (empty string always treated as unprocessed)"""
         if not utterance_id:
             return False
         self._cleanup_expired_ids()
         return utterance_id in self._processed_ids
 
     def _mark_processed(self, utterance_id: str) -> None:
-        """utterance_id を処理済みとしてマーク（+ 定期クリーンアップ）"""
+        """Mark utterance_id as processed (+ periodic cleanup)"""
         if utterance_id:
             self._processed_ids[utterance_id] = time.monotonic()
-            # _is_processed が呼ばれないパスでもメモリ蓄積を防ぐ
+            # Prevent memory accumulation even on paths where _is_processed is not called
             if len(self._processed_ids) > 100:
                 self._cleanup_expired_ids()
 
     def _cleanup_expired_ids(self) -> None:
-        """TTL 超過した utterance_id を削除"""
+        """Remove utterance_ids that have exceeded TTL"""
         now = time.monotonic()
         expired = [
             uid for uid, ts in self._processed_ids.items()
@@ -383,25 +383,25 @@ class ASRBridge:
             del self._processed_ids[uid]
 
     # ------------------------------------------------------------------
-    # コマンドキュー
+    # Command queue
     # ------------------------------------------------------------------
 
     async def _enqueue_command(
         self, text: str, utterance_id: str, asr_latency_ms: int = 0,
     ) -> None:
-        """bounded キューにコマンドを投入 (満杯時は最古を破棄)"""
+        """Enqueue command to bounded queue (discard oldest when full)"""
         if self._queue.full():
             try:
                 discarded = self._queue.get_nowait()
-                logger.warning("キュー満杯: 最古コマンド破棄 '%s'", discarded[0])
+                logger.warning("Queue full: oldest command discarded '%s'", discarded[0])
             except asyncio.QueueEmpty:
                 pass
         enqueue_ts = time.monotonic()
         await self._queue.put((text, utterance_id, asr_latency_ms, enqueue_ts))
-        logger.debug("コマンドキュー投入: '%s' (size=%d)", text, self._queue.qsize())
+        logger.debug("Command enqueued: '%s' (size=%d)", text, self._queue.qsize())
 
     async def _command_worker(self) -> None:
-        """コマンドワーカー: キューから直列消費 → brain.process_and_execute + E2E計測"""
+        """Command worker: serially consume from queue -> brain.process_and_execute + E2E measurement"""
         while self._running:
             try:
                 item = await asyncio.wait_for(
@@ -414,35 +414,35 @@ class ASRBridge:
 
             text, utterance_id, asr_latency_ms, enqueue_ts = item
 
-            # 冷却ウィンドウチェック
+            # Cooldown window check
             now = time.monotonic()
             if now < self._cooldown_until:
                 remaining = self._cooldown_until - now
-                logger.debug("冷却中: %.0fms 残り, '%s' スキップ",
+                logger.debug("In cooldown: %.0fms remaining, skipping '%s'",
                              remaining * 1000, text)
                 continue
 
-            # 重複排除 (キュー投入から実行までに同一 ID が処理された場合)
+            # Deduplication (in case same ID was processed between enqueue and execution)
             if self._is_processed(utterance_id):
-                logger.debug("ワーカー重複排除: utt=%s", utterance_id)
+                logger.debug("Worker deduplication: utt=%s", utterance_id)
                 continue
 
             self._mark_processed(utterance_id)
 
-            # キュー待機時間
+            # Queue wait time
             queue_wait_ms = (now - enqueue_ts) * 1000
 
-            # brain 呼出 + E2E 計測
-            logger.info("コマンド実行: '%s'", text)
+            # Brain call + E2E measurement
+            logger.info("Command execution: '%s'", text)
             brain_start = time.monotonic()
             try:
                 result = await self._brain.process_and_execute(text)
                 brain_ms = (time.monotonic() - brain_start) * 1000
 
-                # E2E = ASR推論 + キュー待機 + Brain処理+実行
+                # E2E = ASR inference + queue wait + Brain processing+execution
                 e2e_ms = asr_latency_ms + queue_wait_ms + brain_ms
 
-                # E2E タイミングログ出力
+                # E2E timing log output
                 self._write_e2e_log(
                     command=text,
                     route=result.reasoning or "",
@@ -456,11 +456,11 @@ class ASRBridge:
                 )
 
                 logger.info(
-                    "E2E計測: '%s' → e2e=%.0fms (asr=%dms + queue=%.0fms + brain=%.0fms)",
+                    "E2E measurement: '%s' -> e2e=%.0fms (asr=%dms + queue=%.0fms + brain=%.0fms)",
                     text, e2e_ms, asr_latency_ms, queue_wait_ms, brain_ms,
                 )
 
-                # 結果表示 (E2E データ付き)
+                # Result display (with E2E data)
                 if self._on_result:
                     try:
                         self._on_result("result", text, result)
@@ -472,21 +472,21 @@ class ASRBridge:
                     except Exception:
                         pass
 
-                logger.info("コマンド結果: response='%s', api=%s, status=%s",
+                logger.info("Command result: response='%s', api=%s, status=%s",
                             result.response[:50] if result.response else "",
                             result.api_code,
                             result.execution_status)
 
             except Exception as e:
                 brain_ms = (time.monotonic() - brain_start) * 1000
-                logger.error("コマンド実行失敗: '%s': %s (brain=%.0fms)", text, e, brain_ms)
+                logger.error("Command execution failed: '%s': %s (brain=%.0fms)", text, e, brain_ms)
 
     # ------------------------------------------------------------------
-    # ハートビート watchdog
+    # Heartbeat watchdog
     # ------------------------------------------------------------------
 
     # ------------------------------------------------------------------
-    # E2E タイミングログ
+    # E2E timing log
     # ------------------------------------------------------------------
 
     def _write_e2e_log(
@@ -502,7 +502,7 @@ class ASRBridge:
         utterance_id,   # type: str
     ):
         # type: (...) -> None
-        """E2E タイミングを JSONL ファイルに記録"""
+        """Record E2E timing to JSONL file"""
         try:
             entry = {
                 "ts": datetime.now().isoformat(),
@@ -523,14 +523,14 @@ class ASRBridge:
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception as e:
-            logger.debug("E2E ログ書込失敗: %s", e)
+            logger.debug("E2E log write failed: %s", e)
 
     # ------------------------------------------------------------------
-    # ハートビート watchdog
+    # Heartbeat watchdog
     # ------------------------------------------------------------------
 
     async def _heartbeat_watchdog(self) -> None:
-        """ハートビート監視: タイムアウト時に再接続を促す"""
+        """Heartbeat monitor: prompts reconnection on timeout"""
         while self._running:
             try:
                 await asyncio.sleep(5.0)
@@ -540,14 +540,14 @@ class ASRBridge:
             elapsed = time.monotonic() - self._last_heartbeat
             if elapsed > HEARTBEAT_TIMEOUT_S:
                 logger.warning(
-                    "ハートビートタイムアウト: %.0fs 経過 (閾値=%ds)",
+                    "Heartbeat timeout: %.0fs elapsed (threshold=%ds)",
                     elapsed, HEARTBEAT_TIMEOUT_S,
                 )
-                # consumer_task をキャンセル → 再接続ループに入る
+                # Cancel consumer_task -> enters reconnection loop
                 if self._consumer_task and not self._consumer_task.done():
                     self._consumer_task.cancel()
-                    # consumer_loop の外側 while が再接続する
+                    # The outer while in consumer_loop handles reconnection
                     self._consumer_task = asyncio.ensure_future(
                         self._result_consumer_loop()
                     )
-                self._last_heartbeat = time.monotonic()  # リセット
+                self._last_heartbeat = time.monotonic()  # Reset

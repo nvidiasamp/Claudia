@@ -5,38 +5,38 @@
 
 set -e
 
-echo "🔧 IMU验证系统依赖安装脚本"
+echo "IMU Validation System Dependency Installation Script"
 echo "=========================================="
 
-# 检查运行环境
-echo "⏰ 当前时间: $(date '+%Y-%m-%d %H:%M:%S %Z')"
-echo "📁 当前目录: $(pwd)"
-echo "💾 磁盘使用: $(df . | tail -1 | awk '{print $5}')"
-echo "🧠 内存使用: $(free | grep Mem | awk '{printf "%.0f%%", $3/$2 * 100.0}')"
+# Check runtime environment
+echo "Current time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+echo "Current directory: $(pwd)"
+echo "Disk usage: $(df . | tail -1 | awk '{print $5}')"
+echo "Memory usage: $(free | grep Mem | awk '{printf "%.0f%%", $3/$2 * 100.0}')"
 
-# 错误处理函数
+# Error handling function
 handle_error() {
     local exit_code=$?
     local line_number=$1
-    echo "❌ 错误发生在第 $line_number 行"
-    echo "退出码: $exit_code"
-    echo "时间: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "Error occurred at line $line_number"
+    echo "Exit code: $exit_code"
+    echo "Time: $(date '+%Y-%m-%d %H:%M:%S')"
     exit $exit_code
 }
 
 trap 'handle_error $LINENO' ERR
 
 echo ""
-echo "📦 检查和安装Python依赖..."
+echo "Checking and installing Python dependencies..."
 
-# 确保pip可用
+# Ensure pip is available
 if ! command -v pip3 &> /dev/null; then
-    echo "安装pip3..."
+    echo "Installing pip3..."
     sudo apt update
     sudo apt install -y python3-pip
 fi
 
-# 检查并安装必要的Python包
+# Check and install required Python packages
 REQUIRED_PACKAGES=(
     "numpy>=1.19.0"
     "matplotlib>=3.3.0"
@@ -46,55 +46,55 @@ REQUIRED_PACKAGES=(
     "jsonschema>=3.2.0"
 )
 
-echo "检查Python包依赖..."
+echo "Checking Python package dependencies..."
 for package in "${REQUIRED_PACKAGES[@]}"; do
     package_name=$(echo $package | cut -d'>' -f1 | cut -d'=' -f1)
-    echo -n "  检查 $package_name ... "
-    
+    echo -n "  Checking $package_name ... "
+
     if python3 -c "import $package_name" 2>/dev/null; then
-        echo "✅ 已安装"
+        echo "Installed"
     else
-        echo "❌ 未安装，正在安装..."
+        echo "Not installed, installing..."
         pip3 install "$package" --user
-        echo "✅ 安装完成"
+        echo "Installation complete"
     fi
 done
 
 echo ""
-echo "🤖 检查Unitree SDK2 Python依赖..."
+echo "Checking Unitree SDK2 Python dependency..."
 
-# 检查unitree_sdk2py
-echo -n "  检查 unitree_sdk2py ... "
+# Check unitree_sdk2py
+echo -n "  Checking unitree_sdk2py ... "
 if python3 -c "import unitree_sdk2py" 2>/dev/null; then
-    echo "✅ 已安装"
+    echo "Installed"
 else
-    echo "❌ 未安装"
-    echo "    请参考以下步骤手动安装 unitree_sdk2py:"
+    echo "Not installed"
+    echo "    Please follow these steps to manually install unitree_sdk2py:"
     echo "    1. git clone https://github.com/unitreerobotics/unitree_sdk2_python.git"
     echo "    2. cd unitree_sdk2_python"
     echo "    3. pip3 install -e ."
 fi
 
 echo ""
-echo "🔍 检查系统依赖..."
+echo "Checking system dependencies..."
 
-# 检查必要的系统工具
+# Check required system tools
 SYSTEM_TOOLS=("git" "wget" "curl")
 for tool in "${SYSTEM_TOOLS[@]}"; do
-    echo -n "  检查 $tool ... "
+    echo -n "  Checking $tool ... "
     if command -v "$tool" &> /dev/null; then
-        echo "✅ 可用"
+        echo "Available"
     else
-        echo "❌ 未找到，正在安装..."
+        echo "Not found, installing..."
         sudo apt install -y "$tool"
-        echo "✅ 安装完成"
+        echo "Installation complete"
     fi
 done
 
 echo ""
-echo "📊 验证安装结果..."
+echo "Verifying installation results..."
 
-# 创建验证脚本
+# Create verification script
 cat > /tmp/verify_imu_deps.py << 'EOF'
 #!/usr/bin/env python3
 import sys
@@ -102,13 +102,13 @@ import sys
 def check_import(module_name, package_name=None):
     try:
         __import__(module_name)
-        print(f"✅ {package_name or module_name}")
+        print(f"  {package_name or module_name} - OK")
         return True
     except ImportError as e:
-        print(f"❌ {package_name or module_name}: {e}")
+        print(f"  {package_name or module_name} - MISSING: {e}")
         return False
 
-print("验证Python依赖:")
+print("Verifying Python dependencies:")
 all_ok = True
 all_ok &= check_import("numpy", "NumPy")
 all_ok &= check_import("matplotlib", "Matplotlib")
@@ -117,38 +117,38 @@ all_ok &= check_import("serial", "PySerial")
 all_ok &= check_import("yaml", "PyYAML")
 all_ok &= check_import("jsonschema", "JsonSchema")
 
-print("\n验证Unitree SDK:")
+print("\nVerifying Unitree SDK:")
 all_ok &= check_import("unitree_sdk2py", "Unitree SDK2 Python")
 
 if all_ok:
-    print("\n🎉 所有依赖安装成功!")
+    print("\nAll dependencies installed successfully!")
     sys.exit(0)
 else:
-    print("\n⚠️ 部分依赖缺失，请检查安装")
+    print("\nSome dependencies are missing, please check the installation")
     sys.exit(1)
 EOF
 
 python3 /tmp/verify_imu_deps.py
 VERIFICATION_RESULT=$?
 
-# 清理临时文件
+# Clean up temporary files
 rm -f /tmp/verify_imu_deps.py
 
 echo ""
-echo "📋 安装总结："
-echo "  - Python依赖: 已检查和安装"
-echo "  - 系统工具: 已检查和安装"
-echo "  - Unitree SDK: 请手动确认安装"
+echo "Installation summary:"
+echo "  - Python dependencies: checked and installed"
+echo "  - System tools: checked and installed"
+echo "  - Unitree SDK: please confirm installation manually"
 
 if [ $VERIFICATION_RESULT -eq 0 ]; then
     echo ""
-    echo "✅ IMU验证系统依赖安装完成!"
-    echo "现在可以运行: ./run_imu_validation.sh"
+    echo "IMU validation system dependency installation complete!"
+    echo "You can now run: ./run_imu_validation.sh"
 else
     echo ""
-    echo "⚠️ 部分依赖可能需要手动处理"
-    echo "请检查上述错误信息并手动安装缺失的依赖"
+    echo "Some dependencies may need manual handling"
+    echo "Please check the error messages above and manually install missing dependencies"
 fi
 
 echo ""
-echo "🕐 安装完成时间: $(date '+%Y-%m-%d %H:%M:%S %Z')" 
+echo "Installation completed at: $(date '+%Y-%m-%d %H:%M:%S %Z')"

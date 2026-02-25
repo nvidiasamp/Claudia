@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""VoiceCommander ユニットテスト"""
+"""VoiceCommander unit tests"""
 
 import asyncio
 import os
@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(_PROJECT_ROOT, "src"))
 
 
 def _run(coro):
-    """Python 3.8 互換 asyncio テストヘルパー"""
+    """Python 3.8 compatible asyncio test helper"""
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(coro)
@@ -23,7 +23,7 @@ def _run(coro):
 
 
 class TestVoiceCommanderInit(unittest.TestCase):
-    """初期化テスト"""
+    """Initialization tests"""
 
     @patch("voice_commander.ProductionBrain")
     def test_default_init(self, _mock_brain):
@@ -47,13 +47,13 @@ class TestVoiceCommanderInit(unittest.TestCase):
 
 
 class TestDisplayResult(unittest.TestCase):
-    """結果表示テスト"""
+    """Result display tests"""
 
     @patch("voice_commander.ProductionBrain")
     def test_display_transcript(self, _mock_brain):
         from voice_commander import VoiceCommander
         vc = VoiceCommander()
-        # 例外を投げない (stdout 出力のみ)
+        # Should not throw an exception (stdout output only)
         vc._display_result("transcript", "お手", 0.92)
 
     @patch("voice_commander.ProductionBrain")
@@ -76,11 +76,11 @@ class TestDisplayResult(unittest.TestCase):
 
 
 class TestShutdownSequence(unittest.TestCase):
-    """シャットダウンシーケンステスト"""
+    """Shutdown sequence tests"""
 
     @patch("voice_commander.ProductionBrain")
     def test_shutdown_without_components(self, _mock_brain):
-        """コンポーネント未初期化でも shutdown が安全に完了する"""
+        """Shutdown completes safely even with uninitialized components"""
         from voice_commander import VoiceCommander
 
         async def _test():
@@ -99,7 +99,7 @@ class TestShutdownSequence(unittest.TestCase):
 
 
 class TestCLIParsing(unittest.TestCase):
-    """CLI 引数パースのテスト"""
+    """CLI argument parsing tests"""
 
     def test_parse_default(self):
         from voice_commander import _parse_args

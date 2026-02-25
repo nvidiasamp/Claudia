@@ -1,47 +1,47 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-紧急停止关键词匹配模块
+Emergency Stop Keyword Matching Module
 
-与 production_brain.py EMERGENCY_COMMANDS (lines 611-632) 保持同步。
-纯字符串操作，无模型依赖，匹配速度 < 1ms。
-宁误停不漏停 — 所有 emergency 事件无论 confidence 都执行。
+Kept in sync with production_brain.py EMERGENCY_COMMANDS (lines 611-632).
+Pure string operations, no model dependency, matching speed < 1ms.
+Prefer false stops over missed stops -- all emergency events execute regardless of confidence.
 """
 
 import re
 import unicodedata
 from typing import Optional, Set, Tuple
 
-# === 紧急关键词列表 ===
-# 与 ProductionBrain.EMERGENCY_COMMANDS 的 key 完全同步
-# 包含：漢字、ASR かな変体、カタカナ、英语、中文
+# === Emergency keyword list ===
+# Fully synchronized with ProductionBrain.EMERGENCY_COMMANDS keys
+# Includes: kanji, ASR kana variants, katakana, English, Chinese
 EMERGENCY_KEYWORDS_TEXT = [
-    # 日语（漢字）
+    # Japanese (kanji)
     "止まれ",
     "止めて",
     "止まって",
     "緊急停止",
     "やめて",
-    # 日语（ASR かな変体）
+    # Japanese (ASR kana variants)
     "とまれ",
     "とめて",
     "とまって",
     "きんきゅうていし",
-    # カタカナ
+    # Katakana
     "ストップ",
-    # 英语
+    # English
     "stop",
     "halt",
     "emergency",
-    # 中文
+    # Chinese
     "停止",
     "停下",
 ]
 
-# 预编译: 归一化后的关键词集合（用于精确匹配）
+# Pre-compiled: normalized keyword set (for exact matching)
 _NORMALIZED_KEYWORDS: Set[str] = set()
 
-# 预编译: 用于标点剥离的正则
+# Pre-compiled: regex for punctuation stripping
 _PUNCTUATION_RE = re.compile(
     r"[\s\u3000\u3001\u3002\uff01\uff0c\uff0e\uff1f"
     r"\uff1a\uff1b!?,.:;\-\u300c\u300d\u300e\u300f"
@@ -50,59 +50,59 @@ _PUNCTUATION_RE = re.compile(
 
 
 def normalize_for_emergency(text: str) -> str:
-    """紧急匹配用归一化: 去空白 → 小写 → NFKC → 去标点
+    """Normalize text for emergency matching: strip whitespace -> lowercase -> NFKC -> remove punctuation
 
-    与 brain 的 _kana_to_kanji 类似但更简化，
-    专注于让 ASR 输出的变体能命中关键词列表。
+    Similar to brain's _kana_to_kanji but more simplified,
+    focused on letting ASR output variants hit the keyword list.
     """
     # strip + lowercase
     text = text.strip().lower()
-    # Unicode NFKC 正規化 (半角→全角統一、合成文字分解 等)
+    # Unicode NFKC normalization (half-width -> full-width unification, composed char decomposition, etc.)
     text = unicodedata.normalize("NFKC", text)
-    # 标点・空白除去
+    # Remove punctuation and whitespace
     text = _PUNCTUATION_RE.sub("", text)
     return text
 
 
 def _init_normalized_keywords() -> None:
-    """启动时预归一化所有关键词"""
+    """Pre-normalize all keywords at startup"""
     global _NORMALIZED_KEYWORDS
     _NORMALIZED_KEYWORDS = {
         normalize_for_emergency(kw) for kw in EMERGENCY_KEYWORDS_TEXT
     }
 
 
-# 模块加载时初始化
+# Initialize at module load time
 _init_normalized_keywords()
 
 
 def match_emergency(text: str) -> Optional[Tuple[str, float]]:
-    """紧急关键词匹配
+    """Emergency keyword matching
 
     Args:
-        text: ASR 转写文本（原始或已归一化均可）
+        text: ASR transcription text (raw or already normalized)
 
     Returns:
         (matched_keyword, confidence_estimate) or None
-        confidence: 1.0 = 完全一致, 0.7-0.9 = 部分/子串匹配
+        confidence: 1.0 = exact match, 0.7-0.9 = partial/substring match
     """
     normalized = normalize_for_emergency(text)
     if not normalized:
         return None
 
-    # Layer 1: 完全一致匹配 (confidence = 1.0)
+    # Layer 1: Exact match (confidence = 1.0)
     if normalized in _NORMALIZED_KEYWORDS:
         return (normalized, 1.0)
 
-    # Layer 2: 关键词が入力テキストの部分文字列 (confidence = 0.85)
-    # 例: "今すぐ止まれ！" → "止まれ" を含む
+    # Layer 2: Keyword is a substring of the input text (confidence = 0.85)
+    # Example: "今すぐ止まれ！" -> contains "止まれ"
     for kw in _NORMALIZED_KEYWORDS:
         if kw in normalized:
             return (kw, 0.85)
 
-    # Layer 3: 入力テキストが関键词の部分文字列 (confidence = 0.7)
-    # 例: ASR が "とま" だけ拾った → "とまれ" の先頭部分
-    # 最低 2 文字以上の一致を要求（1 文字だと誤爆が多い）
+    # Layer 3: Input text is a substring of a keyword (confidence = 0.7)
+    # Example: ASR only captured "とま" -> prefix of "とまれ"
+    # Require at least 2-character match (1 character causes too many false positives)
     if len(normalized) >= 2:
         for kw in _NORMALIZED_KEYWORDS:
             if normalized in kw:

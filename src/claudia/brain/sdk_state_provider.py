@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-SDK 状态提供器 — 通过 Unitree SDK2 获取真实机器人状态
+SDK State Provider -- Retrieve real robot state via Unitree SDK2
 
-替代 ROS2 state_monitor，避免同进程 DDS domain 冲突。
+Replaces ROS2 state_monitor to avoid in-process DDS domain conflicts.
 
-数据获取方式:
-  - 姿态(mode): SportClient.GetState(全5键) RPC 调用，提取 "state" 字段
-  - 电量(soc):  ChannelSubscriber("rt/lowstate") DDS 订阅 → LowState_.bms_state.soc
+Data sources:
+  - Posture (mode): SportClient.GetState(all 5 keys) RPC call, extract "state" field
+  - Battery (soc):  ChannelSubscriber("rt/lowstate") DDS subscription -> LowState_.bms_state.soc
 
-注意: Go2 固件 GetState 要求全字段查询（单键返回空响应体），
-      必须用 ["state","bodyHeight","footRaiseHeight","speedLevel","gait"]。
-      电量只能通过 LowState_ 订阅获取，GetState 无 "battery" key。
+Note: Go2 firmware GetState requires full-field query (single-key returns empty response body).
+      Must use ["state","bodyHeight","footRaiseHeight","speedLevel","gait"].
+      Battery can only be obtained via LowState_ subscription; GetState has no "battery" key.
 
-接口兼容: 返回 SDKStateSnapshot 对象，字段与 SystemStateInfo 一致。
+Interface compatibility: Returns SDKStateSnapshot object with fields matching SystemStateInfo.
 """
 
 import time
@@ -22,18 +22,18 @@ import threading
 from dataclasses import dataclass, field
 from typing import Optional, Callable, List, Any
 
-# Go2 固件要求全字段查询（单键查询返回空响应体导致 JSONDecodeError）
+# Go2 firmware requires full-field query (single-key query returns empty response body causing JSONDecodeError)
 GETSTATE_FULL_KEYS = ["state", "bodyHeight", "footRaiseHeight", "speedLevel", "gait"]
 
 
 @dataclass
 class SDKStateSnapshot:
-    """SDK 状态快照 — SystemStateInfo 兼容子集
+    """SDK state snapshot -- SystemStateInfo compatible subset
 
-    只包含 SafetyCompiler 和 production_brain 实际使用的字段，
-    不引用 ROS2 相关的 SystemState/SystemLEDPriority 枚举。
+    Contains only fields actually used by SafetyCompiler and production_brain,
+    without referencing ROS2-related SystemState/SystemLEDPriority enums.
     """
-    battery_level: float = 0.5       # 0.0-1.0 归一化
+    battery_level: float = 0.5       # 0.0-1.0 normalized
     battery_voltage: float = 25.0
     is_charging: bool = False
     is_standing: bool = False
@@ -42,10 +42,10 @@ class SDKStateSnapshot:
     timestamp: float = 0.0
     source: str = "sdk"              # "sdk" | "sdk_partial" | "sdk_fallback"
     confidence: float = 1.0
-    # 细粒度数据可用性标志（解决 sdk_partial 歧义）
-    state_ok: bool = False           # GetState RPC 是否成功（姿态数据可信）
-    battery_ok: bool = False         # LowState DDS 是否有数据（电量数据可信）
-    # 兼容字段（state_monitor 有，brain/audit 可能读）
+    # Fine-grained data availability flags (resolves sdk_partial ambiguity)
+    state_ok: bool = False           # Whether GetState RPC succeeded (posture data trustworthy)
+    battery_ok: bool = False         # Whether LowState DDS has data (battery data trustworthy)
+    # Compatibility fields (state_monitor has these, brain/audit may read)
     error_codes: list = field(default_factory=list)
     current_gait: str = "unknown"
     network_status: str = "connected"
@@ -53,34 +53,34 @@ class SDKStateSnapshot:
 
 
 class SDKStateProvider:
-    """通过 Unitree SDK2 获取机器人状态（无 ROS2 依赖）
+    """Retrieve robot state via Unitree SDK2 (no ROS2 dependency)
 
-    姿态数据: SportClient.GetState(GETSTATE_FULL_KEYS) RPC
-    电量数据: ChannelSubscriber("rt/lowstate") DDS 订阅
+    Posture data: SportClient.GetState(GETSTATE_FULL_KEYS) RPC
+    Battery data: ChannelSubscriber("rt/lowstate") DDS subscription
 
-    设计约束:
-      - 不创建 ROS2 节点，不触发 rclpy.init()
-      - RPC 调用通过 rpc_call_fn 回调，复用 brain 的 _rpc_call 锁
-      - DDS 订阅使用 Unitree SDK 的 ChannelSubscriber（同 domain，不冲突）
-      - 查询失败时返回 conservative fallback
-      - 线程安全: _cached_state 通过 Lock 保护
+    Design constraints:
+      - Does not create ROS2 nodes, does not trigger rclpy.init()
+      - RPC calls via rpc_call_fn callback, reusing brain's _rpc_call lock
+      - DDS subscription uses Unitree SDK's ChannelSubscriber (same domain, no conflict)
+      - Returns conservative fallback on query failure
+      - Thread-safe: _cached_state protected by Lock
 
-    source 语义:
-      - "sdk":          state 和 battery 都可用（完整数据）
-      - "sdk_partial":  只有 state 或只有 battery（部分数据）
-      - "sdk_fallback": 全部失败（保守安全值）
+    source semantics:
+      - "sdk":          Both state and battery available (complete data)
+      - "sdk_partial":  Only state or only battery (partial data)
+      - "sdk_fallback": All failed (conservative safe values)
     """
 
-    # state 值到姿态映射（Unitree Go2 SDK: GetState 返回的 "state" 字段）
+    # State value to posture mapping (Unitree Go2 SDK: "state" field from GetState)
     # 0=idle/damped, 1=standing(balancestand), 2=walking, ...
-    STANDING_MODES = {1, 2, 3, 4, 5, 6, 7, 8, 9}  # 站立/移动模式
-    MOVING_MODES = {2, 3, 4, 5, 6, 7, 8, 9}        # 移动中模式
+    STANDING_MODES = {1, 2, 3, 4, 5, 6, 7, 8, 9}  # Standing/moving modes
+    MOVING_MODES = {2, 3, 4, 5, 6, 7, 8, 9}        # Moving modes
 
     def __init__(self, rpc_call_fn: Callable, logger: Optional[logging.Logger] = None):
         """
         Args:
-            rpc_call_fn: brain._rpc_call 回调函数
-            logger: 日志器
+            rpc_call_fn: brain._rpc_call callback function
+            logger: Logger instance
         """
         self.rpc_call_fn = rpc_call_fn
         self.logger = logger or logging.getLogger("SDKStateProvider")
@@ -90,26 +90,26 @@ class SDKStateProvider:
         self._last_success_time = 0.0
         self._consecutive_failures = 0
 
-        # 轮询控制
+        # Polling control
         self._stop_event = threading.Event()
         self._poll_thread = None
         self._poll_interval = 2.0
 
-        # 兼容字段: state_monitor 接口
-        self.is_ros_initialized = False  # 始终 False — 不使用 ROS2
+        # Compatibility field: state_monitor interface
+        self.is_ros_initialized = False  # Always False -- does not use ROS2
 
-        # LowState DDS 订阅（电量来源）
+        # LowState DDS subscription (battery source)
         self._lowstate_sub = None
-        self._battery_soc = None       # 0-100 整数, None=尚未收到
-        self._battery_voltage = None   # 浮点电压
+        self._battery_soc = None       # 0-100 integer, None=not yet received
+        self._battery_voltage = None   # Float voltage
         self._battery_lock = threading.Lock()
         self._init_lowstate_subscriber()
 
     def _init_lowstate_subscriber(self):
-        """初始化 LowState DDS 订阅（电量数据来源）
+        """Initialize LowState DDS subscription (battery data source)
 
-        使用 Unitree SDK 的 ChannelSubscriber，复用已有的 DDS domain。
-        不需要 rclpy，不会产生 domain 冲突。
+        Uses Unitree SDK's ChannelSubscriber, reusing existing DDS domain.
+        No rclpy needed, no domain conflict.
         """
         try:
             from unitree_sdk2py.core.channel import ChannelSubscriber
@@ -117,32 +117,32 @@ class SDKStateProvider:
 
             self._lowstate_sub = ChannelSubscriber("rt/lowstate", LowState_)
             self._lowstate_sub.Init(self._on_lowstate, 10)
-            self.logger.info("LowState DDS サブスクリプション起動 (バッテリー/電圧)")
+            self.logger.info("LowState DDS subscription started (battery/voltage)")
         except ImportError as e:
-            self.logger.warning("LowState サブスクリプション不可（SDK import 失敗）: {}".format(e))
+            self.logger.warning("LowState subscription unavailable (SDK import failed): {}".format(e))
             self._lowstate_sub = None
         except Exception as e:
-            self.logger.warning("LowState サブスクリプション初期化失敗: {}".format(e))
+            self.logger.warning("LowState subscription initialization failed: {}".format(e))
             self._lowstate_sub = None
 
     def _on_lowstate(self, msg):
-        """LowState DDS 回调 — 提取 BMS 电量和电压"""
+        """LowState DDS callback -- extract BMS battery and voltage"""
         try:
             with self._battery_lock:
-                # bms_state.soc: 0-100 整数（电池百分比）
+                # bms_state.soc: 0-100 integer (battery percentage)
                 if hasattr(msg, 'bms_state') and hasattr(msg.bms_state, 'soc'):
                     self._battery_soc = int(msg.bms_state.soc)
-                # power_v: 浮点电压
+                # power_v: float voltage
                 if hasattr(msg, 'power_v'):
                     self._battery_voltage = float(msg.power_v)
         except Exception:
-            pass  # 回调中不抛异常
+            pass  # Do not raise exceptions in callbacks
 
     def _make_conservative_fallback(self):
         # type: () -> SDKStateSnapshot
-        """conservative fallback — 查询失败时的安全默认值
+        """Conservative fallback -- safe default values when query fails
 
-        battery=0.50 (中等限制)，is_standing=False (保守)。
+        battery=0.50 (moderate restriction), is_standing=False (conservative).
         """
         return SDKStateSnapshot(
             battery_level=0.50,
@@ -155,16 +155,16 @@ class SDKStateProvider:
 
     def query_state(self):
         # type: () -> SDKStateSnapshot
-        """主动查询一次机器人状态
+        """Actively query robot state once
 
-        通过 SportClient.GetState(GETSTATE_FULL_KEYS) 获取姿态，
-        通过 LowState DDS 订阅获取电量。
+        Gets posture via SportClient.GetState(GETSTATE_FULL_KEYS),
+        gets battery via LowState DDS subscription.
         """
         snapshot = SDKStateSnapshot(timestamp=time.time())
         state_ok = False
         battery_ok = False
 
-        # 1. 查询运动模式: GetState(全5键) — Go2 固件不支持单键查询
+        # 1. Query motion mode: GetState(all 5 keys) -- Go2 firmware doesn't support single-key query
         try:
             result = self.rpc_call_fn("GetState", GETSTATE_FULL_KEYS)
             if isinstance(result, tuple) and len(result) >= 2:
@@ -184,13 +184,13 @@ class SDKStateProvider:
                     snapshot.is_moving = mode in self.MOVING_MODES
                     state_ok = True
                 else:
-                    self.logger.debug("GetState(state) 応答コード: {}".format(code))
+                    self.logger.debug("GetState(state) response code: {}".format(code))
             else:
-                self.logger.debug("GetState(state) 応答形式異常: {}".format(type(result)))
+                self.logger.debug("GetState(state) unexpected response format: {}".format(type(result)))
         except Exception as e:
-            self.logger.debug("GetState(state) クエリ失敗: {}".format(e))
+            self.logger.debug("GetState(state) query failed: {}".format(e))
 
-        # 2. 从 LowState DDS 订阅获取电量
+        # 2. Get battery from LowState DDS subscription
         with self._battery_lock:
             soc = self._battery_soc
             voltage = self._battery_voltage
@@ -201,7 +201,7 @@ class SDKStateProvider:
         if voltage is not None and voltage > 0:
             snapshot.battery_voltage = voltage
 
-        # 3. 写入细粒度标志 + 设置 source
+        # 3. Set fine-grained flags + source
         snapshot.state_ok = state_ok
         snapshot.battery_ok = battery_ok
         if state_ok and battery_ok:
@@ -211,20 +211,20 @@ class SDKStateProvider:
             snapshot.source = "sdk_partial"
             snapshot.confidence = 0.5
         else:
-            # 全部失败 → conservative fallback
+            # All failed -> conservative fallback
             fallback = self._make_conservative_fallback()
             with self._lock:
                 self._cached_state = fallback
                 self._consecutive_failures += 1
                 if self._consecutive_failures >= 5:
                     self.logger.warning(
-                        "连续 {} 次查询全部失败，保持 conservative fallback".format(
+                        "{} consecutive queries all failed, maintaining conservative fallback".format(
                             self._consecutive_failures
                         )
                     )
             return fallback
 
-        # 更新缓存
+        # Update cache
         with self._lock:
             self._cached_state = snapshot
             self._last_success_time = time.time()
@@ -233,11 +233,11 @@ class SDKStateProvider:
         return snapshot
 
     def get_current_state(self):
-        """获取最新状态（兼容 state_monitor 接口）"""
+        """Get latest state (compatible with state_monitor interface)"""
         with self._lock:
             cached = self._cached_state
 
-        # 缓存过期（>10s）且没有后台轮询 → 触发一次查询
+        # Cache expired (>10s) and no background polling -> trigger one query
         _polling_active = self._poll_thread is not None and self._poll_thread.is_alive()
         if time.time() - cached.timestamp > 10.0 and not _polling_active:
             return self.query_state()
@@ -246,7 +246,7 @@ class SDKStateProvider:
 
     def start_polling(self, interval=2.0):
         # type: (float) -> None
-        """启动后台轮询"""
+        """Start background polling"""
         if self._poll_thread and self._poll_thread.is_alive():
             return
 
@@ -258,28 +258,28 @@ class SDKStateProvider:
             name="sdk-state-poll"
         )
         self._poll_thread.start()
-        self.logger.info("SDK 状態ポーリング起動 (間隔 {:.1f}s)".format(interval))
+        self.logger.info("SDK state polling started (interval {:.1f}s)".format(interval))
 
     def stop_polling(self):
-        """停止后台轮询"""
+        """Stop background polling"""
         self._stop_event.set()
         if self._poll_thread and self._poll_thread.is_alive():
             self._poll_thread.join(timeout=3.0)
-        self.logger.info("SDK 状態ポーリング停止")
+        self.logger.info("SDK state polling stopped")
 
     def _poll_worker(self):
-        """后台轮询线程"""
+        """Background polling thread"""
         while not self._stop_event.is_set():
             try:
                 self.query_state()
             except Exception as e:
-                self.logger.warning("SDK 状態ポーリング例外: {}".format(e))
+                self.logger.warning("SDK state polling exception: {}".format(e))
                 with self._lock:
                     self._consecutive_failures += 1
                     if self._consecutive_failures >= 5:
                         self._cached_state = self._make_conservative_fallback()
                         self.logger.warning(
-                            "連続 {} 回ポーリング失敗、conservative fallback に切替".format(
+                            "{} consecutive polling failures, switching to conservative fallback".format(
                                 self._consecutive_failures
                             )
                         )

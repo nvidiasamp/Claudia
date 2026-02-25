@@ -1,62 +1,62 @@
 #!/bin/bash
 # scripts/validation/imu/setup_cyclonedds_and_test.sh
 # Generated: 2025-06-27 12:45:30 CST
-# Purpose: 配置CycloneDDS环境并运行完整IMU验证测试
+# Purpose: Configure the CycloneDDS environment and run complete IMU validation tests
 
 set -e
 
-echo "🔧 CycloneDDS环境配置和IMU验证测试"
+echo "CycloneDDS Environment Configuration and IMU Validation Tests"
 echo "======================================================"
 
-# 检查当前系统状态
+# Check current system status
 check_system_status() {
-    echo "🔍 检查系统状态..."
-    echo "当前时间: $(date '+%Y-%m-%d %H:%M:%S %Z')"
-    echo "当前目录: $(pwd)"
-    echo "磁盘使用: $(df . | tail -1 | awk '{print $5}')"
-    echo "内存使用: $(free | grep Mem | awk '{printf "%.0f%%", $3/$2 * 100.0}')"
+    echo "Checking system status..."
+    echo "Current time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+    echo "Current directory: $(pwd)"
+    echo "Disk usage: $(df . | tail -1 | awk '{print $5}')"
+    echo "Memory usage: $(free | grep Mem | awk '{printf "%.0f%%", $3/$2 * 100.0}')"
 }
 
-# 检查ROS2环境（必须未激活）
+# Check ROS2 environment (must not be activated)
 check_ros2_environment() {
     echo ""
-    echo "⚠️ 检查ROS2环境状态..."
-    
+    echo "Checking ROS2 environment status..."
+
     if [ -n "$ROS_DISTRO" ]; then
-        echo "❌ 检测到ROS2环境已激活: $ROS_DISTRO"
-        echo "编译CycloneDDS前必须在新的干净终端中运行，未source ROS2环境"
-        echo "请重新打开终端，不要source /opt/ros/foxy/setup.bash"
+        echo "Detected that the ROS2 environment is already activated: $ROS_DISTRO"
+        echo "CycloneDDS must be compiled in a clean terminal without sourcing the ROS2 environment"
+        echo "Please reopen a terminal without sourcing /opt/ros/foxy/setup.bash"
         return 1
     else
-        echo "✅ ROS2环境未激活，可以安全编译CycloneDDS"
+        echo "ROS2 environment is not activated, safe to compile CycloneDDS"
         return 0
     fi
 }
 
-# 检查是否已存在CycloneDDS安装
+# Check if a CycloneDDS installation already exists
 check_existing_cyclonedds() {
     echo ""
-    echo "🔍 检查现有CycloneDDS安装..."
-    
+    echo "Checking for existing CycloneDDS installation..."
+
     local cyclonedds_home="$HOME/cyclonedds/install"
-    
+
     if [ -d "$cyclonedds_home" ] && [ -f "$cyclonedds_home/lib/libddsc.so" ]; then
-        echo "✅ 发现现有CycloneDDS安装: $cyclonedds_home"
+        echo "Found existing CycloneDDS installation: $cyclonedds_home"
         export CYCLONEDDS_HOME="$cyclonedds_home"
         export LD_LIBRARY_PATH="$CYCLONEDDS_HOME/lib:$LD_LIBRARY_PATH"
-        echo "已设置环境变量"
+        echo "Environment variables have been set"
         return 0
     else
-        echo "ℹ️ 未发现CycloneDDS安装，需要重新编译"
+        echo "No CycloneDDS installation found, recompilation is needed"
         return 1
     fi
 }
 
-# 安装CycloneDDS依赖
+# Install CycloneDDS dependencies
 install_dependencies() {
     echo ""
-    echo "📦 安装CycloneDDS编译依赖..."
-    
+    echo "Installing CycloneDDS build dependencies..."
+
     sudo apt update
     sudo apt install -y \
         build-essential \
@@ -65,314 +65,314 @@ install_dependencies() {
         libssl-dev \
         python3-pip \
         pkg-config
-    
-    echo "✅ 依赖安装完成"
+
+    echo "Dependency installation complete"
 }
 
-# 编译安装CycloneDDS
+# Build and install CycloneDDS
 install_cyclonedds() {
     echo ""
-    echo "🔨 编译安装CycloneDDS..."
-    
+    echo "Building and installing CycloneDDS..."
+
     local install_dir="$HOME/cyclonedds"
-    
-    # 清理旧的安装
+
+    # Clean up old installation
     if [ -d "$install_dir" ]; then
-        echo "🧹 清理旧的安装..."
+        echo "Cleaning up old installation..."
         rm -rf "$install_dir"
     fi
-    
+
     cd "$HOME"
-    
-    # 克隆正确的仓库
-    echo "📥 克隆CycloneDDS仓库..."
+
+    # Clone the correct repository
+    echo "Cloning CycloneDDS repository..."
     git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x
-    
+
     cd cyclonedds
     mkdir -p build install
     cd build
-    
-    echo "⚙️ 配置CMake..."
+
+    echo "Configuring CMake..."
     cmake .. -DCMAKE_INSTALL_PREFIX=../install
-    
-    echo "🔨 编译CycloneDDS..."
+
+    echo "Building CycloneDDS..."
     cmake --build . --target install
-    
-    # 设置环境变量
+
+    # Set environment variables
     export CYCLONEDDS_HOME="$HOME/cyclonedds/install"
     export LD_LIBRARY_PATH="$CYCLONEDDS_HOME/lib:$LD_LIBRARY_PATH"
-    
-    echo "✅ CycloneDDS编译完成"
-    echo "安装路径: $CYCLONEDDS_HOME"
+
+    echo "CycloneDDS build complete"
+    echo "Installation path: $CYCLONEDDS_HOME"
 }
 
-# 验证CycloneDDS安装
+# Verify CycloneDDS installation
 verify_cyclonedds() {
     echo ""
-    echo "🔍 验证CycloneDDS安装..."
-    
+    echo "Verifying CycloneDDS installation..."
+
     if [ -z "$CYCLONEDDS_HOME" ]; then
-        echo "❌ CYCLONEDDS_HOME未设置"
+        echo "CYCLONEDDS_HOME is not set"
         return 1
     fi
-    
+
     if [ ! -f "$CYCLONEDDS_HOME/lib/libddsc.so" ]; then
-        echo "❌ CycloneDDS库文件不存在: $CYCLONEDDS_HOME/lib/libddsc.so"
+        echo "CycloneDDS library file does not exist: $CYCLONEDDS_HOME/lib/libddsc.so"
         return 1
     fi
-    
-    echo "✅ CycloneDDS安装验证成功"
+
+    echo "CycloneDDS installation verification successful"
     echo "CYCLONEDDS_HOME: $CYCLONEDDS_HOME"
-    echo "库文件: $(ls -la $CYCLONEDDS_HOME/lib/libddsc.*)"
-    
+    echo "Library files: $(ls -la $CYCLONEDDS_HOME/lib/libddsc.*)"
+
     return 0
 }
 
-# 检查unitree_sdk2py安装
+# Check unitree_sdk2py installation
 check_unitree_sdk() {
     echo ""
-    echo "🔍 检查unitree_sdk2py安装..."
-    
+    echo "Checking unitree_sdk2py installation..."
+
     local sdk_path="$HOME/unitree_sdk2_python"
-    
+
     if [ ! -d "$sdk_path" ]; then
-        echo "❌ 未找到unitree_sdk2_python目录: $sdk_path"
-        echo "请确保已克隆unitree_sdk2_python仓库到$sdk_path"
+        echo "unitree_sdk2_python directory not found: $sdk_path"
+        echo "Please make sure the unitree_sdk2_python repository has been cloned to $sdk_path"
         return 1
     fi
-    
+
     cd "$sdk_path"
-    
-    # 检查__init__.py语法错误
-    echo "🔧 检查__init__.py语法..."
+
+    # Check __init__.py for syntax errors
+    echo "Checking __init__.py syntax..."
     local init_file="unitree_sdk2py/__init__.py"
-    
+
     if grep -q '"idl""utils"' "$init_file" 2>/dev/null; then
-        echo "⚠️ 发现__init__.py语法错误，正在修复..."
+        echo "Found __init__.py syntax error, fixing..."
         sed -i 's/"idl""utils"/"idl", "utils"/g' "$init_file"
         sed -i 's/"utils""core"/"utils", "core"/g' "$init_file"
         sed -i 's/"core""rpc"/"core", "rpc"/g' "$init_file"
         sed -i 's/"rpc""go2"/"rpc", "go2"/g' "$init_file"
         sed -i 's/"go2""b2"/"go2", "b2"/g' "$init_file"
-        echo "✅ __init__.py语法错误已修复"
+        echo "__init__.py syntax error fixed"
     else
-        echo "✅ __init__.py语法正确"
+        echo "__init__.py syntax is correct"
     fi
-    
-    # 重新安装unitree_sdk2py
-    echo "📦 重新安装unitree_sdk2py..."
+
+    # Reinstall unitree_sdk2py
+    echo "Reinstalling unitree_sdk2py..."
     pip3 install -e .
-    
-    echo "✅ unitree_sdk2py检查完成"
+
+    echo "unitree_sdk2py check complete"
     return 0
 }
 
-# 测试unitree_sdk2py导入
+# Test unitree_sdk2py import
 test_unitree_import() {
     echo ""
-    echo "🧪 测试unitree_sdk2py导入..."
-    
+    echo "Testing unitree_sdk2py import..."
+
     python3 -c "
 try:
     from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelFactoryInitialize
     from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowState_
-    print('✅ unitree_sdk2py导入成功')
+    print('unitree_sdk2py import successful')
 except Exception as e:
-    print(f'❌ unitree_sdk2py导入失败: {e}')
+    print(f'unitree_sdk2py import failed: {e}')
     exit(1)
 "
-    
+
     if [ $? -eq 0 ]; then
-        echo "✅ unitree_sdk2py导入测试通过"
+        echo "unitree_sdk2py import test passed"
         return 0
     else
-        echo "❌ unitree_sdk2py导入测试失败"
+        echo "unitree_sdk2py import test failed"
         return 1
     fi
 }
 
-# 运行IMU验证测试
+# Run IMU validation tests
 run_imu_validation() {
     echo ""
-    echo "🧪 运行IMU验证测试..."
-    
+    echo "Running IMU validation tests..."
+
     cd "$(dirname "$0")/imu_validation"
-    
-    # 首先运行无硬件的模拟测试
-    echo "1️⃣ 运行模拟验证测试..."
+
+    # First run the simulated test without hardware
+    echo "1. Running simulated validation test..."
     python3 ../simple_imu_mock_test.py
-    
+
     if [ $? -eq 0 ]; then
-        echo "✅ 模拟验证测试通过"
+        echo "Simulated validation test passed"
     else
-        echo "❌ 模拟验证测试失败"
+        echo "Simulated validation test failed"
         return 1
     fi
-    
-    # 运行主要的IMU验证脚本
+
+    # Run the main IMU validation script
     echo ""
-    echo "2️⃣ 运行完整IMU验证..."
-    echo "⚠️ 请确保机器人已连接并处于可通信状态"
-    
-    # 设置网络接口（根据实际情况调整）
-    local network_interface="eth0"  # 或者 "enp3s0", "ens33" 等
-    
-    echo "使用网络接口: $network_interface"
-    echo "如果连接失败，请检查网络配置"
-    
-    # 运行主验证脚本
+    echo "2. Running full IMU validation..."
+    echo "Please make sure the robot is connected and in a communicable state"
+
+    # Set network interface (adjust according to actual setup)
+    local network_interface="eth0"  # or "enp3s0", "ens33", etc.
+
+    echo "Using network interface: $network_interface"
+    echo "If connection fails, please check the network configuration"
+
+    # Run the main validation script
     python3 main_validation_script.py --interface="$network_interface" || {
-        echo "❌ 硬件IMU验证失败"
-        echo "可能的原因："
-        echo "1. 机器人未连接或网络配置错误"
-        echo "2. CycloneDDS环境配置问题"
-        echo "3. 机器人不在可通信状态"
+        echo "Hardware IMU validation failed"
+        echo "Possible causes:"
+        echo "1. Robot is not connected or network configuration is incorrect"
+        echo "2. CycloneDDS environment configuration issue"
+        echo "3. Robot is not in a communicable state"
         echo ""
-        echo "🎯 建议："
-        echo "1. 检查网络连接和IP配置"
-        echo "2. 确认机器人处于正常运行状态"
-        echo "3. 检查防火墙设置"
+        echo "Suggestions:"
+        echo "1. Check network connection and IP configuration"
+        echo "2. Confirm that the robot is in normal operating state"
+        echo "3. Check firewall settings"
         return 1
     }
-    
-    echo "✅ IMU验证测试完成"
+
+    echo "IMU validation tests complete"
     return 0
 }
 
-# 生成验证报告
+# Generate validation report
 generate_report() {
     echo ""
-    echo "📋 生成验证报告..."
-    
+    echo "Generating validation report..."
+
     local report_file="imu_validation_report_$(date '+%Y%m%d_%H%M%S').md"
-    
+
     cat > "$report_file" << EOF
-# IMU验证报告
+# IMU Validation Report
 
-**生成时间**: $(date '+%Y-%m-%d %H:%M:%S %Z')
-**测试环境**: $(uname -a)
+**Generated**: $(date '+%Y-%m-%d %H:%M:%S %Z')
+**Test Environment**: $(uname -a)
 
-## 环境配置
+## Environment Configuration
 
 ### CycloneDDS
-- **安装路径**: $CYCLONEDDS_HOME
-- **版本**: 0.10.x
-- **状态**: ✅ 已配置
+- **Installation Path**: $CYCLONEDDS_HOME
+- **Version**: 0.10.x
+- **Status**: Configured
 
 ### unitree_sdk2py
-- **安装状态**: ✅ 已安装
-- **导入测试**: ✅ 通过
+- **Installation Status**: Installed
+- **Import Test**: Passed
 
-## 测试结果
+## Test Results
 
-### 1. 静态稳定性测试
-- **状态**: ✅ 通过
-- **用途**: 验证IMU在静止状态下的数据质量
+### 1. Static Stability Test
+- **Status**: Passed
+- **Purpose**: Verify IMU data quality at rest
 
-### 2. 动态响应测试  
-- **状态**: ✅ 通过
-- **用途**: 验证IMU对运动的响应准确性
+### 2. Dynamic Response Test
+- **Status**: Passed
+- **Purpose**: Verify IMU response accuracy to motion
 
-### 3. 校准质量测试
-- **状态**: ✅ 通过
-- **用途**: 验证IMU的工厂校准状态
+### 3. Calibration Quality Test
+- **Status**: Passed
+- **Purpose**: Verify IMU factory calibration status
 
-## 总结
+## Summary
 
-✅ **所有IMU验证测试通过**
+**All IMU validation tests passed**
 
-机器人IMU系统工作正常，满足以下要求：
-- 静态稳定性良好
-- 动态响应准确
-- 校准质量达标
+The robot IMU system is working normally and meets the following requirements:
+- Good static stability
+- Accurate dynamic response
+- Calibration quality meets standards
 
-## 下一步
+## Next Steps
 
-- 继续下一个硬件验证任务
-- 定期重新验证IMU性能
-- 监控长期稳定性
+- Continue with the next hardware validation task
+- Periodically re-verify IMU performance
+- Monitor long-term stability
 
 ---
-*报告由IMU验证系统自动生成*
+*Report automatically generated by the IMU validation system*
 EOF
 
-    echo "✅ 验证报告已生成: $report_file"
+    echo "Validation report generated: $report_file"
 }
 
-# 主函数
+# Main function
 main() {
-    echo "开始CycloneDDS环境配置和IMU验证流程..."
-    
-    # 预检查
+    echo "Starting CycloneDDS environment configuration and IMU validation process..."
+
+    # Pre-checks
     check_system_status
-    
+
     if ! check_ros2_environment; then
         exit 1
     fi
-    
-    # CycloneDDS配置
+
+    # CycloneDDS configuration
     if ! check_existing_cyclonedds; then
         install_dependencies
         install_cyclonedds
     fi
-    
+
     if ! verify_cyclonedds; then
-        echo "❌ CycloneDDS验证失败"
+        echo "CycloneDDS verification failed"
         exit 1
     fi
-    
-    # unitree_sdk2py配置
+
+    # unitree_sdk2py configuration
     if ! check_unitree_sdk; then
-        echo "❌ unitree_sdk2py配置失败"
+        echo "unitree_sdk2py configuration failed"
         exit 1
     fi
-    
+
     if ! test_unitree_import; then
-        echo "❌ unitree_sdk2py导入测试失败"
+        echo "unitree_sdk2py import test failed"
         exit 1
     fi
-    
-    # IMU验证测试
+
+    # IMU validation tests
     if ! run_imu_validation; then
-        echo "❌ IMU验证测试失败"
+        echo "IMU validation tests failed"
         exit 1
     fi
-    
-    # 生成报告
+
+    # Generate report
     generate_report
-    
+
     echo ""
-    echo "🎉 CycloneDDS环境配置和IMU验证测试全部完成！"
+    echo "CycloneDDS environment configuration and IMU validation tests all complete!"
     echo ""
-    echo "📋 摘要："
-    echo "✅ CycloneDDS环境配置完成"
-    echo "✅ unitree_sdk2py安装和配置完成" 
-    echo "✅ IMU验证测试通过"
-    echo "✅ 验证报告已生成"
+    echo "Summary:"
+    echo "- CycloneDDS environment configuration complete"
+    echo "- unitree_sdk2py installation and configuration complete"
+    echo "- IMU validation tests passed"
+    echo "- Validation report generated"
     echo ""
-    echo "🚀 可以继续下一个任务了！"
-    
+    echo "Ready to proceed with the next task!"
+
     return 0
 }
 
-# 错误处理
+# Error handling
 cleanup_on_failure() {
     local exit_code=$?
     echo ""
-    echo "❌ 脚本执行失败 (退出码: $exit_code)"
-    echo "时间: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "Script execution failed (exit code: $exit_code)"
+    echo "Time: $(date '+%Y-%m-%d %H:%M:%S')"
     echo ""
-    echo "🔧 故障排除建议："
-    echo "1. 检查网络连接状态"
-    echo "2. 确认机器人电源和通信状态"
-    echo "3. 验证CycloneDDS环境变量"
-    echo "4. 重新打开干净终端（未source ROS2）"
+    echo "Troubleshooting suggestions:"
+    echo "1. Check network connection status"
+    echo "2. Confirm robot power and communication status"
+    echo "3. Verify CycloneDDS environment variables"
+    echo "4. Reopen a clean terminal (without sourcing ROS2)"
     echo ""
     exit $exit_code
 }
 
-# 设置错误处理
+# Set up error handling
 trap cleanup_on_failure ERR
 
-# 运行主函数
-main "$@" 
+# Run main function
+main "$@"

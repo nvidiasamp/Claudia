@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ASRBridge ユニットテスト"""
+"""ASRBridge unit tests"""
 
 import asyncio
 import os
@@ -22,7 +22,7 @@ from claudia.audio.asr_bridge import (
 
 
 def _run(coro):
-    """Python 3.8 互換 asyncio テストヘルパー"""
+    """Python 3.8 compatible asyncio test helper"""
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(coro)
@@ -31,7 +31,7 @@ def _run(coro):
 
 
 def _make_mock_brain():
-    """process_and_execute を持つ mock brain を作成"""
+    """Create a mock brain with process_and_execute"""
     brain = MagicMock()
     result = MagicMock()
     result.response = "テスト応答"
@@ -47,7 +47,7 @@ def _make_mock_brain():
 
 
 class TestASRBridgeInit(unittest.TestCase):
-    """初期化テスト"""
+    """Initialization tests"""
 
     def test_default_init(self):
         brain = MagicMock()
@@ -63,7 +63,7 @@ class TestASRBridgeInit(unittest.TestCase):
 
 
 class TestReadyHandshake(unittest.TestCase):
-    """ready ハンドシェイクテスト"""
+    """Ready handshake tests"""
 
     def test_valid_version_sets_event(self):
         async def _test():
@@ -91,10 +91,10 @@ class TestReadyHandshake(unittest.TestCase):
 
 
 class TestTranscriptHandling(unittest.TestCase):
-    """transcript 処理テスト"""
+    """Transcript processing tests"""
 
     def test_normal_transcript_enqueued(self):
-        """正常な transcript はキューに投入される"""
+        """Normal transcript is enqueued"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
@@ -112,7 +112,7 @@ class TestTranscriptHandling(unittest.TestCase):
         _run(_test())
 
     def test_low_confidence_filtered(self):
-        """低信頼度の transcript はフィルタされる"""
+        """Low confidence transcript is filtered out"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
@@ -126,7 +126,7 @@ class TestTranscriptHandling(unittest.TestCase):
         _run(_test())
 
     def test_empty_text_ignored(self):
-        """空テキストは無視される"""
+        """Empty text is ignored"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
@@ -140,18 +140,18 @@ class TestTranscriptHandling(unittest.TestCase):
         _run(_test())
 
     def test_duplicate_utterance_filtered_after_execution(self):
-        """ワーカー実行後の同一 utterance_id は重複排除される"""
+        """Same utterance_id is deduplicated after worker execution"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
-            # 1 回目: キューに入る
+            # 1st: enqueued
             await bridge._handle_transcript({
                 "text": "お手", "confidence": 0.9, "utterance_id": "utt-dup",
             })
             self.assertEqual(bridge._queue.qsize(), 1)
-            # ワーカーが実行したことをシミュレート (mark_processed)
+            # Simulate worker execution (mark_processed)
             bridge._mark_processed("utt-dup")
-            # 2 回目: 処理済みなのでスキップ
+            # 2nd: skipped because already processed
             await bridge._handle_transcript({
                 "text": "お手", "confidence": 0.9, "utterance_id": "utt-dup",
             })
@@ -159,7 +159,7 @@ class TestTranscriptHandling(unittest.TestCase):
         _run(_test())
 
     def test_transcript_emergency_fallback(self):
-        """transcript 経由の emergency キーワードは即時処理される"""
+        """Emergency keyword via transcript is processed immediately"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
@@ -168,18 +168,18 @@ class TestTranscriptHandling(unittest.TestCase):
                 "confidence": 0.95,
                 "utterance_id": "utt-emg-fb",
             })
-            # emergency 経由で処理されるためキューには入らない
+            # Processed via emergency path so not enqueued
             self.assertEqual(bridge._queue.qsize(), 0)
-            # 処理済みとしてマークされている
+            # Marked as processed
             self.assertIn("utt-emg-fb", bridge._processed_ids)
         _run(_test())
 
 
 class TestEmergencyHandling(unittest.TestCase):
-    """emergency 処理テスト"""
+    """Emergency processing tests"""
 
     def test_emergency_calls_brain(self):
-        """emergency は即座に brain を呼び出す"""
+        """Emergency immediately calls brain"""
         call_log = []
 
         async def mock_pe(text):
@@ -203,11 +203,11 @@ class TestEmergencyHandling(unittest.TestCase):
         _run(_test())
 
     def test_emergency_flushes_queue(self):
-        """emergency 後にキューが空化される"""
+        """Queue is flushed after emergency"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
-            # キューに先にコマンドを入れる
+            # Pre-fill queue with commands
             await bridge._queue.put(("ダンス", "utt-d1"))
             await bridge._queue.put(("お手", "utt-d2"))
             self.assertEqual(bridge._queue.qsize(), 2)
@@ -217,12 +217,12 @@ class TestEmergencyHandling(unittest.TestCase):
                 "utterance_id": "utt-emg-flush",
                 "confidence": 1.0,
             })
-            # キューが空化されている
+            # Queue has been flushed
             self.assertEqual(bridge._queue.qsize(), 0)
         _run(_test())
 
     def test_emergency_sets_cooldown(self):
-        """emergency 後に冷却ウィンドウが設定される"""
+        """Cooldown window is set after emergency"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
@@ -241,7 +241,7 @@ class TestEmergencyHandling(unittest.TestCase):
         _run(_test())
 
     def test_emergency_dedup_prevents_double(self):
-        """同一 utterance_id の emergency + transcript は二重実行しない"""
+        """Same utterance_id emergency + transcript does not double-execute"""
         call_count = [0]
 
         async def mock_pe(text):
@@ -257,28 +257,28 @@ class TestEmergencyHandling(unittest.TestCase):
             brain.process_and_execute = mock_pe
             bridge = ASRBridge(brain)
 
-            # emergency 先着
+            # Emergency arrives first
             await bridge._handle_emergency({
                 "keyword": "止まれ",
                 "utterance_id": "utt-same",
                 "confidence": 1.0,
             })
-            # transcript 後着 (同一 utterance_id)
+            # Transcript arrives later (same utterance_id)
             await bridge._handle_transcript({
                 "text": "止まれ",
                 "confidence": 0.95,
                 "utterance_id": "utt-same",
             })
-            # brain は 1 回のみ呼ばれる
+            # Brain is called only once
             self.assertEqual(call_count[0], 1)
         _run(_test())
 
 
 class TestQueueManagement(unittest.TestCase):
-    """キュー管理テスト"""
+    """Queue management tests"""
 
     def test_queue_bounded(self):
-        """キューは maxsize=3 で制限される"""
+        """Queue is bounded at maxsize=3"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
@@ -286,18 +286,18 @@ class TestQueueManagement(unittest.TestCase):
         _run(_test())
 
     def test_queue_drop_oldest_on_overflow(self):
-        """キュー満杯時は最古のコマンドが破棄される"""
+        """Oldest command is dropped when queue is full"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
 
-            # 3 つ投入
+            # Enqueue 3
             await bridge._enqueue_command("cmd1", "u1")
             await bridge._enqueue_command("cmd2", "u2")
             await bridge._enqueue_command("cmd3", "u3")
             self.assertEqual(bridge._queue.qsize(), 3)
 
-            # 4 つ目投入 → cmd1 が破棄
+            # 4th enqueue -> cmd1 is dropped
             await bridge._enqueue_command("cmd4", "u4")
             self.assertEqual(bridge._queue.qsize(), 3)
 
@@ -310,21 +310,21 @@ class TestQueueManagement(unittest.TestCase):
 
 
 class TestDedupExpiry(unittest.TestCase):
-    """重複排除 TTL テスト"""
+    """Deduplication TTL tests"""
 
     def test_expired_ids_cleaned(self):
-        """TTL 超過した ID はクリーンアップされる"""
+        """IDs past TTL are cleaned up"""
         brain, _ = _make_mock_brain()
         bridge = ASRBridge(brain)
 
-        # 古いエントリ
+        # Old entry
         bridge._processed_ids["old-id"] = time.monotonic() - DEDUP_TTL_S - 1
 
         bridge._cleanup_expired_ids()
         self.assertNotIn("old-id", bridge._processed_ids)
 
     def test_fresh_ids_kept(self):
-        """新しい ID は保持される"""
+        """Fresh IDs are retained"""
         brain, _ = _make_mock_brain()
         bridge = ASRBridge(brain)
 
@@ -334,14 +334,14 @@ class TestDedupExpiry(unittest.TestCase):
         self.assertIn("fresh-id", bridge._processed_ids)
 
     def test_empty_utterance_id_not_deduped(self):
-        """空の utterance_id は重複排除しない (常に未処理扱い)"""
+        """Empty utterance_id is not deduplicated (always treated as unprocessed)"""
         brain, _ = _make_mock_brain()
         bridge = ASRBridge(brain)
         self.assertFalse(bridge._is_processed(""))
 
 
 class TestHeartbeat(unittest.TestCase):
-    """ハートビートテスト"""
+    """Heartbeat tests"""
 
     def test_heartbeat_updates_timestamp(self):
         brain, _ = _make_mock_brain()
@@ -353,21 +353,21 @@ class TestHeartbeat(unittest.TestCase):
 
 
 class TestCommandWorker(unittest.TestCase):
-    """コマンドワーカーテスト"""
+    """Command worker tests"""
 
     def test_cooldown_skips_command(self):
-        """冷却ウィンドウ中のコマンドはスキップされる"""
+        """Commands during cooldown window are skipped"""
         async def _test():
             brain, _ = _make_mock_brain()
             bridge = ASRBridge(brain)
             bridge._running = True
 
-            # 冷却中
+            # During cooldown
             bridge._cooldown_until = time.monotonic() + 10.0
             await bridge._queue.put(("ダンス", "utt-cool-cmd"))
 
-            # ワーカーを 1 ターンだけ実行するためタスク化 + 短タイムアウト
-            # ワーカーは冷却中なのでスキップするはず
+            # Run worker for 1 cycle by making it a task with short timeout
+            # Worker should skip because of cooldown
             bridge._running = True
 
             async def _run_one_cycle():
@@ -377,7 +377,7 @@ class TestCommandWorker(unittest.TestCase):
                     )
                 except asyncio.TimeoutError:
                     return None
-                # 冷却チェック
+                # Cooldown check
                 now = time.monotonic()
                 if now < bridge._cooldown_until:
                     return "skipped"

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-test_safety_integration.py — AST 级架构约束强制测试
+test_safety_integration.py — AST-level architecture constraint enforcement tests
 
-验证 production_brain.py 的架构规则:
-  1. 旧安全路径已废弃 — 无非 deprecated 的 safety_validator/final_gate/precheck 调用
-  2. 裸 sport_client 调用已消灭 — 除 Init() 和 _rpc_call 内部外无裸调用
-  3. 审计 route 使用常量 — _log_audit(route=...) 不使用字符串字面量
-  4. SafetyCompiler 全路径覆盖 — 所有动作路径都有 safety_compiler.compile 调用
+Validates architectural rules for production_brain.py:
+  1. Legacy safety paths are deprecated — no non-deprecated safety_validator/final_gate/precheck calls
+  2. Bare sport_client calls are eliminated — no bare calls except Init() and within _rpc_call
+  3. Audit route uses constants — _log_audit(route=...) does not use string literals
+  4. SafetyCompiler full path coverage — all action paths have safety_compiler.compile calls
 """
 
 import sys
@@ -20,17 +20,17 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 BRAIN_PATH = Path(__file__).parent.parent.parent / "src" / "claudia" / "brain" / "production_brain.py"
 
 
-# === AST 访问器 ===
+# === AST visitors ===
 
 class DeprecatedCallFinder(ast.NodeVisitor):
-    """查找被废弃方法的非法调用（豁免方法体自身定义）
+    """Find illegal calls to deprecated methods (exempt: method's own def body)
 
-    废弃方法:
+    Deprecated methods:
       - self._final_safety_gate(...)
       - self._quick_safety_precheck(...)
       - self.safety_validator.validate_action(...)
 
-    豁免: deprecated 方法自身 def body 内的调用不算违规
+    Exemption: calls within the deprecated method's own def body are not violations
     """
     DEPRECATED_SELF = {"_final_safety_gate", "_quick_safety_precheck"}
     DEPRECATED_ATTR = {"safety_validator": {"validate_action"}}
@@ -59,7 +59,7 @@ class DeprecatedCallFinder(ast.NodeVisitor):
                         self.violations.append(
                             (node.lineno, "self.{}.{}()".format(obj.attr, method))
                         )
-            # self._final_safety_gate(...) — 豁免自身 def body
+            # self._final_safety_gate(...) — exempt within own def body
             elif isinstance(obj, ast.Name) and obj.id == "self":
                 if method in self.DEPRECATED_SELF:
                     if self._current_method != method:
@@ -70,12 +70,12 @@ class DeprecatedCallFinder(ast.NodeVisitor):
 
 
 class BareClientCallFinder(ast.NodeVisitor):
-    """查找裸 sport_client 调用
+    """Find bare sport_client calls
 
-    豁免:
-      - Init(): 构造期初始化
-      - _rpc_call 方法内: 统一 RPC 包装器的合法调用
-      - _init_sport_client 方法内: 初始化流程
+    Exemptions:
+      - Init(): initialization during construction
+      - Within _rpc_call method: legitimate calls inside unified RPC wrapper
+      - Within _init_sport_client method: initialization flow
     """
     ALLOWED_METHODS = {"Init"}
     EXEMPT_ENCLOSING = {"_rpc_call", "_init_sport_client"}
@@ -110,9 +110,9 @@ class BareClientCallFinder(ast.NodeVisitor):
 
 
 class AuditRouteLiteralFinder(ast.NodeVisitor):
-    """查找 _log_audit 调用中使用字符串字面量的 route 参数
+    """Find string literal route parameters in _log_audit calls
 
-    规则: route= 参数必须引用 ROUTE_* 常量，不允许字符串散写
+    Rule: route= parameter must reference ROUTE_* constants, string literals are not allowed
     """
 
     def __init__(self):
@@ -123,7 +123,7 @@ class AuditRouteLiteralFinder(ast.NodeVisitor):
             if node.func.attr == "_log_audit":
                 for kw in node.keywords:
                     if kw.arg == "route":
-                        # Python 3.8: ast.Constant (3.8+) 或 ast.Str (3.6-3.7)
+                        # Python 3.8: ast.Constant (3.8+) or ast.Str (3.6-3.7)
                         if isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
                             self.violations.append(
                                 (node.lineno, 'route="{}"'.format(kw.value.value))
@@ -135,20 +135,20 @@ class AuditRouteLiteralFinder(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-# === 测试用例 ===
+# === Test cases ===
 
 class TestDeprecatedCallsRemoved:
-    """旧安全路径废弃验证"""
+    """Legacy safety path deprecation validation"""
 
     def test_no_legacy_safety_calls(self):
-        """production_brain.py 中无非 deprecated 的旧安全调用"""
-        assert BRAIN_PATH.exists(), "production_brain.py 不存在"
+        """No non-deprecated legacy safety calls in production_brain.py"""
+        assert BRAIN_PATH.exists(), "production_brain.py does not exist"
         source = BRAIN_PATH.read_text(encoding="utf-8")
         tree = ast.parse(source)
         finder = DeprecatedCallFinder()
         finder.visit(tree)
         assert not finder.violations, (
-            "发现 {} 处废弃方法调用（应使用 SafetyCompiler）:\n{}".format(
+            "Found {} deprecated method calls (should use SafetyCompiler):\n{}".format(
                 len(finder.violations),
                 "\n".join("  L{}: {}".format(ln, call) for ln, call in finder.violations)
             )
@@ -156,17 +156,17 @@ class TestDeprecatedCallsRemoved:
 
 
 class TestNoBareClientCalls:
-    """裸 sport_client 调用消灭验证"""
+    """Bare sport_client call elimination validation"""
 
     def test_no_bare_sport_client_calls(self):
-        """除 Init() 和豁免方法外无裸 sport_client 调用"""
+        """No bare sport_client calls except Init() and exempt methods"""
         assert BRAIN_PATH.exists()
         source = BRAIN_PATH.read_text(encoding="utf-8")
         tree = ast.parse(source)
         finder = BareClientCallFinder()
         finder.visit(tree)
         assert not finder.violations, (
-            "发现 {} 处裸 sport_client 调用（应使用 _rpc_call）:\n{}".format(
+            "Found {} bare sport_client calls (should use _rpc_call):\n{}".format(
                 len(finder.violations),
                 "\n".join("  L{}: {}".format(ln, call) for ln, call in finder.violations)
             )
@@ -174,18 +174,18 @@ class TestNoBareClientCalls:
 
 
 class TestAuditRouteConstants:
-    """审计 route 使用常量验证"""
+    """Audit route constant usage validation"""
 
     def test_audit_route_uses_constants(self):
-        """所有 _log_audit(route=...) 使用常量引用，禁止字符串字面量"""
+        """All _log_audit(route=...) use constant references, string literals are forbidden"""
         assert BRAIN_PATH.exists()
         source = BRAIN_PATH.read_text(encoding="utf-8")
         tree = ast.parse(source)
         finder = AuditRouteLiteralFinder()
         finder.visit(tree)
         assert not finder.violations, (
-            "发现 {} 处 _log_audit 使用字符串字面量 route:\n{}\n"
-            "应改为 audit_routes.ROUTE_* 常量".format(
+            "Found {} _log_audit calls using string literal route:\n{}\n"
+            "Should use audit_routes.ROUTE_* constants instead".format(
                 len(finder.violations),
                 "\n".join("  L{}: {}".format(ln, call) for ln, call in finder.violations)
             )
@@ -193,41 +193,41 @@ class TestAuditRouteConstants:
 
 
 class TestSafetyCompilerCoverage:
-    """SafetyCompiler 全路径覆盖验证（源码级检查）"""
+    """SafetyCompiler full path coverage validation (source-level check)"""
 
     def _get_brain_source(self):
-        """读取 production_brain.py 源码"""
+        """Read production_brain.py source code"""
         return BRAIN_PATH.read_text(encoding="utf-8")
 
     def test_safety_compiler_in_source(self):
-        """production_brain.py 中导入并使用 SafetyCompiler"""
+        """production_brain.py imports and uses SafetyCompiler"""
         source = self._get_brain_source()
         assert "from claudia.brain.safety_compiler import" in source
         assert "safety_compiler.compile" in source
 
     def test_safety_compiler_in_hotcache(self):
-        """hot_cache 路径使用 SafetyCompiler"""
+        """hot_cache path uses SafetyCompiler"""
         source = self._get_brain_source()
-        # 在 hot_cache 相关区域内应有 safety_compiler.compile
+        # hot_cache related area should have safety_compiler.compile
         assert "safety_compiler.compile" in source
 
     def test_safety_compiler_in_sequence(self):
-        """sequence 路径使用 SafetyCompiler"""
+        """sequence path uses SafetyCompiler"""
         source = self._get_brain_source()
-        # 搜索 sequence_hotpath/predefined 区域是否有 safety_compiler
+        # Search sequence_hotpath/predefined area for safety_compiler
         assert source.count("safety_compiler.compile") >= 3, (
-            "safety_compiler.compile 出现次数不足（期望>=3: hot_cache+sequence+dance/LLM）"
+            "safety_compiler.compile appears fewer times than expected (expected>=3: hot_cache+sequence+dance/LLM)"
         )
 
     def test_action_registry_imported(self):
-        """production_brain.py 使用 action_registry 模块"""
+        """production_brain.py uses action_registry module"""
         source = self._get_brain_source()
         assert "from claudia.brain.action_registry import" in source
         assert "METHOD_MAP" in source
         assert "VALID_API_CODES" in source
 
     def test_audit_routes_imported(self):
-        """production_brain.py 使用 audit_routes 模块"""
+        """production_brain.py uses audit_routes module"""
         source = self._get_brain_source()
         assert "from claudia.brain.audit_routes import" in source
         assert "ROUTE_EMERGENCY" in source
@@ -236,10 +236,10 @@ class TestSafetyCompilerCoverage:
 
 
 class TestArchitecturalIntegrity:
-    """架构完整性: 确保关键模块存在且可导入"""
+    """Architectural integrity: ensure key modules exist and are importable"""
 
     def test_action_registry_importable(self):
-        """action_registry 可正常导入"""
+        """action_registry can be imported normally"""
         from claudia.brain.action_registry import (
             _ACTIONS, ACTION_REGISTRY,
             VALID_API_CODES, EXECUTABLE_API_CODES,
@@ -251,20 +251,20 @@ class TestArchitecturalIntegrity:
         assert len(METHOD_MAP) > 0
 
     def test_safety_compiler_importable(self):
-        """safety_compiler 可正常导入"""
+        """safety_compiler can be imported normally"""
         from claudia.brain.safety_compiler import SafetyCompiler, SafetyVerdict
         sc = SafetyCompiler()
         v = sc.compile([1004], battery_level=0.80, is_standing=True)
         assert isinstance(v, SafetyVerdict)
 
     def test_audit_routes_importable(self):
-        """audit_routes 可正常导入"""
+        """audit_routes can be imported normally"""
         from claudia.brain.audit_routes import ALL_ROUTES, ROUTE_EMERGENCY
         assert len(ALL_ROUTES) > 0
         assert ROUTE_EMERGENCY in ALL_ROUTES
 
     def test_production_brain_importable(self):
-        """production_brain 基本可导入（不初始化实例）"""
+        """production_brain can be imported (without creating an instance)"""
         from claudia.brain.production_brain import ProductionBrain, BrainOutput
         assert hasattr(ProductionBrain, 'process_command')
         assert hasattr(ProductionBrain, 'process_and_execute')

@@ -1,55 +1,56 @@
 #!/bin/bash
-# Track B部署脚本：拉取/创建新模型并快速测试
+# Track B Deployment Script: Pull/create new model and quick test
 
 set -e
 
 cd $HOME/claudia
 
 echo "=================================="
-echo "🔬 Track B: 新模型部署"
+echo "Track B: New Model Deployment"
 echo "=================================="
 echo ""
 
-# 1. 确保基础模型存在
-echo "📦 检查基础模型..."
+# 1. Ensure base model exists
+echo "Checking base model..."
 if ! ollama list | grep -q "qwen2.5:7b"; then
-    echo "⬇️  拉取qwen2.5:7b (约4.7GB, INT4量化)..."
+    echo "Pulling qwen2.5:7b (approx. 4.7GB, INT4 quantized)..."
     ollama pull qwen2.5:7b
 else
-    echo "   ✅ qwen2.5:7b已存在"
+    echo "   qwen2.5:7b already exists"
 fi
 
-# 2. 创建新Modelfile模型
+# 2. Create new Modelfile model
 echo ""
-echo "🔧 创建claudia-intelligent-7b:v1..."
+echo "Creating claudia-intelligent-7b:v1..."
 if ollama list | grep -q "claudia-intelligent-7b:v1"; then
-    echo "   ⚠️  模型已存在，删除旧版本..."
+    echo "   Model already exists, removing old version..."
     ollama rm claudia-intelligent-7b:v1 2>/dev/null || true
 fi
 
 ollama create claudia-intelligent-7b:v1 -f ClaudiaIntelligent_Qwen7B
 
-echo "   ✅ 模型创建完成"
+echo "   Model creation complete"
 
-# 3. 快速测试（修复：使用Python库替代CLI --format json）
+# 3. Quick test (fix: use Python library instead of CLI --format json)
 echo ""
-echo "🧪 快速测试新模型..."
+echo "Quick testing new model..."
 echo ""
 
 python3 - <<'PYEOF'
 import ollama
 import json
 
+# Japanese robot commands used as test inputs
 test_commands = [
-    "座って",
-    "立って",
-    "可愛い",
+    "座って",    # sit
+    "立って",    # stand up
+    "可愛い",    # cute
     "stop"
 ]
 
-print("使用Python ollama库测试 (format='json')...\n")
+print("Testing with Python ollama library (format='json')...\n")
 for cmd in test_commands:
-    print(f"测试: {cmd}")
+    print(f"Test: {cmd}")
     try:
         response = ollama.chat(
             model="claudia-intelligent-7b:v1",
@@ -60,17 +61,17 @@ for cmd in test_commands:
         content = response['message']['content']
         data = json.loads(content)
         api_code = data.get('api_code') or data.get('a')
-        print(f"  → api_code: {api_code}")
-        print(f"  → raw: {content[:80]}...")
+        print(f"  -> api_code: {api_code}")
+        print(f"  -> raw: {content[:80]}...")
     except Exception as e:
-        print(f"  ❌ 错误: {e}")
+        print(f"  Error: {e}")
     print("")
 PYEOF
 
 echo "=================================="
-echo "✅ Track B部署完成！"
+echo "Track B deployment complete!"
 echo ""
-echo "下一步："
-echo "1. 运行完整评测: python3 test/test_model_comparison.py"
-echo "2. 对比结果查看: test/model_comparison_results.json"
+echo "Next steps:"
+echo "1. Run full evaluation: python3 test/test_model_comparison.py"
+echo "2. View comparison results: test/model_comparison_results.json"
 echo "=================================="

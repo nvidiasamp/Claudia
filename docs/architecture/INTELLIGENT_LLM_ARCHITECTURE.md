@@ -1,47 +1,47 @@
-# Claudia智能LLM架构设计
+# Claudia Intelligent LLM Architecture Design
 
-**日期**: 2025-11-14
-**版本**: v2.0 - 完全智能化架构
-**目标**: 消除关键字匹配，实现真正的语义理解
-
----
-
-## 核心原则
-
-### ❌ 不应该做的
-1. **关键字匹配** - 热路径扩展到100+关键词仍是规则系统
-2. **预定义序列** - 无法覆盖所有可能的用户表达
-3. **正则表达式** - 永远跟不上自然语言的变化
-
-### ✅ 应该做的
-1. **语义理解** - LLM理解用户意图，而非匹配关键词
-2. **上下文感知** - 记住对话历史，理解指代关系
-3. **自适应学习** - 从用户反馈中学习，不断改进
+**Date**: 2025-11-14
+**Version**: v2.0 - Fully Intelligent Architecture
+**Goal**: Eliminate keyword matching and achieve true semantic understanding
 
 ---
 
-## 方案1：升级到真正强大的模型（推荐）
+## Core Principles
 
-### 1.1 本地部署Qwen2.5-14B（Jetson极限）
+### What NOT to Do
+1. **Keyword matching** - Expanding hot path to 100+ keywords is still a rule-based system
+2. **Predefined sequences** - Cannot cover all possible user expressions
+3. **Regular expressions** - Can never keep up with natural language variations
 
-**硬件验证**：
+### What to Do
+1. **Semantic understanding** - LLM understands user intent, not matching keywords
+2. **Context awareness** - Remember conversation history, understand references
+3. **Adaptive learning** - Learn from user feedback, continuously improve
+
+---
+
+## Approach 1: Upgrade to a Truly Powerful Model (Recommended)
+
+### 1.1 Local Deployment of Qwen2.5-14B (Jetson Maximum)
+
+**Hardware Verification**:
 ```bash
-# Jetson Orin NX规格
+# Jetson Orin NX specifications
 GPU Memory: 8GB
 RAM: 16GB
 CPU: 8-core ARM
 
-# 14B量化后内存需求
-14B-Q4_K_M: ~8GB GPU内存（刚好可以）
-推理速度: ~1-2 token/s（可接受）
+# 14B quantized memory requirements
+14B-Q4_K_M: ~8GB GPU memory (just fits)
+Inference speed: ~1-2 token/s (acceptable)
 ```
 
-**部署方案**：
+**Deployment Plan**:
 ```bash
-# 1. 下载Qwen2.5-14B-Instruct Q4量化版
+# 1. Download Qwen2.5-14B-Instruct Q4 quantized version
 ollama pull qwen2.5:14b-instruct-q4_K_M
 
-# 2. 创建专用Modelfile（不含关键字，纯语义理解）
+# 2. Create dedicated Modelfile (no keywords, pure semantic understanding)
 cat > models/ClaudiaIntelligent_v2.0 <<'EOF'
 FROM qwen2.5:14b-instruct-q4_K_M
 
@@ -59,9 +59,9 @@ SYSTEM """あなたは四足ロボット犬Claudiaの知能システムです。
   "intent": "action|dialog|question",
   "action": {
     "type": "single|sequence",
-    "code": 1009,  // 単一動作の場合
-    "sequence": [1004, 1016],  // 連続動作の場合
-    "confidence": 0.95  // 理解の確信度（0-1）
+    "code": 1009,  // For single actions
+    "sequence": [1004, 1016],  // For sequential actions
+    "confidence": 0.95  // Understanding confidence (0-1)
   },
   "reasoning": "なぜこの動作を選んだか（デバッグ用）"
 }
@@ -108,43 +108,43 @@ PARAMETER num_ctx 4096
 PARAMETER stop <|im_end|>
 EOF
 
-# 3. 创建模型
+# 3. Create model
 ollama create claudia-intelligent:14b-v2.0 -f models/ClaudiaIntelligent_v2.0
 ```
 
-**优势**：
-- ✅ **真正的语义理解**：理解隐喻（"疲れた"→座る）
-- ✅ **上下文感知**：可以记住对话历史
-- ✅ **自信度反馈**：不确定时主动询问
-- ✅ **零关键字**：完全靠理解，不靠匹配
+**Advantages**:
+- **True semantic understanding**: Understands metaphors ("疲れた" -> sit down)
+- **Context awareness**: Can remember conversation history
+- **Confidence feedback**: Proactively asks when uncertain
+- **Zero keywords**: Relies entirely on understanding, not matching
 
-**劣势**：
-- ⚠️ 延迟增加：~3-5秒（但智能水平质变）
-- ⚠️ GPU满载：8GB全用，无法同时跑其他模型
+**Disadvantages**:
+- Increased latency: ~3-5 seconds (but a qualitative leap in intelligence)
+- GPU at full load: All 8GB used, cannot run other models simultaneously
 
 ---
 
-### 1.2 LLM输出格式优化（Structured Output）
+### 1.2 LLM Output Format Optimization (Structured Output)
 
-**当前问题**：
+**Current Problem**:
 ```python
-# 当前解析方式（容易失败）
-response_text = "一些前缀文字 {\"r\":\"座ります\",\"a\":1009} 一些后缀"
+# Current parsing approach (prone to failure)
+response_text = "some prefix text {\"r\":\"座ります\",\"a\":1009} some suffix"
 json_str = response_text[response_text.find("{"):response_text.rfind("}")+1]
-result = json.loads(json_str)  # 可能失败
+result = json.loads(json_str)  # May fail
 ```
 
-**优化方案**：使用Ollama的JSON模式
+**Optimization**: Use Ollama's JSON mode
 
 ```python
-# production_brain.py 中修改 _call_ollama_v2
+# Modify _call_ollama_v2 in production_brain.py
 
 async def _call_ollama_v2(self, model: str, command: str, timeout: int = 10) -> Optional[Dict]:
-    """调用Ollama（结构化输出模式）"""
+    """Call Ollama (structured output mode)"""
     try:
         import ollama
 
-        # 定义JSON Schema（强制LLM输出规范JSON）
+        # Define JSON Schema (forces LLM to output standardized JSON)
         json_schema = {
             "type": "object",
             "properties": {
@@ -164,14 +164,14 @@ async def _call_ollama_v2(self, model: str, command: str, timeout: int = 10) -> 
             "required": ["response", "intent"]
         }
 
-        # 使用Ollama的format参数强制JSON输出
+        # Use Ollama's format parameter to enforce JSON output
         loop = asyncio.get_event_loop()
 
         def _sync_call():
             return ollama.generate(
                 model=model,
                 prompt=command,
-                format=json_schema,  # ✅ 关键：强制结构化输出
+                format=json_schema,  # Key: enforces structured output
                 options={
                     'temperature': 0.3,
                     'num_predict': 200,
@@ -183,23 +183,23 @@ async def _call_ollama_v2(self, model: str, command: str, timeout: int = 10) -> 
             timeout=timeout
         )
 
-        # 直接解析，不需要查找JSON位置
+        # Direct parsing, no need to search for JSON position
         output = json.loads(result['response'])
 
-        # 转换为BrainOutput
+        # Convert to BrainOutput
         return self._convert_to_brain_output(output)
 
     except Exception as e:
-        self.logger.error(f"结构化LLM调用失败: {e}")
+        self.logger.error(f"Structured LLM call failed: {e}")
         return None
 
 def _convert_to_brain_output(self, llm_output: Dict) -> BrainOutput:
-    """转换LLM输出为BrainOutput"""
+    """Convert LLM output to BrainOutput"""
     action = llm_output.get('action', {})
 
-    # 处理不同intent
+    # Handle different intents
     if llm_output['intent'] == 'question':
-        # 纯问答，无动作
+        # Pure Q&A, no action
         return BrainOutput(
             response=llm_output['response'],
             api_code=None,
@@ -208,11 +208,11 @@ def _convert_to_brain_output(self, llm_output: Dict) -> BrainOutput:
         )
 
     elif llm_output['intent'] == 'action':
-        # 检查confidence
+        # Check confidence
         confidence = action.get('confidence', 1.0)
 
         if confidence < 0.7:
-            # 不确定，返回确认请求
+            # Uncertain, return confirmation request
             return BrainOutput(
                 response=f"{llm_output['response']}（確認: よろしいですか？）",
                 api_code=None,
@@ -220,7 +220,7 @@ def _convert_to_brain_output(self, llm_output: Dict) -> BrainOutput:
                 reasoning=f"low_confidence: {llm_output.get('reasoning')}"
             )
 
-        # 高confidence，执行动作
+        # High confidence, execute action
         if action['type'] == 'single':
             return BrainOutput(
                 response=llm_output['response'],
@@ -245,33 +245,33 @@ def _convert_to_brain_output(self, llm_output: Dict) -> BrainOutput:
         )
 ```
 
-**优势**：
-- ✅ **100%解析成功率**：JSON Schema强制正确格式
-- ✅ **类型安全**：自动验证字段类型
-- ✅ **减少幻觉**：LLM更难产生无效输出
-- ✅ **性能提升**：不需要字符串查找和清洗
+**Advantages**:
+- **100% parse success rate**: JSON Schema enforces correct format
+- **Type safety**: Automatic field type validation
+- **Reduced hallucination**: LLM has more difficulty producing invalid output
+- **Performance improvement**: No need for string searching and cleaning
 
 ---
 
-## 方案2：云端混合架构（最智能）
+## Approach 2: Cloud Hybrid Architecture (Most Intelligent)
 
-### 2.1 本地7B + 云端Claude 3.5 Sonnet
+### 2.1 Local 7B + Cloud Claude 3.5 Sonnet
 
-**架构设计**：
+**Architecture Design**:
 ```python
 class IntelligentHybridBrain:
     """
-    三层智能架构:
-    Layer 1: 规则层（仅保留安全关键指令：紧急停止）
-    Layer 2: 本地7B LLM（处理80%常见情况，<3秒）
-    Layer 3: 云端Claude（处理复杂/模糊情况，<10秒但极准确）
+    Three-layer intelligent architecture:
+    Layer 1: Rule layer (only safety-critical commands: emergency stop)
+    Layer 2: Local 7B LLM (handles 80% of common cases, <3 seconds)
+    Layer 3: Cloud Claude (handles complex/ambiguous cases, <10 seconds but highly accurate)
     """
 
     def __init__(self):
         self.local_llm = ProductionBrain(model="qwen2.5:7b-instruct")
         self.cloud_api = AnthropicClient(model="claude-3-5-sonnet-20241022")
 
-        # 统计指标
+        # Statistics
         self.stats = {
             'local_success': 0,
             'local_low_confidence': 0,
@@ -280,38 +280,38 @@ class IntelligentHybridBrain:
         }
 
     async def process_command(self, command: str, context: List[str] = None) -> BrainOutput:
-        """智能处理流程"""
+        """Intelligent processing flow"""
 
-        # Layer 1: 紧急指令（绕过LLM）
+        # Layer 1: Emergency commands (bypasses LLM)
         if command in ['緊急停止', 'EMERGENCY STOP']:
             return BrainOutput(response="緊急停止", api_code=1003)
 
-        # Layer 2: 本地7B尝试
-        self.logger.info(f"🧠 本地7B处理: {command}")
+        # Layer 2: Local 7B attempt
+        self.logger.info(f"Local 7B processing: {command}")
         local_result = await self.local_llm.process_with_structured_output(
             command=command,
-            context=context,  # 传入对话历史
+            context=context,  # Pass conversation history
             timeout=5
         )
 
-        # 检查confidence
+        # Check confidence
         if local_result.confidence >= 0.8:
             self.stats['local_success'] += 1
-            self.logger.info(f"✅ 本地成功 (confidence={local_result.confidence:.2f})")
+            self.logger.info(f"Local success (confidence={local_result.confidence:.2f})")
             return local_result
 
-        # Layer 3: 云端Claude fallback
+        # Layer 3: Cloud Claude fallback
         self.stats['local_low_confidence'] += 1
         self.logger.warning(
-            f"⚠️ 本地置信度低 ({local_result.confidence:.2f}), "
-            f"使用Claude API: {local_result.reasoning}"
+            f"Local confidence low ({local_result.confidence:.2f}), "
+            f"using Claude API: {local_result.reasoning}"
         )
 
         cloud_result = await self._call_claude_api(command, context, local_result)
         self.stats['cloud_fallback'] += 1
-        self.stats['total_cost'] += 0.003  # ~$0.003/请求
+        self.stats['total_cost'] += 0.003  # ~$0.003/request
 
-        # 缓存Claude结果供本地学习
+        # Cache Claude results for local learning
         await self._cache_for_learning(command, cloud_result)
 
         return cloud_result
@@ -322,9 +322,9 @@ class IntelligentHybridBrain:
         context: List[str],
         local_attempt: BrainOutput
     ) -> BrainOutput:
-        """调用Claude API（带上下文）"""
+        """Call Claude API (with context)"""
 
-        # 构建丰富的prompt
+        # Build rich prompt
         conversation_history = "\n".join([
             f"User: {ctx}" for ctx in (context or [])
         ])
@@ -378,10 +378,10 @@ class IntelligentHybridBrain:
                 }]
             )
 
-            # 解析Claude返回的JSON
+            # Parse JSON returned by Claude
             content = response.content[0].text
 
-            # Claude通常返回markdown包裹的JSON
+            # Claude typically returns JSON wrapped in markdown
             if "```json" in content:
                 json_str = content.split("```json")[1].split("```")[0].strip()
             else:
@@ -392,12 +392,12 @@ class IntelligentHybridBrain:
             return self._convert_to_brain_output(result)
 
         except Exception as e:
-            self.logger.error(f"❌ Claude API调用失败: {e}")
-            # Fallback到本地结果（即使confidence低）
+            self.logger.error(f"Claude API call failed: {e}")
+            # Fallback to local result (even with low confidence)
             return local_attempt
 
     async def _cache_for_learning(self, command: str, result: BrainOutput):
-        """缓存Claude结果用于后续Fine-tuning"""
+        """Cache Claude results for subsequent fine-tuning"""
         training_sample = {
             "input": command,
             "output": {
@@ -410,52 +410,52 @@ class IntelligentHybridBrain:
             "timestamp": datetime.now().isoformat()
         }
 
-        # 保存到训练数据集
+        # Save to training dataset
         with open('logs/training/claude_fallback.jsonl', 'a') as f:
             f.write(json.dumps(training_sample, ensure_ascii=False) + '\n')
 
-        self.logger.info(f"💾 已缓存训练样本: {command}")
+        self.logger.info(f"Training sample cached: {command}")
 ```
 
-**成本分析**：
+**Cost Analysis**:
 ```python
-# 假设每天100条命令
-# 本地处理80% → 免费
-# Claude处理20% → 20 * $0.003 = $0.06/天
-# 月成本: $0.06 * 30 = $1.80/月
+# Assuming 100 commands per day
+# Local processing 80% -> free
+# Claude processing 20% -> 20 * $0.003 = $0.06/day
+# Monthly cost: $0.06 * 30 = $1.80/month
 
-# ✅ 完全可接受（相比机器人硬件成本微不足道）
+# Completely acceptable (negligible compared to robot hardware cost)
 ```
 
-**性能对比**：
+**Performance Comparison**:
 
-| 场景 | 本地7B | 云端Claude |
+| Scenario | Local 7B | Cloud Claude |
 |------|--------|-----------|
-| "座って" | ✅ 2s, 95% | ⭐ 8s, 99.9% |
-| "疲れた" | ⚠️ 3s, 70% | ⭐ 8s, 99% |
-| "立ってそして..." | ⚠️ 3s, 65% | ⭐ 8s, 99.9% |
-| "可愛いね" | ⚠️ 2s, 75% | ⭐ 8s, 99% |
-| "あなたは誰" | ✅ 1s, 99% | ⭐ 8s, 99.9% |
+| "座って" | 2s, 95% | 8s, 99.9% |
+| "疲れた" | 3s, 70% | 8s, 99% |
+| "立ってそして..." | 3s, 65% | 8s, 99.9% |
+| "可愛いね" | 2s, 75% | 8s, 99% |
+| "あなたは誰" | 1s, 99% | 8s, 99.9% |
 
-**用户体验**：
-- 80%情况：2-3秒响应（本地）
-- 20%复杂情况：8-10秒响应（云端）- 可接受（用户知道这是复杂理解）
-- **平均**：3.2秒（0.8*2.5 + 0.2*9）
+**User Experience**:
+- 80% of cases: 2-3 second response (local)
+- 20% complex cases: 8-10 second response (cloud) - acceptable (user knows this requires complex understanding)
+- **Average**: 3.2 seconds (0.8*2.5 + 0.2*9)
 
 ---
 
-### 2.2 对话历史管理（上下文感知）
+### 2.2 Conversation History Management (Context Awareness)
 
 ```python
 class ConversationManager:
-    """管理对话历史，实现上下文感知"""
+    """Manage conversation history to achieve context awareness"""
 
     def __init__(self, max_history: int = 10):
         self.history: List[Dict] = []
         self.max_history = max_history
 
     def add_interaction(self, user_input: str, robot_response: str, action: Optional[int]):
-        """记录交互"""
+        """Record interaction"""
         self.history.append({
             'user': user_input,
             'robot': robot_response,
@@ -463,47 +463,47 @@ class ConversationManager:
             'timestamp': time.time()
         })
 
-        # 保持历史长度
+        # Maintain history length
         if len(self.history) > self.max_history:
             self.history.pop(0)
 
     def get_context_for_llm(self) -> List[str]:
-        """获取LLM可用的上下文"""
+        """Get context usable by LLM"""
         return [
-            f"{h['user']} → {h['robot']}"
-            for h in self.history[-5:]  # 最近5轮
+            f"{h['user']} -> {h['robot']}"
+            for h in self.history[-5:]  # Last 5 turns
         ]
 
     def resolve_reference(self, command: str) -> str:
-        """解析指代关系"""
-        # 例: "もう一回" → 参考上次动作
+        """Resolve references"""
+        # Example: "もう一回" (one more time) -> reference last action
         if "もう一回" in command or "もう一度" in command:
             if self.history and self.history[-1]['action']:
                 last_action = self.history[-1]['action']
-                return f"{command} (参考: 前回の動作は{last_action})"
+                return f"{command} (reference: previous action was {last_action})"
 
         return command
 
-# 在ProductionBrain中集成
+# Integration in ProductionBrain
 class ProductionBrain:
     def __init__(self):
         # ...
         self.conversation = ConversationManager()
 
     async def process_command(self, command: str) -> BrainOutput:
-        # 解析指代
+        # Resolve references
         resolved_command = self.conversation.resolve_reference(command)
 
-        # 获取上下文
+        # Get context
         context = self.conversation.get_context_for_llm()
 
-        # 调用LLM（带上下文）
+        # Call LLM (with context)
         result = await self.hybrid_brain.process_command(
             resolved_command,
             context=context
         )
 
-        # 记录交互
+        # Record interaction
         self.conversation.add_interaction(
             user_input=command,
             robot_response=result.response,
@@ -513,36 +513,36 @@ class ProductionBrain:
         return result
 ```
 
-**示例效果**：
+**Example Effect**:
 ```
 User: 座って
 Robot: 座ります (action: 1009)
 
-User: そして挨拶して  # ← 省略了主语
-Robot: (上下文理解：已经坐下) 挨拶します (action: 1016)
+User: そして挨拶して  # <- Subject omitted
+Robot: (Context understanding: already sat down) 挨拶します (action: 1016)
 
-User: もう一回  # ← 指代上次动作
-Robot: (上下文理解：重复挨拶) もう一度挨拶します (action: 1016)
+User: もう一回  # <- Reference to last action
+Robot: (Context understanding: repeat greeting) もう一度挨拶します (action: 1016)
 ```
 
 ---
 
-## 方案3：Fine-tuning专用模型（长期最优）
+## Approach 3: Fine-tuning a Dedicated Model (Long-term Optimal)
 
-### 3.1 数据收集策略
+### 3.1 Data Collection Strategy
 
 ```bash
-# 已有数据源
-logs/audit/*.jsonl  # 历史交互日志
-logs/training/claude_fallback.jsonl  # Claude高质量标注
+# Existing data sources
+logs/audit/*.jsonl  # Historical interaction logs
+logs/training/claude_fallback.jsonl  # Claude high-quality annotations
 
-# 需要补充的数据
-1. 边缘案例（模糊表达）
-2. 错误纠正（用户反馈"不对，我是说..."）
-3. 多轮对话样本
+# Additional data needed
+1. Edge cases (ambiguous expressions)
+2. Error corrections (user feedback "no, I meant...")
+3. Multi-turn dialogue samples
 ```
 
-### 3.2 Fine-tuning流程
+### 3.2 Fine-tuning Process
 
 ```python
 # scripts/llm/finetune_qwen.py
@@ -552,18 +552,18 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
 from trl import SFTTrainer
 from datasets import Dataset
 
-# 1. 准备训练数据
+# 1. Prepare training data
 def prepare_training_data():
-    """从审计日志提取训练样本"""
+    """Extract training samples from audit logs"""
     samples = []
 
-    # 读取审计日志
+    # Read audit logs
     for log_file in glob('logs/audit/*.jsonl'):
         with open(log_file) as f:
             for line in f:
                 entry = json.loads(line)
 
-                # 只用成功的高confidence样本
+                # Only use successful high-confidence samples
                 if entry['success'] and entry.get('confidence', 0) > 0.8:
                     samples.append({
                         'input': entry['input_command'],
@@ -574,7 +574,7 @@ def prepare_training_data():
                         }
                     })
 
-    # 读取Claude标注
+    # Read Claude annotations
     with open('logs/training/claude_fallback.jsonl') as f:
         for line in f:
             sample = json.loads(line)
@@ -586,19 +586,19 @@ def prepare_training_data():
 def finetune_model():
     base_model = "Qwen/Qwen2.5-7B-Instruct"
 
-    # 加载模型和tokenizer
+    # Load model and tokenizer
     model = AutoModelForCausalLM.from_pretrained(
         base_model,
-        load_in_8bit=True,  # Jetson内存有限
+        load_in_8bit=True,  # Limited memory on Jetson
         device_map="auto"
     )
     tokenizer = AutoTokenizer.from_pretrained(base_model)
 
-    # 准备数据
+    # Prepare data
     samples = prepare_training_data()
     dataset = Dataset.from_list(samples)
 
-    # LoRA配置（参数高效微调）
+    # LoRA configuration (parameter-efficient fine-tuning)
     from peft import LoraConfig, get_peft_model
 
     lora_config = LoraConfig(
@@ -612,7 +612,7 @@ def finetune_model():
 
     model = get_peft_model(model, lora_config)
 
-    # 训练配置
+    # Training configuration
     training_args = TrainingArguments(
         output_dir="./models/claudia-go2-7b-finetuned",
         per_device_train_batch_size=1,
@@ -623,7 +623,7 @@ def finetune_model():
         save_steps=100,
     )
 
-    # 训练
+    # Train
     trainer = SFTTrainer(
         model=model,
         args=training_args,
@@ -633,76 +633,76 @@ def finetune_model():
 
     trainer.train()
 
-    # 保存
+    # Save
     model.save_pretrained("./models/claudia-go2-7b-finetuned")
 
-# 3. 部署到Ollama
+# 3. Deploy to Ollama
 # bash
 ollama create claudia-finetuned:7b-v1.0 \
     -f models/claudia-go2-7b-finetuned
 ```
 
-**预期效果**：
-- ✅ 7B准确率：70% → 90%+
-- ✅ 理解日语细微差别
-- ✅ 减少Claude fallback：20% → 5%
+**Expected Results**:
+- 7B accuracy: 70% -> 90%+
+- Understanding of subtle Japanese nuances
+- Reduced Claude fallback: 20% -> 5%
 
 ---
 
-## 实施路线图
+## Implementation Roadmap
 
-### Phase 1: 立即执行（今天）
-1. ✅ ~~创建v11.3纯日语Modelfile~~ （已完成）
-2. ⏳ **部署Qwen2.5-7B + 结构化输出**（2小时）
-3. ⏳ 实现ConversationManager（1小时）
-4. ⏳ A/B测试7B vs 3B（1小时）
+### Phase 1: Execute Immediately (Today)
+1. ~~Create v11.3 pure-Japanese Modelfile~~ (Completed)
+2. **Deploy Qwen2.5-7B + structured output** (2 hours)
+3. Implement ConversationManager (1 hour)
+4. A/B test 7B vs 3B (1 hour)
 
-### Phase 2: 本周完成
-1. ⏳ 集成Claude API（混合架构）（3小时）
-2. ⏳ 收集训练数据（从审计日志）（2小时）
-3. ⏳ 优化Ollama配置（1小时）
-4. ⏳ 生产环境部署和监控（2小时）
+### Phase 2: Complete This Week
+1. Integrate Claude API (hybrid architecture) (3 hours)
+2. Collect training data (from audit logs) (2 hours)
+3. Optimize Ollama configuration (1 hour)
+4. Production deployment and monitoring (2 hours)
 
-### Phase 3: 下周完成
-1. ⏳ Fine-tuning Qwen 7B（1天）
-2. ⏳ 部署Fine-tuned模型（2小时）
-3. ⏳ 性能对比和优化（1天）
+### Phase 3: Complete Next Week
+1. Fine-tune Qwen 7B (1 day)
+2. Deploy fine-tuned model (2 hours)
+3. Performance comparison and optimization (1 day)
 
 ---
 
-## 性能预期对比
+## Expected Performance Comparison
 
-| 方案 | 准确率 | 平均延迟 | 智能水平 | 成本/月 |
+| Approach | Accuracy | Average Latency | Intelligence Level | Cost/Month |
 |------|--------|----------|----------|---------|
-| **当前(3B+热路径)** | 65% | 500ms* | ⭐⭐ | $0 |
-| **7B+结构化输出** | 85% | 2.5s | ⭐⭐⭐⭐ | $0 |
-| **7B+Claude混合** | 98% | 3.2s | ⭐⭐⭐⭐⭐ | $2 |
-| **7B Fine-tuned** | 95% | 2.0s | ⭐⭐⭐⭐⭐ | $0 |
+| **Current (3B + hot path)** | 65% | 500ms* | 2/5 | $0 |
+| **7B + structured output** | 85% | 2.5s | 4/5 | $0 |
+| **7B + Claude hybrid** | 98% | 3.2s | 5/5 | $2 |
+| **7B fine-tuned** | 95% | 2.0s | 5/5 | $0 |
 
-*主要靠热路径，LLM部分仍3秒
-
----
-
-## 推荐方案
-
-### 短期（本周）：7B + 结构化输出 + 对话管理
-- ✅ 零成本
-- ✅ 准确率85%（vs当前65%）
-- ✅ 真正智能理解
-- ✅ 2-3秒可接受延迟
-
-### 中期（下周）：添加Claude混合
-- ✅ 处理边缘案例
-- ✅ 准确率98%
-- ✅ 每月$2成本可忽略
-- ✅ 自动收集Fine-tuning数据
-
-### 长期（2周后）：Fine-tuned 7B
-- ✅ 专用模型，最优性能
-- ✅ 95%准确率，零成本
-- ✅ 2秒以内响应
+*Mainly relies on hot path; LLM portion still takes 3 seconds
 
 ---
 
-**作者**: Claude Code
-**最后更新**: 2025-11-14 19:00 UTC
+## Recommended Approach
+
+### Short-term (This Week): 7B + Structured Output + Conversation Management
+- Zero cost
+- 85% accuracy (vs current 65%)
+- True intelligent understanding
+- 2-3 second acceptable latency
+
+### Medium-term (Next Week): Add Claude Hybrid
+- Handle edge cases
+- 98% accuracy
+- $2/month cost is negligible
+- Automatically collect fine-tuning data
+
+### Long-term (After 2 Weeks): Fine-tuned 7B
+- Dedicated model, optimal performance
+- 95% accuracy, zero cost
+- Under 2-second response
+
+---
+
+**Author**: Claude Code
+**Last Updated**: 2025-11-14 19:00 UTC

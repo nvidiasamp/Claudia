@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""RingBuffer 单元测试"""
+"""RingBuffer unit tests"""
 
 import threading
 import pytest
@@ -13,11 +13,11 @@ from claudia.audio.asr_service.ring_buffer import (
 
 
 # ============================================================
-# 基本 write + read_last
+# Basic write + read_last
 # ============================================================
 
 class TestWriteAndReadLast:
-    """write 后 read_last 能正确取回数据"""
+    """write followed by read_last returns correct data"""
 
     def test_write_then_read_last_returns_data(self):
         buf = RingBuffer(capacity=1024)
@@ -29,8 +29,8 @@ class TestWriteAndReadLast:
     def test_read_last_multiple_writes(self):
         buf = RingBuffer(capacity=4096)
         chunk_a = bytes(range(256)) * (BYTES_PER_MS // 256 + 1)
-        chunk_a = chunk_a[:BYTES_PER_MS]  # 正好 1ms
-        chunk_b = bytes([0xFF]) * BYTES_PER_MS  # 正好 1ms
+        chunk_a = chunk_a[:BYTES_PER_MS]  # Exactly 1ms
+        chunk_b = bytes([0xFF]) * BYTES_PER_MS  # Exactly 1ms
         buf.write(chunk_a)
         buf.write(chunk_b)
         result = buf.read_last(2)
@@ -47,17 +47,17 @@ class TestWriteAndReadLast:
 
 
 # ============================================================
-# read_last 超出可用数据
+# read_last exceeding available data
 # ============================================================
 
 class TestReadLastExceedingAvailable:
-    """请求超出已写入数据量时，返回实际可用部分"""
+    """Returns the actually available portion when request exceeds written data"""
 
     def test_returns_all_available_when_request_exceeds(self):
         buf = RingBuffer(capacity=4096)
         data = b"\xBB" * BYTES_PER_MS * 2  # 2ms
         buf.write(data)
-        # 请求 100ms 但只有 2ms
+        # Request 100ms but only 2ms available
         result = buf.read_last(100)
         assert result == data
 
@@ -72,20 +72,20 @@ class TestReadLastExceedingAvailable:
 # ============================================================
 
 class TestReadRange:
-    """read_range(start_ms, end_ms) 读取指定区间"""
+    """read_range(start_ms, end_ms) reads the specified interval"""
 
     def test_read_range_returns_correct_slice(self):
         buf = RingBuffer(capacity=BYTES_PER_MS * 10)
-        # 写入 5ms 数据，每 ms 不同字节
+        # Write 5ms of data, each ms with a different byte
         for i in range(5):
             buf.write(bytes([i]) * BYTES_PER_MS)
-        # read_range(3, 1) = 3ms前 到 1ms前 = 第 2、3 ms 的数据
+        # read_range(3, 1) = 3ms ago to 1ms ago = data from ms 2 and 3
         result = buf.read_range(3, 1)
         expected = bytes([2]) * BYTES_PER_MS + bytes([3]) * BYTES_PER_MS
         assert result == expected
 
     def test_read_range_invalid_order_returns_empty(self):
-        """start_ms <= end_ms 时返回空"""
+        """Returns empty when start_ms <= end_ms"""
         buf = RingBuffer(capacity=1024)
         buf.write(b"\x00" * BYTES_PER_MS * 5)
         assert buf.read_range(1, 3) == b""
@@ -94,25 +94,25 @@ class TestReadRange:
     def test_read_range_exceeding_available_truncates(self):
         buf = RingBuffer(capacity=BYTES_PER_MS * 10)
         buf.write(b"\xCC" * BYTES_PER_MS * 3)  # 3ms
-        # 请求 10ms 前到 0ms 前，但只有 3ms
+        # Request 10ms ago to 0ms ago, but only 3ms available
         result = buf.read_range(10, 0)
         assert len(result) == BYTES_PER_MS * 3
 
 
 # ============================================================
-# 回绕 (wrap-around)
+# Wrap-around
 # ============================================================
 
 class TestWrapAround:
-    """写入超出容量时正确回绕，覆盖最老数据"""
+    """Correctly wraps around and overwrites oldest data when capacity is exceeded"""
 
     def test_wrap_around_overwrites_oldest(self):
-        cap = BYTES_PER_MS * 4  # 4ms 容量
+        cap = BYTES_PER_MS * 4  # 4ms capacity
         buf = RingBuffer(capacity=cap)
-        # 写入 6ms，前 2ms 会被覆盖
+        # Write 6ms, first 2ms will be overwritten
         for i in range(6):
             buf.write(bytes([i]) * BYTES_PER_MS)
-        # read_last(4) 应取到第 2,3,4,5 ms
+        # read_last(4) should return ms 2, 3, 4, 5
         result = buf.read_last(4)
         expected = (
             bytes([2]) * BYTES_PER_MS
@@ -129,7 +129,7 @@ class TestWrapAround:
         assert buf.available_ms == 4
 
     def test_write_larger_than_capacity(self):
-        """单次写入超出容量，只保留末尾 capacity 字节"""
+        """Single write exceeding capacity keeps only the tail capacity bytes"""
         cap = BYTES_PER_MS * 2
         buf = RingBuffer(capacity=cap)
         big_data = b""
@@ -146,7 +146,7 @@ class TestWrapAround:
 # ============================================================
 
 class TestClear:
-    """clear() 重置缓冲区"""
+    """clear() resets the buffer"""
 
     def test_clear_resets_available(self):
         buf = RingBuffer(capacity=4096)
@@ -175,7 +175,7 @@ class TestClear:
 # ============================================================
 
 class TestPreSpeechBuffer:
-    """pre_speech_buffer_ms 构造参数"""
+    """pre_speech_buffer_ms constructor parameter"""
 
     def test_default_pre_speech_buffer(self):
         buf = RingBuffer()
@@ -198,7 +198,7 @@ class TestCapacityMs:
 
     def test_default_capacity_ms(self):
         buf = RingBuffer()
-        assert buf.capacity_ms == 30_000  # 30 秒
+        assert buf.capacity_ms == 30_000  # 30 seconds
 
     def test_custom_capacity_ms(self):
         buf = RingBuffer(capacity=BYTES_PER_MS * 100)
@@ -206,11 +206,11 @@ class TestCapacityMs:
 
 
 # ============================================================
-# 线程安全
+# Thread safety
 # ============================================================
 
 class TestThreadSafety:
-    """并发写入不会崩溃或破坏数据一致性"""
+    """Concurrent writes do not crash or corrupt data consistency"""
 
     def test_concurrent_writes_no_crash(self):
         buf = RingBuffer(capacity=BYTES_PER_MS * 100)
@@ -230,7 +230,7 @@ class TestThreadSafety:
             t.join()
 
         assert not errors
-        # 8 线程 * 50 次 = 400ms 写入，但容量只有 100ms
+        # 8 threads * 50 writes = 400ms written, but capacity is only 100ms
         assert buf.available_ms == 100
 
     def test_concurrent_read_write_no_crash(self):

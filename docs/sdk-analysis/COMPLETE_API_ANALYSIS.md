@@ -1,100 +1,99 @@
-# Claudia机器人完整API动作分析
+# Claudia Robot Complete API Action Analysis
 
-## 🎯 完整的27个Go2 Sport API列表
+## Complete List of 27 Go2 Sport APIs
 
-基于`/usr/local/include/unitree/robot/go2/sport/sport_api.hpp`和项目实现：
+Based on `/usr/local/include/unitree/robot/go2/sport/sport_api.hpp` and project implementation:
 
-### **🟢 基础控制动作 (6个)**
+### **Basic Control Actions (6)**
 
-| API | 函数名 | 日语指令 | 英语指令 | 安全级别 | 执行时间 | 状态需求 |
-|-----|--------|----------|----------|----------|----------|----------|
-| 1001 | Damp | ダンプ、制動、停止、止まれ | stop、halt、emergency | 紧急 | 0.5s | 任何 |
-| 1002 | BalanceStand | バランス、平衡、調整 | balance、stabilize | 安全 | 1.0s | 任何 |
-| 1003 | StopMove | 移動停止、動き止める | stop_move、freeze | 紧急 | 0.5s | 任何 |
-| 1004 | StandUp | 立つ、立って、起立 | stand、stand_up、rise | 安全 | 2.0s | 坐/躺→站 |
-| 1005 | StandDown | 伏せる、横になる、趴下、躺下 | lie_down、down | 安全 | 2.0s | 站→躺 |
-| 1006 | RecoveryStand | 回復、復帰、リカバリー | recover、recovery | 安全 | 2.0s | 异常→站 |
+| API | Function Name | Japanese Command | English Command | Safety Level | Execution Time | State Requirement |
+|-----|---------------|------------------|-----------------|--------------|----------------|-------------------|
+| 1001 | Damp | ダンプ、制動、停止、止まれ | stop, halt, emergency | Emergency | 0.5s | Any |
+| 1002 | BalanceStand | バランス、平衡、調整 | balance, stabilize | Safe | 1.0s | Any |
+| 1003 | StopMove | 移動停止、動き止める | stop_move, freeze | Emergency | 0.5s | Any |
+| 1004 | StandUp | 立つ、立って、起立 | stand, stand_up, rise | Safe | 2.0s | Sitting/Lying -> Standing |
+| 1005 | StandDown | 伏せる、横になる、趴下、躺下 | lie_down, down | Safe | 2.0s | Standing -> Lying |
+| 1006 | RecoveryStand | 回復、復帰、リカバリー | recover, recovery | Safe | 2.0s | Abnormal -> Standing |
 
-### **🟡 运动控制动作 (9个)**
+### **Motion Control Actions (9)**
 
-| API | 函数名 | 日语指令 | 英语指令 | 安全级别 | 执行时间 | 状态需求 |
-|-----|--------|----------|----------|----------|----------|----------|
-| 1007 | Euler | 傾く、角度、オイラー | euler、tilt、angle | 中等 | 1.0s | 需参数 |
-| 1008 | Move | 歩く、歩いて、前進、前进 | walk、move、forward | 安全 | 3.0s | 需参数 |
-| 1009 | Sit | 座る、座って、お座り、坐下 | sit、sit_down | 安全 | 1.5s | 站→坐 |
-| 1010 | RiseSit | 起き上がる、座り直す | rise_sit、sit_up | 安全 | 2.0s | 坐→站 |
-| 1011 | SwitchGait | 歩調、ゲート、切替 | switch_gait、gait | 中等 | 1.0s | 需参数 |
-| 1012 | Trigger | トリガー、実行 | trigger、execute | 中等 | 0.5s | 任何 |
-| 1013 | BodyHeight | 高さ、身長、ハイト | height、body_height | 安全 | 1.0s | 需参数 |
-| 1014 | FootRaiseHeight | 足上げ、リフト | foot_raise、lift | 安全 | 1.0s | 需参数 |
-| 1015 | SpeedLevel | 速度、スピード | speed、velocity | 中等 | 1.0s | 需参数 |
+| API | Function Name | Japanese Command | English Command | Safety Level | Execution Time | State Requirement |
+|-----|---------------|------------------|-----------------|--------------|----------------|-------------------|
+| 1007 | Euler | 傾く、角度、オイラー | euler, tilt, angle | Medium | 1.0s | Requires parameters |
+| 1008 | Move | 歩く、歩いて、前進、前进 | walk, move, forward | Safe | 3.0s | Requires parameters |
+| 1009 | Sit | 座る、座って、お座り、坐下 | sit, sit_down | Safe | 1.5s | Standing -> Sitting |
+| 1010 | RiseSit | 起き上がる、座り直す | rise_sit, sit_up | Safe | 2.0s | Sitting -> Standing |
+| 1011 | SwitchGait | 歩調、ゲート、切替 | switch_gait, gait | Medium | 1.0s | Requires parameters |
+| 1012 | Trigger | トリガー、実行 | trigger, execute | Medium | 0.5s | Any |
+| 1013 | BodyHeight | 高さ、身長、ハイト | height, body_height | Safe | 1.0s | Requires parameters |
+| 1014 | FootRaiseHeight | 足上げ、リフト | foot_raise, lift | Safe | 1.0s | Requires parameters |
+| 1015 | SpeedLevel | 速度、スピード | speed, velocity | Medium | 1.0s | Requires parameters |
 
-### **🔴 表演娱乐动作 (7个)**
+### **Performance/Entertainment Actions (7)**
 
-| API | 函数名 | 日语指令 | 英语指令 | 安全级别 | 执行时间 | 状态需求 |
-|-----|--------|----------|----------|----------|----------|----------|
-| 1016 | Hello | お手、握手、挨拶、こんにちは | hello、greet、wave | 安全 | 2.0s | **需要站立** |
-| 1017 | Stretch | ストレッチ、伸び、体操 | stretch、exercise | 安全 | 3.0s | **需要站立** |
-| 1021 | Wallow | 比心、ハート、love、愛 | heart、love、wallow | 安全 | 2.0s | **需要站立** |
-| 1022 | Dance1 | ダンス、踊る、踊って | dance、dance1 | 安全 | 5.0s | **需要站立** |
-| 1023 | Dance2 | ダンス2、踊る2 | dance2 | 安全 | 5.0s | **需要站立** |
-| 1025 | ShakeHands | 握手、手を振る | shake_hands、handshake | 安全 | 2.0s | **需要站立** |
-| 1026 | Cheer | ちんちん、拜年、おめでとう | cheer、celebrate | 安全 | 3.0s | **需要站立** |
+| API | Function Name | Japanese Command | English Command | Safety Level | Execution Time | State Requirement |
+|-----|---------------|------------------|-----------------|--------------|----------------|-------------------|
+| 1016 | Hello | お手、握手、挨拶、こんにちは | hello, greet, wave | Safe | 2.0s | **Requires standing** |
+| 1017 | Stretch | ストレッチ、伸び、体操 | stretch, exercise | Safe | 3.0s | **Requires standing** |
+| 1021 | Wallow | 比心、ハート、love、愛 | heart, love, wallow | Safe | 2.0s | **Requires standing** |
+| 1022 | Dance1 | ダンス、踊る、踊って | dance, dance1 | Safe | 5.0s | **Requires standing** |
+| 1023 | Dance2 | ダンス2、踊る2 | dance2 | Safe | 5.0s | **Requires standing** |
+| 1025 | ShakeHands | 握手、手を振る | shake_hands, handshake | Safe | 2.0s | **Requires standing** |
+| 1026 | Cheer | ちんちん、拜年、おめでとう | cheer, celebrate | Safe | 3.0s | **Requires standing** |
 
-### **⚠️ 高风险动作 (5个)**
+### **High-Risk Actions (5)**
 
-| API | 函数名 | 日语指令 | 英语指令 | 安全级别 | 执行时间 | 状态需求 |
-|-----|--------|----------|----------|----------|----------|----------|
-| 1024 | FrontFlip | 前転、フリップ | front_flip、flip | 危险 | 3.0s | **需要站立** |
-| 1027 | BackFlip | 後転、バックフリップ | back_flip | 危险 | 3.0s | **需要站立** |
-| 1028 | Jump | ジャンプ、跳ぶ | jump | 中等 | 2.0s | **需要站立** |
-| 1029 | Pounce | 飛びかかる、パウンス | pounce | 中等 | 2.0s | **需要站立** |
-| 1030 | Bow | お辞儀、鞠躬 | bow | 安全 | 2.0s | **需要站立** |
+| API | Function Name | Japanese Command | English Command | Safety Level | Execution Time | State Requirement |
+|-----|---------------|------------------|-----------------|--------------|----------------|-------------------|
+| 1024 | FrontFlip | 前転、フリップ | front_flip, flip | Dangerous | 3.0s | **Requires standing** |
+| 1027 | BackFlip | 後転、バックフリップ | back_flip | Dangerous | 3.0s | **Requires standing** |
+| 1028 | Jump | ジャンプ、跳ぶ | jump | Medium | 2.0s | **Requires standing** |
+| 1029 | Pounce | 飛びかかる、パウンス | pounce | Medium | 2.0s | **Requires standing** |
+| 1030 | Bow | お辞儀、鞠躬 | bow | Safe | 2.0s | **Requires standing** |
 
-**总计：27个完整API**
+**Total: 27 complete APIs**
 
-## 🔍 当前问题分析
+## Current Issue Analysis
 
-### **1. LLM微调覆盖不完整**
+### **1. Incomplete LLM Fine-Tuning Coverage**
 
-从ClaudiaOptimizedModelfile_v2_3B文件中看到，只覆盖了以下动作：
+From the ClaudiaOptimizedModelfile_v2_3B file, only the following actions are covered:
 
-#### ✅ 已覆盖动作 (约10-12个)
-- 座る|立つ|歩く|回る (基础4个)
-- ダンス|挨拶|ストレッチ (表演3个) 
-- 停止|ダンプ (紧急2个)
-- 状態|バランス (状态2个)
+#### Covered Actions (~10-12)
+- 座る|立つ|歩く|回る (4 basic)
+- ダンス|挨拶|ストレッチ (3 performance)
+- 停止|ダンプ (2 emergency)
+- 状態|バランス (2 status)
 
-#### ❌ 缺失动作 (约15-17个)
-- **比心类动作**: 1021 (Wallow)
-- **高级表演**: 1025 (ShakeHands), 1026 (Cheer), 1030 (Bow)
-- **运动控制**: 1007-1015 (9个运动参数控制API)
-- **危险动作**: 1024, 1027-1029 (4个翻滚跳跃类)
+#### Missing Actions (~15-17)
+- **Heart gesture actions**: 1021 (Wallow)
+- **Advanced performance**: 1025 (ShakeHands), 1026 (Cheer), 1030 (Bow)
+- **Motion control**: 1007-1015 (9 motion parameter control APIs)
+- **Dangerous actions**: 1024, 1027-1029 (4 flip/jump types)
 
-### **2. 动作序列问题**
+### **2. Action Sequence Issues**
 
-**关键问题**: 表演动作需要先从坐姿/躺姿转到站立状态
+**Key Issue**: Performance actions require transitioning from sitting/lying to standing state first
 
-#### 问题场景
+#### Problem Scenario
 ```
-用户: 座って → 机器人坐下 ✅
-用户: お手 → 无法执行，因为坐着状态无法招手 ❌
-```
-
-#### 正确流程应该是
-```
-用户: 座って → 机器人坐下 ✅
-用户: お手 → 自动站立 → 招手动作 ✅
+User: 座って → Robot sits down
+User: お手 → Cannot execute, because the robot cannot wave while sitting
 ```
 
-### **3. LLM响应分析**
+#### Correct Flow Should Be
+```
+User: 座って → Robot sits down
+User: お手 → Auto stand up → Wave action
+```
 
-从您的测试日志看到一些有趣现象：
-- `趴下` → LLM响应: 'バランススタンド' (不正确)
-- `比心` → LLM响应: 'TIMEOUT' (缓存问题)
-- `你好` → LLM响应: 'こんにちは' (语言转换但映射失败)
+### **3. LLM Response Analysis**
 
-## ⚠️ 状态依赖问题
+Some interesting phenomena observed from test logs:
+- `趴下` (lie down) → LLM response: 'バランススタンド' (incorrect)
+- `比心` (heart gesture) → LLM response: 'TIMEOUT' (cache issue)
+- `你好` (hello) → LLM response: 'こんにちは' (language conversion but mapping failed)
 
-很多表演动作都标记了`requires_standing=True`，但当前系统没有正确处理这个状态转换！
+## State Dependency Issues
 
+Many performance actions are marked with `requires_standing=True`, but the current system does not properly handle this state transition!

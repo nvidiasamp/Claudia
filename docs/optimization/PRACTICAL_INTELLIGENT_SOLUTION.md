@@ -1,121 +1,121 @@
-# Claudia实用智能化方案
+# Claudia Practical Intelligence Solution
 
-**日期**: 2025-11-14
-**版本**: v3.0 - 务实方案
-**现实约束**: Jetson Orin NX, 7B是极限，本地LLM延迟5-15秒不可接受
+**Date**: 2025-11-14
+**Version**: v3.0 - Pragmatic Solution
+**Real-World Constraints**: Jetson Orin NX, 7B is the limit, local LLM latency of 5-15s is unacceptable
 
 ---
 
-## 现实评估
+## Realistic Assessment
 
-### 硬件限制
+### Hardware Limitations
 - **Jetson Orin NX**: 16GB Unified Memory
-- **安全上限**: 7B量化模型（~6GB内存）
-- **14B不可行**: 需要10GB+，OOM风险高
+- **Safe upper limit**: 7B quantized model (~6GB memory)
+- **14B not feasible**: Requires 10GB+, high OOM risk
 
-### 本地LLM性能实测
+### Local LLM Performance Benchmarks
 ```bash
-# 3B模型
+# 3B model
 echo "座って" | ollama run claudia-go2-3b:v11.3
-# 延迟: 3-5秒（简单命令）
+# Latency: 3-5s (simple commands)
 
-# 7B模型
+# 7B model
 echo "立ってそして挨拶" | ollama run claudia-intelligent:7b-v2.0
-# 延迟: 10-15秒（复杂命令）❌ 不可接受
+# Latency: 10-15s (complex commands) - Unacceptable
 ```
 
-### 用户期望
-- **实时控制**: 延迟 < 1秒（理想）
-- **可接受**: 延迟 < 3秒
-- **不可接受**: 延迟 > 5秒
+### User Expectations
+- **Real-time control**: Latency < 1s (ideal)
+- **Acceptable**: Latency < 3s
+- **Unacceptable**: Latency > 5s
 
 ---
 
-## 务实方案：混合三层架构
+## Pragmatic Solution: Hybrid Three-Layer Architecture
 
 ```
-┌─────────────────────────────────────┐
-│  Layer 1: 热路径（<1ms）            │  ← 80%命中率
-│  - 关键字匹配（是的，就是关键字）    │
-│  - 常见命令直达                      │
-├─────────────────────────────────────┤
-│  Layer 2: 云端LLM（2-5秒）          │  ← 19%命中率
-│  - Claude 3.5 Haiku（快速）         │
-│  - 语义理解，真正智能                │
-├─────────────────────────────────────┤
-│  Layer 3: 对话查询（<1ms）          │  ← 1%命中率
-│  - 规则检测                          │
-│  - "あなたは誰"等固定回复            │
-└─────────────────────────────────────┘
++-------------------------------------+
+|  Layer 1: Hot Path (<1ms)            |  <- 80% hit rate
+|  - Keyword matching (yes, keywords)  |
+|  - Common commands direct routing    |
++-------------------------------------+
+|  Layer 2: Cloud LLM (2-5s)          |  <- 19% hit rate
+|  - Claude 3.5 Haiku (fast)          |
+|  - Semantic understanding, true AI   |
++-------------------------------------+
+|  Layer 3: Dialog Query (<1ms)        |  <- 1% hit rate
+|  - Rule-based detection              |
+|  - Fixed replies for "あなたは誰" etc|
++-------------------------------------+
 ```
 
-### 核心理念
-1. **不追求"完全"智能** - 80%情况用规则，20%用AI
-2. **性能优先** - 快速响应比完美理解更重要
-3. **云端补充** - 本地处理不了的交给Claude
-4. **持续优化** - 从云端学习，扩展热路径
+### Core Philosophy
+1. **Don't pursue "complete" intelligence** - 80% handled by rules, 20% by AI
+2. **Performance first** - Fast response is more important than perfect understanding
+3. **Cloud supplementation** - What local can't handle, delegate to Claude
+4. **Continuous optimization** - Learn from cloud, expand hot path
 
 ---
 
-## 方案详情
+## Solution Details
 
-### Layer 1: 热路径（虽是关键字，但实用）
+### Layer 1: Hot Path (Keyword-based but Practical)
 
-**保留并扩展P0优化**：
-- ✅ 52个关键词变体（命中率80%）
-- ✅ 17个序列预定义
-- ✅ <1ms响应
+**Retain and expand P0 optimization**:
+- 52 keyword variants (80% hit rate)
+- 17 predefined sequences
+- <1ms response
 
-**不追求消除关键字**：
-- 关键字匹配是**最快最可靠**的方式
-- 用户常用命令就那些（80/20法则）
-- 可以持续扩展（从审计日志学习）
+**Not pursuing elimination of keywords**:
+- Keyword matching is the **fastest and most reliable** method
+- Users' common commands are limited (80/20 rule)
+- Can be continuously expanded (learning from audit logs)
 
 ```python
-# 热路径持续学习
+# Hot path continuous learning
 def expand_hotpath_from_logs():
-    """从审计日志学习高频命令"""
+    """Learn high-frequency commands from audit logs"""
     logs = load_audit_logs('logs/audit/*.jsonl')
 
-    # 统计高频命令（>10次且成功）
+    # Count high-frequency commands (>10 times and successful)
     frequent_commands = logs.filter(
         lambda x: x['success'] and x['route'] == 'llm'
     ).groupby('input_command').count()
 
-    # 自动添加到热路径
+    # Automatically add to hot path
     for cmd, count in frequent_commands.items():
         if count > 10:
             HOTPATH_MAP[cmd] = extract_api_code(logs, cmd)
-            print(f"✅ 新增热路径: {cmd}")
+            print(f"New hot path added: {cmd}")
 ```
 
 ---
 
-### Layer 2: 云端LLM（处理复杂情况）
+### Layer 2: Cloud LLM (Handling Complex Cases)
 
-#### 为什么选择云端而非本地7B？
+#### Why Choose Cloud Over Local 7B?
 
-| 指标 | 本地7B | 云端Claude Haiku |
+| Metric | Local 7B | Cloud Claude Haiku |
 |------|--------|------------------|
-| **延迟** | 10-15秒 ❌ | 2-5秒 ✅ |
-| **准确率** | 70% ⚠️ | 99% ✅ |
-| **成本** | $0 ✅ | $0.25/天 ✅ |
-| **智能水平** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Latency** | 10-15s | 2-5s |
+| **Accuracy** | 70% | 99% |
+| **Cost** | $0 | $0.25/day |
+| **Intelligence level** | 3/5 | 5/5 |
 
-**结论**: **云端Claude Haiku更快+更准+成本可控**
+**Conclusion**: **Cloud Claude Haiku is faster + more accurate + cost-controllable**
 
-#### 实现方案
+#### Implementation
 
 ```python
 class PracticalBrain:
-    """务实的三层架构"""
+    """Pragmatic three-layer architecture"""
 
     def __init__(self):
         self.hotpath_map = load_hotpath_map()  # Layer 1
         self.claude_client = AnthropicClient(model="claude-3-5-haiku-20241022")  # Layer 2
         self.dialog_detector = DialogDetector()  # Layer 3
 
-        # 统计
+        # Statistics
         self.stats = {
             'hotpath': 0,
             'claude': 0,
@@ -124,34 +124,34 @@ class PracticalBrain:
         }
 
     async def process_command(self, command: str) -> BrainOutput:
-        """三层智能路由"""
+        """Three-layer intelligent routing"""
 
-        # Layer 3: 对话检测（优先级最高，避免误触动作）
+        # Layer 3: Dialog detection (highest priority, avoid false action triggers)
         if self.dialog_detector.is_dialog(command):
             self.stats['dialog'] += 1
             return self.dialog_detector.respond(command)
 
-        # Layer 1: 热路径（80%命中）
+        # Layer 1: Hot path (80% hit)
         hotpath_result = self._try_hotpath(command)
         if hotpath_result:
             self.stats['hotpath'] += 1
             return hotpath_result
 
-        # Layer 2: 云端Claude（剩余20%）
-        self.logger.info(f"🌐 热路径未命中，调用Claude API...")
+        # Layer 2: Cloud Claude (remaining 20%)
+        self.logger.info(f"Hot path miss, calling Claude API...")
         self.stats['claude'] += 1
 
         claude_result = await self._call_claude_haiku(command)
-        self.stats['total_cost'] += 0.00025  # ~$0.25/1000请求
+        self.stats['total_cost'] += 0.00025  # ~$0.25/1000 requests
 
-        # 学习：添加到热路径候选
+        # Learning: add to hot path candidates
         if claude_result.confidence > 0.9:
             await self._add_to_hotpath_candidate(command, claude_result)
 
         return claude_result
 
     async def _call_claude_haiku(self, command: str) -> BrainOutput:
-        """调用Claude 3.5 Haiku（快速版）"""
+        """Call Claude 3.5 Haiku (fast version)"""
 
         prompt = f"""あなたは四足ロボット犬Claudiaの知能システムです。
 
@@ -189,7 +189,7 @@ JSON形式で応答してください:
                 messages=[{"role": "user", "content": prompt}]
             )
 
-            # 解析JSON
+            # Parse JSON
             content = response.content[0].text
             if "```json" in content:
                 json_str = content.split("```json")[1].split("```")[0].strip()
@@ -201,9 +201,9 @@ JSON形式で応答してください:
             return self._convert_to_brain_output(result)
 
         except Exception as e:
-            self.logger.error(f"❌ Claude调用失败: {e}")
+            self.logger.error(f"Claude call failed: {e}")
 
-            # Fallback: 礼貌拒绝
+            # Fallback: polite refusal
             return BrainOutput(
                 response="すみません、理解できませんでした",
                 api_code=None,
@@ -212,7 +212,7 @@ JSON形式で応答してください:
             )
 
     async def _add_to_hotpath_candidate(self, command: str, result: BrainOutput):
-        """添加到热路径候选（高频后自动启用）"""
+        """Add to hot path candidates (auto-enabled after high frequency)"""
         with open('logs/hotpath_candidates.jsonl', 'a') as f:
             f.write(json.dumps({
                 'command': command,
@@ -222,110 +222,110 @@ JSON形式で応答してください:
                 'timestamp': datetime.now().isoformat()
             }, ensure_ascii=False) + '\n')
 
-        # 检查是否高频（>5次）
+        # Check if high frequency (>5 times)
         count = self._count_command_frequency(command)
         if count >= 5:
-            # 自动添加到热路径
+            # Automatically add to hot path
             self.hotpath_map[command.lower()] = result.api_code or result.sequence[0]
-            self.logger.info(f"✅ 自动学习: '{command}' 已添加到热路径")
+            self.logger.info(f"Auto-learned: '{command}' added to hot path")
 ```
 
 ---
 
-## 成本分析
+## Cost Analysis
 
-### 使用模式假设
-- 每天100条命令
-- 热路径命中80% → 80条免费
-- 对话检测1% → 1条免费
-- Claude处理19% → 19条付费
+### Usage Pattern Assumptions
+- 100 commands per day
+- Hot path hits 80% -> 80 commands free
+- Dialog detection 1% -> 1 command free
+- Claude processes 19% -> 19 commands paid
 
-### Claude 3.5 Haiku定价
+### Claude 3.5 Haiku Pricing
 ```
 Input: $0.80 / 1M tokens
 Output: $4.00 / 1M tokens
 
-每条命令估算:
+Per command estimate:
 - Input: ~200 tokens
 - Output: ~100 tokens
 
-成本: (200*0.8 + 100*4.0) / 1,000,000 = $0.00056/条
+Cost: (200*0.8 + 100*4.0) / 1,000,000 = $0.00056/command
 ```
 
-### 月度成本
+### Monthly Cost
 ```
-19条/天 * $0.00056/条 * 30天 = $0.32/月
+19 commands/day * $0.00056/command * 30 days = $0.32/month
 ```
 
-**✅ 完全可接受**（相比机器人硬件成本$2000+微不足道）
+**Fully acceptable** (negligible compared to robot hardware cost of $2000+)
 
 ---
 
-## 性能对比
+## Performance Comparison
 
-| 方案 | 平均延迟 | 准确率 | 智能水平 | 成本/月 | 实用性 |
+| Solution | Avg Latency | Accuracy | Intelligence | Cost/Month | Practicality |
 |------|----------|--------|----------|---------|--------|
-| **当前(3B+热路径)** | 0.8s* | 65% | ⭐⭐ | $0 | ⚠️ |
-| **本地7B** | 8s | 85% | ⭐⭐⭐⭐ | $0 | ❌ 太慢 |
-| **热路径+Claude** | 1.5s** | 95% | ⭐⭐⭐⭐⭐ | $0.32 | ✅✅✅ |
+| **Current (3B+hot path)** | 0.8s* | 65% | 2/5 | $0 | Marginal |
+| **Local 7B** | 8s | 85% | 4/5 | $0 | Too slow |
+| **Hot path+Claude** | 1.5s** | 95% | 5/5 | $0.32 | Excellent |
 
-*80%热路径<1ms，20%走3B~3秒 → 平均0.8s
-**80%热路径<1ms，19%走Claude~3秒，1%对话<1ms → 平均1.5s
+*80% hot path <1ms, 20% goes to 3B ~3s -> average 0.8s
+**80% hot path <1ms, 19% goes to Claude ~3s, 1% dialog <1ms -> average 1.5s
 
 ---
 
-## 实施计划
+## Implementation Plan
 
-### Phase 1: 今天完成（2小时）
+### Phase 1: Complete Today (2 hours)
 
-1. **集成Anthropic API**（1小时）
+1. **Integrate Anthropic API** (1 hour)
 ```bash
 pip install anthropic
 export ANTHROPIC_API_KEY="your_key_here"
 ```
 
-2. **实现三层架构**（1小时）
-- 修改`production_brain.py`
-- 添加Claude调用逻辑
-- 添加热路径学习机制
+2. **Implement three-layer architecture** (1 hour)
+- Modify `production_brain.py`
+- Add Claude call logic
+- Add hot path learning mechanism
 
-### Phase 2: 本周完成
+### Phase 2: Complete This Week
 
-1. **监控和优化**
-   - 查看热路径命中率（目标>80%）
-   - 分析Claude调用频率
-   - 优化成本
+1. **Monitoring and optimization**
+   - Check hot path hit rate (target >80%)
+   - Analyze Claude call frequency
+   - Optimize cost
 
-2. **持续学习**
-   - 每周审查Claude处理的命令
-   - 将高频命令添加到热路径
-   - 逐步提升热路径命中率到90%+
+2. **Continuous learning**
+   - Review Claude-processed commands weekly
+   - Add high-frequency commands to hot path
+   - Gradually increase hot path hit rate to 90%+
 
 ---
 
-## 用户体验优化
+## User Experience Optimization
 
-### 延迟感知优化
+### Latency Perception Optimization
 
 ```python
 async def process_command_with_feedback(self, command: str) -> BrainOutput:
-    """带用户反馈的处理"""
+    """Processing with user feedback"""
 
-    # Layer 1: 热路径（瞬间）
+    # Layer 1: Hot path (instant)
     hotpath_result = self._try_hotpath(command)
     if hotpath_result:
-        return hotpath_result  # 用户感受：瞬间响应
+        return hotpath_result  # User perception: instant response
 
-    # Layer 2: Claude（需要等待）
-    # 给用户反馈：正在思考
-    await self.send_thinking_indicator()  # LED闪烁或TTS"少々お待ちください"
+    # Layer 2: Claude (requires waiting)
+    # Give user feedback: thinking
+    await self.send_thinking_indicator()  # LED flash or TTS "少々お待ちください"
 
     start = time.time()
     claude_result = await self._call_claude_haiku(command)
     elapsed = time.time() - start
 
     if elapsed > 5:
-        # 如果延迟>5秒，道歉
+        # If latency >5s, apologize
         claude_result.response = f"お待たせしました。{claude_result.response}"
 
     return claude_result
@@ -333,34 +333,34 @@ async def process_command_with_feedback(self, command: str) -> BrainOutput:
 
 ---
 
-## 最终建议
+## Final Recommendations
 
-### ✅ 推荐方案：热路径（80%） + Claude Haiku（19%） + 对话（1%）
+### Recommended Solution: Hot Path (80%) + Claude Haiku (19%) + Dialog (1%)
 
-**理由**:
-1. ✅ **性能优秀**: 平均延迟1.5秒（vs本地7B的8秒）
-2. ✅ **真正智能**: Claude理解复杂语义（"疲れた"→座る）
-3. ✅ **成本可控**: 每月$0.32（vs本地7B的0成本但太慢）
-4. ✅ **持续优化**: 从Claude学习，热路径命中率会逐步提升到90%+
-5. ✅ **用户体验**: 80%瞬间响应，19%稍等但准确
+**Reasons**:
+1. **Excellent performance**: Average latency 1.5s (vs local 7B's 8s)
+2. **Truly intelligent**: Claude understands complex semantics ("疲れた" -> sit)
+3. **Controllable cost**: $0.32/month (vs local 7B's $0 cost but too slow)
+4. **Continuous optimization**: Learning from Claude, hot path hit rate will gradually increase to 90%+
+5. **User experience**: 80% instant response, 19% slight wait but accurate
 
-### ❌ 不推荐：完全依赖本地7B
+### Not Recommended: Full Reliance on Local 7B
 
-**理由**:
-1. ❌ 延迟10-15秒不可接受（实时机器人控制）
-2. ❌ 准确率仅85%（vs Claude 99%）
-3. ❌ Jetson资源紧张（内存、CPU占用高）
+**Reasons**:
+1. 10-15s latency is unacceptable (real-time robot control)
+2. Only 85% accuracy (vs Claude 99%)
+3. Jetson resources strained (high memory, CPU usage)
 
-### 🔮 长期（2-3周后）：Fine-tuned 7B离线包
+### Long-term (2-3 weeks later): Fine-tuned 7B Offline Package
 
-**待Claude收集足够训练数据后**:
-- 用Claude标注的数据Fine-tune本地7B
-- 部署优化后的7B（准确率85%→95%）
-- 逐步减少Claude依赖（19%→5%）
-- 最终目标：95%本地处理，5%云端
+**After Claude collects sufficient training data**:
+- Fine-tune local 7B with Claude-annotated data
+- Deploy optimized 7B (accuracy 85% -> 95%)
+- Gradually reduce Claude dependency (19% -> 5%)
+- Ultimate goal: 95% local processing, 5% cloud
 
 ---
 
-**作者**: Claude Code
-**最后更新**: 2025-11-14 20:00 UTC
-**状态**: ✅ 推荐立即实施
+**Author**: Claude Code
+**Last Updated**: 2025-11-14 20:00 UTC
+**Status**: Recommended for immediate implementation

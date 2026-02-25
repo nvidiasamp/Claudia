@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-shadow_observation_commands.py — Shadow 观测批量命令脚本
+shadow_observation_commands.py -- Shadow Observation Batch Command Script
 
-在 BRAIN_ROUTER_MODE=shadow 下批量发送命令，积累 audit 数据。
-目标: 100+ LLM 路由命令（hot_cache 命令不计入 LLM 路由统计）。
+Sends commands in batch under BRAIN_ROUTER_MODE=shadow to accumulate audit data.
+Target: 100+ LLM-routed commands (hot_cache commands are excluded from LLM routing statistics).
 
-用法:
+Usage:
   BRAIN_ROUTER_MODE=shadow python3 scripts/shadow_observation_commands.py
   BRAIN_ROUTER_MODE=shadow python3 scripts/shadow_observation_commands.py --hardware
-  BRAIN_ROUTER_MODE=shadow python3 scripts/shadow_observation_commands.py --batch 1  # 只跑第1批
-  BRAIN_ROUTER_MODE=shadow python3 scripts/shadow_observation_commands.py --dry-run   # 只打印不执行
+  BRAIN_ROUTER_MODE=shadow python3 scripts/shadow_observation_commands.py --batch 1  # Run only batch 1
+  BRAIN_ROUTER_MODE=shadow python3 scripts/shadow_observation_commands.py --dry-run   # Print only, do not execute
 
-每条命令间隔 3 秒（LLM 推理 + VRAM swap 冷却），总计约 10-12 分钟。
+3 second interval between commands (LLM inference + VRAM swap cooldown), approx. 10-12 minutes total.
 """
 
 import os
@@ -26,20 +26,22 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-# 禁用 ROS2 状态监控（避免 Jetson OOM / DDS 初始化）
+# Disable ROS2 state monitoring (avoid Jetson OOM / DDS initialization)
 import claudia.brain.production_brain as pb_mod
 pb_mod.STATE_MONITOR_AVAILABLE = False
 
 
-# === 命令清单 ===
-# 格式: (command, category, expected_behavior)
+# === Command list ===
+# Format: (command, category, expected_behavior)
 # category: "hot_cache" | "llm_action" | "llm_conversational" | "llm_sequence"
-# expected_behavior: 简述期望行为
+# expected_behavior: brief description of expected behavior
+# Note: All Japanese/Chinese command strings are intentional robot command test inputs
 
 COMMANDS = [
     # ============================================================
-    # Batch 1: 热缓存对照组 (20 commands, ~0ms each)
-    # 这些不计入 LLM 路由统计，但验证 shadow 模式下 hot_cache 仍正确
+    # Batch 1: Hot cache control group (20 commands, ~0ms each)
+    # These are excluded from LLM routing statistics, but verify
+    # that hot_cache still works correctly under shadow mode
     # ============================================================
     ("座って", "hot_cache", "Sit(1009)"),
     ("立って", "hot_cache", "StandUp(1004)"),
@@ -63,8 +65,9 @@ COMMANDS = [
     ("比心", "hot_cache", "Heart(1036)"),
 
     # ============================================================
-    # Batch 2: LLM 动作命令 — 基础动作 (25 commands)
-    # 不在 hot_cache 中的自然表达，期望 LLM 映射到正确 api_code
+    # Batch 2: LLM action commands -- Basic actions (25 commands)
+    # Natural expressions not in hot_cache, expecting LLM to map
+    # to the correct api_code
     # ============================================================
     ("座りなさい", "llm_action", "expect Sit(1009)"),
     ("お座りして", "llm_action", "expect Sit(1009)"),
@@ -93,7 +96,7 @@ COMMANDS = [
     ("ゆっくり座って", "llm_action", "expect Sit(1009)"),
 
     # ============================================================
-    # Batch 3: LLM 動作命令 — 表演・エモーション (25 commands)
+    # Batch 3: LLM action commands -- Performance & emotion (25 commands)
     # ============================================================
     ("ストレッチして", "llm_action", "expect Stretch(1017)"),
     ("体を伸ばして", "llm_action", "expect Stretch(1017)"),
@@ -122,7 +125,7 @@ COMMANDS = [
     ("腰振って", "llm_action", "expect WiggleHips(1033)"),
 
     # ============================================================
-    # Batch 4: LLM 動作命令 — 中文変体 (15 commands)
+    # Batch 4: LLM action commands -- Chinese variants (15 commands)
     # ============================================================
     ("坐下", "llm_action", "expect Sit(1009)"),
     ("站起来", "llm_action", "expect StandUp(1004)"),
@@ -141,31 +144,31 @@ COMMANDS = [
     ("休息一下", "llm_action", "expect Sit(1009)/StandDown(1005)"),
 
     # ============================================================
-    # Batch 5: LLM 会话命令 — a=null 路径 (20 commands)
+    # Batch 5: LLM conversational commands -- a=null path (20 commands)
     # ============================================================
-    ("今日の天気は？", "llm_conversational", "expect a=null, 会話返答"),
-    ("何時ですか？", "llm_conversational", "expect a=null, 会話返答"),
-    ("あなたは誰？", "llm_conversational", "expect a=null, 会話返答"),
-    ("名前は何ですか？", "llm_conversational", "expect a=null, 自己紹介"),
-    ("元気？", "llm_conversational", "expect a=null, 相づち"),
-    ("今日は何をしますか？", "llm_conversational", "expect a=null, 会話"),
-    ("好きな食べ物は？", "llm_conversational", "expect a=null, 会話"),
-    ("何歳ですか？", "llm_conversational", "expect a=null, 会話"),
-    ("お腹すいた？", "llm_conversational", "expect a=null, 相づち"),
-    ("どこに住んでる？", "llm_conversational", "expect a=null, 会話"),
-    ("Claudiaちゃん", "llm_conversational", "expect a=null, 名前呼び"),
-    ("今日は暑いね", "llm_conversational", "expect a=null, 天気雑談"),
+    ("今日の天気は？", "llm_conversational", "expect a=null, conversational reply"),
+    ("何時ですか？", "llm_conversational", "expect a=null, conversational reply"),
+    ("あなたは誰？", "llm_conversational", "expect a=null, conversational reply"),
+    ("名前は何ですか？", "llm_conversational", "expect a=null, self-introduction"),
+    ("元気？", "llm_conversational", "expect a=null, acknowledgment"),
+    ("今日は何をしますか？", "llm_conversational", "expect a=null, conversation"),
+    ("好きな食べ物は？", "llm_conversational", "expect a=null, conversation"),
+    ("何歳ですか？", "llm_conversational", "expect a=null, conversation"),
+    ("お腹すいた？", "llm_conversational", "expect a=null, acknowledgment"),
+    ("どこに住んでる？", "llm_conversational", "expect a=null, conversation"),
+    ("Claudiaちゃん", "llm_conversational", "expect a=null, name call"),
+    ("今日は暑いね", "llm_conversational", "expect a=null, weather small talk"),
     ("疲れた？", "llm_conversational", "expect a=null or Sit"),
-    ("楽しい？", "llm_conversational", "expect a=null, 相づち"),
+    ("楽しい？", "llm_conversational", "expect a=null, acknowledgment"),
     ("ありがとう", "llm_conversational", "expect a=null or Heart"),
-    ("你是谁？", "llm_conversational", "expect a=null, 自己紹介"),
-    ("今天天气怎么样？", "llm_conversational", "expect a=null, 天気"),
-    ("你叫什么名字？", "llm_conversational", "expect a=null, 名前"),
-    ("你多大了？", "llm_conversational", "expect a=null, 年齢"),
-    ("你喜欢什么？", "llm_conversational", "expect a=null, 会話"),
+    ("你是谁？", "llm_conversational", "expect a=null, self-introduction"),
+    ("今天天气怎么样？", "llm_conversational", "expect a=null, weather"),
+    ("你叫什么名字？", "llm_conversational", "expect a=null, name"),
+    ("你多大了？", "llm_conversational", "expect a=null, age"),
+    ("你喜欢什么？", "llm_conversational", "expect a=null, conversation"),
 
     # ============================================================
-    # Batch 6: LLM 序列命令 — 複数動作 (10 commands)
+    # Batch 6: LLM sequence commands -- Multiple actions (10 commands)
     # ============================================================
     ("立ってから座って", "llm_sequence", "expect [1004, 1009]"),
     ("座ってから立って", "llm_sequence", "expect [1009, 1004]"),
@@ -179,36 +182,36 @@ COMMANDS = [
     ("伸展然后跳", "llm_sequence", "expect [1017, 1031]"),
 
     # ============================================================
-    # Batch 7: エッジケース + ノイズ (5 commands)
+    # Batch 7: Edge cases + noise (5 commands)
     # ============================================================
-    ("", "edge_case", "空入力 → 会話 or エラー"),
-    ("あいうえお", "edge_case", "意味不明 → a=null"),
-    ("1234", "edge_case", "数字入力 → a=null"),
-    ("asdfjkl", "edge_case", "ランダム英字 → a=null"),
-    ("ちんちんして立ってから踊って", "edge_case", "hot_cache語 + 序列語の混合"),
+    ("", "edge_case", "empty input -> conversation or error"),
+    ("あいうえお", "edge_case", "nonsensical -> a=null"),
+    ("1234", "edge_case", "numeric input -> a=null"),
+    ("asdfjkl", "edge_case", "random alphanumeric -> a=null"),
+    ("ちんちんして立ってから踊って", "edge_case", "mix of hot_cache word + sequence command"),
 ]
 
-# バッチ区分
+# Batch ranges
 BATCH_RANGES = {
-    1: (0, 20),     # hot_cache 対照
-    2: (20, 45),    # LLM 基礎動作
-    3: (45, 70),    # LLM 表演
-    4: (70, 85),    # LLM 中文
-    5: (85, 105),   # LLM 会話
-    6: (105, 115),  # LLM 序列
-    7: (115, 120),  # エッジケース
+    1: (0, 20),     # hot_cache control group
+    2: (20, 45),    # LLM basic actions
+    3: (45, 70),    # LLM performance
+    4: (70, 85),    # LLM Chinese
+    5: (85, 105),   # LLM conversational
+    6: (105, 115),  # LLM sequence
+    7: (115, 120),  # Edge cases
 }
 
 
 def count_by_category():
-    """カテゴリ別統計"""
+    """Statistics by category"""
     from collections import Counter
     cats = Counter(cat for _, cat, _ in COMMANDS)
     return cats
 
 
 def create_brain(hardware=False):
-    """Shadow 用 brain インスタンス作成"""
+    """Create brain instance for shadow mode"""
     os.environ["BRAIN_ROUTER_MODE"] = "shadow"
     from claudia.brain.production_brain import ProductionBrain
     brain = ProductionBrain(use_real_hardware=hardware)
@@ -229,7 +232,7 @@ def create_brain(hardware=False):
         )
 
         def _get_current_state():
-            # 避免长批次运行时触发 stale-state 安全拒绝
+            # Avoid triggering stale-state safety rejection during long batch runs
             mock_state.timestamp = time.monotonic()
             return mock_state
 
@@ -239,9 +242,9 @@ def create_brain(hardware=False):
         )
         brain.state_monitor = mock_monitor
 
-    # Shadow 模式下单 GPU 模型切换 ~30-45s/命令
-    # 默认 snapshot_max_age=5s 会导致大量假 stale-state 安全降级
-    # 放宽至 90s（仍比真实硬件故障阈值安全）
+    # In shadow mode, single GPU model switching takes ~30-45s/command
+    # Default snapshot_max_age=5s would cause excessive false stale-state safety downgrades
+    # Relaxed to 90s (still safe compared to real hardware failure threshold)
     if hasattr(brain, 'safety_compiler') and brain.safety_compiler:
         brain.safety_compiler.snapshot_max_age = 90.0
 
@@ -257,21 +260,21 @@ def run_async(coro):
 
 
 def warmup_models(brain, router_mode="shadow"):
-    """モデルを VRAM にプリロード（冷启动による首条コマンドのレイテンシー汚染を防止）
+    """Preload models into VRAM (prevent cold start latency contamination on first command)
 
-    Shadow モードでは Action → 7B の順で予熱。
-    最後にロードしたモデルが VRAM に残るため、
-    主路径の 7B を最後に予熱してヒット率を最大化。
+    In shadow mode, warmup in order: Action -> 7B.
+    The last loaded model remains in VRAM, so warm up the
+    primary path 7B last to maximize hit rate.
     """
     try:
         import subprocess
     except ImportError:
-        print("  (subprocess 不可用，予熱スキップ)")
+        print("  (subprocess not available, skipping warmup)")
         return
 
     models = []
     if router_mode == "shadow":
-        # Shadow: Action(観測用) → 7B(主路径=最後)
+        # Shadow: Action (for observation) -> 7B (primary path, loaded last)
         action_model = getattr(brain, '_channel_router', None)
         if action_model:
             action_model = action_model._action_model
@@ -286,7 +289,7 @@ def warmup_models(brain, router_mode="shadow"):
 
     for model_name, num_ctx, label in models:
         t0 = time.monotonic()
-        print("  予熱: {} ({})...".format(label, model_name), end="", flush=True)
+        print("  Warmup: {} ({})...".format(label, model_name), end="", flush=True)
         try:
             result = subprocess.run(
                 ["ollama", "run", model_name, '{"a":null}'],
@@ -300,21 +303,21 @@ def warmup_models(brain, router_mode="shadow"):
                     result.returncode, elapsed))
         except subprocess.TimeoutExpired:
             elapsed = (time.monotonic() - t0) * 1000
-            print(" TIMEOUT ({:.0f}ms), 続行".format(elapsed))
+            print(" TIMEOUT ({:.0f}ms), continuing".format(elapsed))
         except Exception as e:
-            print(" ERROR: {}, 続行".format(e))
+            print(" ERROR: {}, continuing".format(e))
 
     print()
 
 
 def run_observation(brain, commands, delay=3.0):
-    """命令を順次実行し、結果を記録"""
+    """Execute commands sequentially and record results"""
     results = []
     total = len(commands)
 
     for i, (cmd, cat, expected) in enumerate(commands, 1):
         if not cmd:
-            # 空入力スキップ
+            # Skip empty input
             print("  [{}/{}] (skip empty)".format(i, total))
             continue
 
@@ -333,16 +336,16 @@ def run_observation(brain, commands, delay=3.0):
                 api, seq, exec_st, resp, elapsed)
             results.append((cmd, cat, True, result_str))
 
-            print("  [{}/{}] [{}] {:20s} → {}".format(
+            print("  [{}/{}] [{}] {:20s} -> {}".format(
                 i, total, status_icon, cmd[:20], result_str))
 
         except Exception as e:
             elapsed = (time.monotonic() - t0) * 1000
             results.append((cmd, cat, False, str(e)))
-            print("  [{}/{}] [E] {:20s} → ERROR: {} ({:.0f}ms)".format(
+            print("  [{}/{}] [E] {:20s} -> ERROR: {} ({:.0f}ms)".format(
                 i, total, cmd[:20], e, elapsed))
 
-        # 推理間隔（VRAM swap 冷却）
+        # Inference interval (VRAM swap cooldown)
         if delay > 0:
             time.sleep(delay)
 
@@ -351,71 +354,71 @@ def run_observation(brain, commands, delay=3.0):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Shadow 観測バッチ: 120+ commands for audit data accumulation")
+        description="Shadow observation batch: 120+ commands for audit data accumulation")
     parser.add_argument("--hardware", action="store_true",
-                        help="実機接続モード")
+                        help="Real hardware connection mode")
     parser.add_argument("--batch", type=int, default=0,
-                        help="特定バッチのみ実行 (1-7, 0=全部)")
+                        help="Run only a specific batch (1-7, 0=all)")
     parser.add_argument("--dry-run", action="store_true",
-                        help="コマンド一覧を表示（実行しない）")
+                        help="Display command list (do not execute)")
     parser.add_argument("--delay", type=float, default=3.0,
-                        help="コマンド間の待機秒数 (default: 3.0)")
+                        help="Wait seconds between commands (default: 3.0)")
     args = parser.parse_args()
 
-    # 統計表示
+    # Display statistics
     cats = count_by_category()
     llm_total = sum(v for k, v in cats.items() if k != "hot_cache")
     print("=" * 60)
-    print("  Shadow 観測バッチ")
+    print("  Shadow Observation Batch")
     print("=" * 60)
-    print("  総コマンド数: {}".format(len(COMMANDS)))
-    print("  非 hot_cache: {} (うち一部は conversational/sequence 前段で捕捉される)".format(
+    print("  Total commands: {}".format(len(COMMANDS)))
+    print("  Non-hot_cache: {} (some may be caught at conversational/sequence stage)".format(
         llm_total))
     for cat, count in sorted(cats.items()):
         print("    {:25s} {}".format(cat, count))
-    print("  ※ 実際の router 経由数は実行後の audit ログで確定".format())
-    # Shadow 単 GPU: ~45s/LLM 命令（VRAM swap x2）+ delay
-    # Hot cache: ~0.5s/命令 + delay
+    print("  * Actual router-routed count is determined from audit logs after execution".format())
+    # Shadow single GPU: ~45s/LLM command (VRAM swap x2) + delay
+    # Hot cache: ~0.5s/command + delay
     hot_count_all = sum(1 for _, c, _ in COMMANDS if c == "hot_cache")
     llm_count_all = len(COMMANDS) - hot_count_all
     est_min = (hot_count_all * (0.5 + args.delay) + llm_count_all * (45 + args.delay)) / 60
-    print("  推定時間: {:.0f}分 (hot={}, llm={}, delay={}s)".format(
+    print("  Estimated time: {:.0f} min (hot={}, llm={}, delay={}s)".format(
         est_min, hot_count_all, llm_count_all, args.delay))
-    print("  モード: {}".format("hardware" if args.hardware else "simulation"))
+    print("  Mode: {}".format("hardware" if args.hardware else "simulation"))
     print("  BRAIN_ROUTER_MODE: {}".format(
         os.environ.get("BRAIN_ROUTER_MODE", "(not set)")))
     print()
 
-    # バッチ選択
+    # Batch selection
     if args.batch > 0:
         if args.batch not in BATCH_RANGES:
-            print("ERROR: バッチ {} は存在しません (1-7)".format(args.batch))
+            print("ERROR: Batch {} does not exist (1-7)".format(args.batch))
             return 1
         start, end = BATCH_RANGES[args.batch]
         commands = COMMANDS[start:end]
-        print("  バッチ {}: commands[{}:{}] ({} commands)".format(
+        print("  Batch {}: commands[{}:{}] ({} commands)".format(
             args.batch, start, end, len(commands)))
     else:
         commands = COMMANDS
-        print("  全バッチ実行 ({} commands)".format(len(commands)))
+        print("  Running all batches ({} commands)".format(len(commands)))
 
-    # ドライラン
+    # Dry run
     if args.dry_run:
-        print("\n--- Dry Run: コマンド一覧 ---")
+        print("\n--- Dry Run: Command List ---")
         for i, (cmd, cat, exp) in enumerate(commands, 1):
-            print("  {:3d}. [{:20s}] {:25s}  → {}".format(i, cat, cmd, exp))
+            print("  {:3d}. [{:20s}] {:25s}  -> {}".format(i, cat, cmd, exp))
         return 0
 
-    # 実行
+    # Execute
     print()
     brain = create_brain(hardware=args.hardware)
 
-    # 冷启動防止: 両モデルを VRAM にプリロード
+    # Cold start prevention: preload both models into VRAM
     router_mode = os.environ.get("BRAIN_ROUTER_MODE", "legacy")
     warmup_models(brain, router_mode=router_mode)
 
     start_time = datetime.now()
-    print("  開始: {}".format(start_time.strftime("%Y-%m-%d %H:%M:%S")))
+    print("  Start: {}".format(start_time.strftime("%Y-%m-%d %H:%M:%S")))
     print()
 
     results = run_observation(brain, commands, delay=args.delay)
@@ -423,34 +426,34 @@ def main():
     end_time = datetime.now()
     elapsed_total = (end_time - start_time).total_seconds()
 
-    # サマリー
+    # Summary
     print("\n" + "=" * 60)
-    print("  完了: {} ({:.0f}秒)".format(
+    print("  Completed: {} ({:.0f} seconds)".format(
         end_time.strftime("%H:%M:%S"), elapsed_total))
     print("=" * 60)
 
-    # Finding #4 修正: execution_status 区分
+    # Finding #4 fix: execution_status classification
     no_exception = sum(1 for _, _, ok, _ in results if ok)
     exceptions = len(results) - no_exception
-    print("  完了 (無例外): {}/{}".format(no_exception, len(results)))
+    print("  Completed (no exceptions): {}/{}".format(no_exception, len(results)))
     if exceptions > 0:
-        print("  例外発生: {}".format(exceptions))
+        print("  Exceptions occurred: {}".format(exceptions))
 
-    # カテゴリ別
+    # By category
     from collections import defaultdict, Counter as Ctr
     cat_stats = defaultdict(lambda: [0, 0])  # [no_exception, total]
     for _, cat, ok, _ in results:
         cat_stats[cat][1] += 1
         if ok:
             cat_stats[cat][0] += 1
-    print("\n  カテゴリ別:")
+    print("\n  By category:")
     for cat in sorted(cat_stats):
         s, t = cat_stats[cat]
         print("    {:25s} {}/{} ({:.0f}%)".format(cat, s, t, s / t * 100))
 
-    # Finding #1/#3: 从 audit log 读取实际 router 经由样本数
+    # Finding #1/#3: read actual router-routed sample count from audit log
     run_start_iso = start_time.strftime("%Y-%m-%dT%H:%M:%S")
-    print("\n  --- Audit ログ確認 (本次 run 以降) ---")
+    print("\n  --- Audit Log Check (after this run) ---")
     from pathlib import Path
     audit_dir = Path("logs/audit")
     if audit_dir.exists():
@@ -478,33 +481,33 @@ def main():
                     except (json.JSONDecodeError, KeyError):
                         pass
 
-        # 実際の router 経由数 = shadow_comparison 付きの条目数
-        # hot_cache / emergency / conversational_detect は shadow_comparison なし
-        print("  Audit 総条目: {}".format(len(run_entries)))
-        print("  Route 分布:")
+        # Actual router-routed count = entries with shadow_comparison
+        # hot_cache / emergency / conversational_detect have no shadow_comparison
+        print("  Audit total entries: {}".format(len(run_entries)))
+        print("  Route distribution:")
         for r, cnt in route_counts.most_common():
             print("    {:25s} {}".format(r, cnt))
-        print("  Shadow 対比条目: {} (= 実際の router 経由数)".format(
+        print("  Shadow comparison entries: {} (= actual router-routed count)".format(
             len(shadow_entries)))
         if shadow_entries:
             agreements = sum(
                 1 for e in shadow_entries
                 if e["shadow_comparison"].get("raw_agreement", False))
-            print("  一致率: {:.1f}% ({}/{})".format(
+            print("  Agreement rate: {:.1f}% ({}/{})".format(
                 agreements / len(shadow_entries) * 100,
                 agreements, len(shadow_entries)))
-            print("  Dual 状態分布:")
+            print("  Dual status distribution:")
             for st, cnt in status_counts.most_common():
                 print("    {:20s} {}".format(st, cnt))
 
-        # N>=100 判定
-        print("\n  N>=100 判定: {} (router 経由 shadow 条目)".format(
+        # N>=100 check
+        print("\n  N>=100 check: {} (router-routed shadow entries)".format(
             "PASS" if len(shadow_entries) >= 100 else
             "NOT YET ({}/100)".format(len(shadow_entries))))
     else:
-        print("  (audit ディレクトリ未存在)")
+        print("  (audit directory does not exist)")
 
-    print("\n  次のステップ:")
+    print("\n  Next step:")
     print("  python3 scripts/audit_baseline.py --min-n 100")
 
     return 1 if exceptions > 0 else 0

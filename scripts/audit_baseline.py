@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-audit_baseline.py — PR2 审计日志基线分析
+audit_baseline.py -- PR2 Audit Log Baseline Analysis
 
-读取 logs/audit/*.jsonl，输出:
-  - 路由分布（emergency/hotpath/7B/action_channel/...）
-  - 动作成功率 / unknown 率 / 安全拒绝率
-  - P50/P95 延迟（按路由分组）
-  - PR2 扩展: 按 router_mode 分组、shadow 一致率
+Reads logs/audit/*.jsonl and outputs:
+  - Route distribution (emergency/hotpath/7B/action_channel/...)
+  - Action success rate / unknown rate / safety rejection rate
+  - P50/P95 latency (grouped by route)
+  - PR2 extension: grouped by router_mode, shadow agreement rate
 
-用法:
-  python3 scripts/audit_baseline.py              # 默认 logs/audit/
-  python3 scripts/audit_baseline.py --dir /path   # 指定目录
-  python3 scripts/audit_baseline.py --min-n 100   # 最小样本量
+Usage:
+  python3 scripts/audit_baseline.py              # Default logs/audit/
+  python3 scripts/audit_baseline.py --dir /path   # Specify directory
+  python3 scripts/audit_baseline.py --min-n 100   # Minimum sample size
 """
 
 import argparse
@@ -23,11 +23,11 @@ from collections import Counter, defaultdict
 
 
 def load_entries(audit_dir):
-    """加载所有 JSONL 文件"""
+    """Load all JSONL files"""
     entries = []
     audit_path = Path(audit_dir)
     if not audit_path.exists():
-        print("错误: 审计目录不存在: {}".format(audit_dir))
+        print("Error: Audit directory does not exist: {}".format(audit_dir))
         sys.exit(1)
 
     for f in sorted(audit_path.glob("audit_*.jsonl")):
@@ -39,12 +39,12 @@ def load_entries(audit_dir):
                 try:
                     entries.append(json.loads(line))
                 except json.JSONDecodeError:
-                    print("警告: {}:{} JSON 解析失败".format(f.name, line_num))
+                    print("Warning: {}:{} JSON parse failed".format(f.name, line_num))
     return entries
 
 
 def percentile(sorted_values, p):
-    """计算百分位数"""
+    """Calculate percentile"""
     if not sorted_values:
         return 0.0
     idx = int(len(sorted_values) * p / 100)
@@ -53,25 +53,25 @@ def percentile(sorted_values, p):
 
 
 def analyze(entries, min_n):
-    """分析审计日志"""
+    """Analyze audit logs"""
     if len(entries) < min_n:
-        print("样本不足: {} 条 (最小要求 {})".format(len(entries), min_n))
-        print("继续分析，但结果可能不具统计显著性。\n")
+        print("Insufficient samples: {} entries (minimum required {})".format(len(entries), min_n))
+        print("Continuing analysis, but results may not be statistically significant.\n")
 
     print("=" * 60)
-    print("审计日志基线分析")
-    print("总条目: {}".format(len(entries)))
+    print("Audit Log Baseline Analysis")
+    print("Total entries: {}".format(len(entries)))
     print("=" * 60)
 
-    # --- 路由分布 ---
+    # --- Route distribution ---
     route_counts = Counter(e.get("route", "unknown") for e in entries)
-    print("\n--- 路由分布 ---")
+    print("\n--- Route Distribution ---")
     for route, count in route_counts.most_common():
         pct = count / len(entries) * 100
         print("  {:30s} {:5d} ({:5.1f}%)".format(route, count, pct))
 
-    # --- 按路由的延迟统计 ---
-    print("\n--- 延迟统计 (ms) ---")
+    # --- Latency statistics by route ---
+    print("\n--- Latency Statistics (ms) ---")
     route_latencies = defaultdict(list)
     for e in entries:
         route = e.get("route", "unknown")
@@ -89,43 +89,43 @@ def analyze(entries, min_n):
         print("  {:30s} {:8.1f} {:8.1f} {:8.1f} {:6d}".format(
             route, p50, p95, p99, len(vals)))
 
-    # --- 安全裁决 ---
+    # --- Safety verdicts ---
     verdicts = Counter(e.get("safety_verdict", "unknown") for e in entries)
-    print("\n--- 安全裁决 ---")
+    print("\n--- Safety Verdicts ---")
     for v, count in verdicts.most_common():
         pct = count / len(entries) * 100
         print("  {:30s} {:5d} ({:5.1f}%)".format(v, count, pct))
 
-    # --- 流水线成功率 + 动作率 ---
+    # --- Pipeline success rate + action rate ---
     pipeline_ok = sum(1 for e in entries if e.get("success", False))
     action_entries = [e for e in entries
                       if e.get("api_code") is not None or e.get("sequence")]
     conversational = len(entries) - len(action_entries)
     rejected = sum(1 for e in entries
                    if str(e.get("safety_verdict", "")).startswith("rejected"))
-    print("\n--- 流水线概况 ---")
-    print("  总条目:     {}".format(len(entries)))
-    print("  流水线成功: {} ({:.1f}%)".format(
+    print("\n--- Pipeline Overview ---")
+    print("  Total entries:       {}".format(len(entries)))
+    print("  Pipeline success:    {} ({:.1f}%)".format(
         pipeline_ok, pipeline_ok / len(entries) * 100 if entries else 0))
-    print("  有动作:     {} ({:.1f}%)".format(
+    print("  With action:         {} ({:.1f}%)".format(
         len(action_entries),
         len(action_entries) / len(entries) * 100 if entries else 0))
-    print("  纯对话:     {} ({:.1f}%)".format(
+    print("  Conversation only:   {} ({:.1f}%)".format(
         conversational,
         conversational / len(entries) * 100 if entries else 0))
-    print("  安全拒绝:   {} ({:.1f}%)".format(
+    print("  Safety rejected:     {} ({:.1f}%)".format(
         rejected, rejected / len(entries) * 100 if entries else 0))
 
-    # --- PR2: router_mode 分组 ---
+    # --- PR2: router_mode grouping ---
     mode_counts = Counter(e.get("router_mode", "none") for e in entries)
     has_pr2 = any(e.get("router_mode") is not None for e in entries)
     if has_pr2:
-        print("\n--- PR2: 路由模式分布 ---")
+        print("\n--- PR2: Router Mode Distribution ---")
         for mode, count in mode_counts.most_common():
             pct = count / len(entries) * 100
             print("  {:30s} {:5d} ({:5.1f}%)".format(mode, count, pct))
 
-    # --- PR2: Shadow 一致率 ---
+    # --- PR2: Shadow agreement rate ---
     shadow_entries = [e for e in entries if e.get("shadow_comparison")]
     if shadow_entries:
         agreements = sum(
@@ -134,14 +134,14 @@ def analyze(entries, min_n):
         high_risk = sum(
             1 for e in shadow_entries
             if e["shadow_comparison"].get("high_risk_divergence", False))
-        # dual_status 语义: "ok"=正常, "timeout"=超时, "error"=异常, "invalid_output"=非法输出
-        # 兼容旧日志: 无 dual_status 时回退检查 dual_api_code
+        # dual_status semantics: "ok"=normal, "timeout"=timed out, "error"=error, "invalid_output"=invalid output
+        # Backward compatible with old logs: fall back to dual_api_code when dual_status is absent
         status_counts = Counter()
         for e in shadow_entries:
             sc = e["shadow_comparison"]
             ds = sc.get("dual_status")
             if ds is None:
-                # 旧日志兼容: 用 dual_api_code 推断
+                # Old log compatibility: infer from dual_api_code
                 dac = sc.get("dual_api_code")
                 if dac == "timeout":
                     ds = "timeout"
@@ -151,17 +151,17 @@ def analyze(entries, min_n):
                     ds = "ok"
             status_counts[ds] += 1
 
-        print("\n--- PR2: Shadow 对比 ---")
-        print("  Shadow 条目: {}".format(len(shadow_entries)))
-        print("  原始一致率: {:.1f}%".format(
+        print("\n--- PR2: Shadow Comparison ---")
+        print("  Shadow entries: {}".format(len(shadow_entries)))
+        print("  Raw agreement rate: {:.1f}%".format(
             agreements / len(shadow_entries) * 100))
-        print("  高风险分歧: {}".format(high_risk))
-        print("  Dual 状态分布:")
+        print("  High-risk divergences: {}".format(high_risk))
+        print("  Dual status distribution:")
         for st, cnt in status_counts.most_common():
             print("    {:20s} {:5d} ({:5.1f}%)".format(
                 st, cnt, cnt / len(shadow_entries) * 100))
 
-        # PR2 Action 通道延迟（仅 dual_status=ok 的样本）
+        # PR2 Action channel latency (only for samples with dual_status=ok)
         action_ms = [
             e["shadow_comparison"].get("dual_ms", 0)
             for e in shadow_entries
@@ -170,7 +170,7 @@ def analyze(entries, min_n):
         ]
         if action_ms:
             action_ms.sort()
-            print("\n  Action 通道延迟 (dual_status=ok):")
+            print("\n  Action channel latency (dual_status=ok):")
             print("    P50: {:.1f}ms  P95: {:.1f}ms  N={}".format(
                 percentile(action_ms, 50),
                 percentile(action_ms, 95),
@@ -180,16 +180,16 @@ def analyze(entries, min_n):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="审计日志基线分析")
+    parser = argparse.ArgumentParser(description="Audit log baseline analysis")
     parser.add_argument("--dir", default="logs/audit",
-                        help="审计日志目录")
+                        help="Audit log directory")
     parser.add_argument("--min-n", type=int, default=100,
-                        help="统计显著性最小样本量")
+                        help="Minimum sample size for statistical significance")
     args = parser.parse_args()
 
     entries = load_entries(args.dir)
     if not entries:
-        print("无审计日志条目")
+        print("No audit log entries found")
         sys.exit(0)
 
     analyze(entries, args.min_n)

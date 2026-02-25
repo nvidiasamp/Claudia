@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-test_audit_extension.py — PR2 Slice D: 审计扩展 + Shadow 日志验证
+test_audit_extension.py — PR2 Slice D: Audit extension + Shadow logging validation
 
-验证:
-  - D1: AuditEntry 向后兼容（旧日志无 PR2 字段仍可反序列化）
-  - D2: AuditEntry 新字段正确填充
-  - D3: _log_audit 接受 PR2 kwargs
-  - D4: Shadow comparison 日志完整性
+Validates:
+  - D1: AuditEntry backward compatibility (old logs without PR2 fields can still be deserialized)
+  - D2: AuditEntry new fields are populated correctly
+  - D3: _log_audit accepts PR2 kwargs
+  - D4: Shadow comparison log integrity
 """
 
 import sys
@@ -20,13 +20,13 @@ from dataclasses import asdict
 from claudia.brain.audit_logger import AuditEntry
 
 
-# === D1: 向后兼容 ===
+# === D1: Backward compatibility ===
 
 class TestAuditEntryBackwardCompat:
-    """旧日志（无 PR2 字段）仍可反序列化"""
+    """Old logs (without PR2 fields) can still be deserialized"""
 
     def _make_old_entry_dict(self):
-        """模拟 PR1 时期的审计日志 JSON"""
+        """Simulate PR1-era audit log JSON"""
         return {
             "timestamp": "2026-02-12T10:00:00",
             "model_name": "7B",
@@ -46,12 +46,12 @@ class TestAuditEntryBackwardCompat:
         }
 
     def test_old_json_deserializes(self):
-        """旧格式 JSON 可以创建 AuditEntry"""
+        """Old format JSON can create AuditEntry"""
         old = self._make_old_entry_dict()
         entry = AuditEntry(**old)
         assert entry.api_code == 1009
         assert entry.route == "7B"
-        # PR2 字段默认为 None
+        # PR2 fields default to None
         assert entry.request_id is None
         assert entry.router_mode is None
         assert entry.shadow_comparison is None
@@ -59,7 +59,7 @@ class TestAuditEntryBackwardCompat:
         assert entry.voice_latency_ms is None
 
     def test_old_roundtrip(self):
-        """旧日志 → AuditEntry → dict → JSON → dict → AuditEntry 往返"""
+        """Old log -> AuditEntry -> dict -> JSON -> dict -> AuditEntry roundtrip"""
         old = self._make_old_entry_dict()
         entry = AuditEntry(**old)
         json_str = json.dumps(asdict(entry), ensure_ascii=False)
@@ -69,23 +69,23 @@ class TestAuditEntryBackwardCompat:
         assert entry2.request_id is None
 
     def test_old_json_with_extra_fields_ignored(self):
-        """未来扩展字段不影响反序列化（使用 **kwargs 时会报错，
-        所以这里验证当前字段集合完整性）"""
+        """Future extension fields do not affect deserialization (using **kwargs would
+        raise an error, so this validates current field set completeness)"""
         old = self._make_old_entry_dict()
-        # 添加 PR2 字段
+        # Add PR2 fields
         old["request_id"] = "abc12345"
         old["router_mode"] = "shadow"
         entry = AuditEntry(**old)
         assert entry.request_id == "abc12345"
 
 
-# === D2: 新字段 ===
+# === D2: New fields ===
 
 class TestAuditEntryNewFields:
-    """PR2 字段正确填充"""
+    """PR2 fields are populated correctly"""
 
     def test_pr2_fields_populated(self):
-        """所有 PR2 字段可以正常设置和读取"""
+        """All PR2 fields can be set and read correctly"""
         entry = AuditEntry(
             timestamp="2026-02-13T14:00:00",
             model_name="dual",
@@ -102,7 +102,7 @@ class TestAuditEntryNewFields:
             cache_hit=False,
             route="action_channel",
             success=True,
-            # PR2 字段
+            # PR2 fields
             request_id="ab12cd34",
             router_mode="dual",
             shadow_comparison=None,
@@ -115,7 +115,7 @@ class TestAuditEntryNewFields:
         assert entry.voice_latency_ms == 0.0
 
     def test_shadow_comparison_serializable(self):
-        """shadow_comparison Dict 可以序列化为 JSON"""
+        """shadow_comparison Dict can be serialized to JSON"""
         shadow = {
             "legacy_api_code": 1009,
             "legacy_sequence": None,
@@ -152,7 +152,7 @@ class TestAuditEntryNewFields:
         assert restored["shadow_comparison"]["legacy_api_code"] == 1009
 
     def test_asdict_includes_pr2_fields(self):
-        """asdict() 输出包含所有 PR2 字段"""
+        """asdict() output includes all PR2 fields"""
         entry = AuditEntry(
             timestamp="t", model_name="m", input_command="c",
             state_battery=None, state_standing=None, state_emergency=None,
@@ -169,7 +169,7 @@ class TestAuditEntryNewFields:
         assert "voice_latency_ms" in d
 
     def test_shadow_timeout_entry(self):
-        """Shadow 超时时 dual_api_code='timeout' 可序列化"""
+        """Shadow timeout with dual_api_code='timeout' can be serialized"""
         shadow = {
             "legacy_api_code": 1009,
             "legacy_sequence": None,
@@ -194,7 +194,7 @@ class TestAuditEntryNewFields:
         assert restored["shadow_comparison"]["dual_api_code"] == "timeout"
 
     def test_shadow_error_entry(self):
-        """Shadow 异常时 dual_api_code='error' 可序列化"""
+        """Shadow exception with dual_api_code='error' can be serialized"""
         shadow = {
             "legacy_api_code": 1009,
             "dual_api_code": "error",

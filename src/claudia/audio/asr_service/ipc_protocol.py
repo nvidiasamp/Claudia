@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-IPC 协议层: 消息工厂 + Unix Domain Socket 工具
+IPC Protocol Layer: Message Factories + Unix Domain Socket Utilities
 
-3 路单向 Socket 架构 ($XDG_RUNTIME_DIR/claudia/ 下):
-  - audio.sock  (AudioCapture → ASR, raw PCM)
-  - result.sock (ASR → Main, JSON Lines)
-  - ctrl.sock   (Main → ASR, JSON Lines)
+3-way unidirectional socket architecture (under $XDG_RUNTIME_DIR/claudia/):
+  - audio.sock  (AudioCapture -> ASR, raw PCM)
+  - result.sock (ASR -> Main, JSON Lines)
+  - ctrl.sock   (Main -> ASR, JSON Lines)
 
-协议版本: major 相同则兼容 (1.0 和 1.1 互通, 2.0 不兼容)
-消息格式: JSON Lines (每行一条 JSON, \\n 分隔)
+Protocol version: major-compatible (1.0 and 1.1 interoperable, 2.0 incompatible)
+Message format: JSON Lines (one JSON per line, \n separated)
 """
 
 import asyncio
@@ -22,49 +22,49 @@ from typing import Any, AsyncIterator, Callable, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# === 协议版本 ===
+# === Protocol version ===
 PROTO_VERSION = "1.0"
 
-# === Socket 路径 ===
-# セキュリティ: /tmp ではなく $XDG_RUNTIME_DIR (通常 /run/user/<uid>, 0700) を使用。
-# 同一ユーザー以外のアクセスを OS レベルで遮断する。
-# $XDG_RUNTIME_DIR が未設定/不可書の場合は /tmp/claudia_ipc_<uid> にフォールバック。
-# UID サフィックスにより、マルチユーザー環境でもディレクトリ衝突を回避する。
+# === Socket paths ===
+# Security: use $XDG_RUNTIME_DIR (typically /run/user/<uid>, 0700) instead of /tmp.
+# Blocks access from other users at the OS level.
+# Falls back to /tmp/claudia_ipc_<uid> if $XDG_RUNTIME_DIR is unset/unwritable.
+# UID suffix prevents directory collisions in multi-user environments.
 def _socket_dir():
     # type: () -> str
     candidates = []
 
-    # 優先: $XDG_RUNTIME_DIR/claudia (OS レベル 0700 保証)
+    # Preferred: $XDG_RUNTIME_DIR/claudia (OS-level 0700 guarantee)
     runtime = os.environ.get("XDG_RUNTIME_DIR")
     if runtime and os.path.isdir(runtime):
         candidates.append(os.path.join(runtime, "claudia"))
 
-    # フォールバック: /tmp/claudia_ipc_<uid> (UID 隔離)
+    # Fallback: /tmp/claudia_ipc_<uid> (UID isolation)
     candidates.append("/tmp/claudia_ipc_{}".format(os.getuid()))
 
     for d in candidates:
         try:
             os.makedirs(d, mode=0o700, exist_ok=True)
-            # symlink 拒否: os.stat() は symlink を辿るため、攻撃者が
-            # /tmp/claudia_ipc_<uid> → /target を仕掛けると owner 検査を
-            # バイパスされる。lstat で symlink 自体を検査し拒否する。
+            # Symlink rejection: os.stat() follows symlinks, so an attacker could
+            # set up /tmp/claudia_ipc_<uid> -> /target to bypass the owner check.
+            # Use lstat to inspect the symlink itself and reject it.
             dir_lstat = os.lstat(d)
             if stat.S_ISLNK(dir_lstat.st_mode):
-                logger.warning("ソケットディレクトリ %s は symlink、拒否", d)
+                logger.warning("Socket directory %s is a symlink, rejecting", d)
                 continue
             if dir_lstat.st_uid != os.getuid():
-                logger.warning("ソケットディレクトリ %s は他ユーザー所有、スキップ", d)
+                logger.warning("Socket directory %s is owned by another user, skipping", d)
                 continue
             if stat.S_IMODE(dir_lstat.st_mode) != 0o700:
                 os.chmod(d, 0o700)
             return d
         except OSError as e:
-            logger.warning("ソケットディレクトリ作成失敗: %s: %s", d, e)
+            logger.warning("Socket directory creation failed: %s: %s", d, e)
             continue
 
-    # 全候補失敗 — 最終手段として例外を投げる
+    # All candidates failed -- raise exception as last resort
     raise RuntimeError(
-        "IPC ソケットディレクトリを作成できません: {}".format(candidates)
+        "Cannot create IPC socket directory: {}".format(candidates)
     )
 
 _SOCK_DIR = _socket_dir()
@@ -73,7 +73,7 @@ ASR_RESULT_SOCKET = os.path.join(_SOCK_DIR, "result.sock")
 ASR_CTRL_SOCKET = os.path.join(_SOCK_DIR, "ctrl.sock")
 SESSION_TOKEN_FILE = os.path.join(_SOCK_DIR, ".ctrl_token")
 
-# === 消息类型 (Result: ASR → Main) ===
+# === Message types (Result: ASR -> Main) ===
 MSG_READY = "ready"
 MSG_HEARTBEAT = "heartbeat"
 MSG_TRANSCRIPT = "transcript"
@@ -83,31 +83,31 @@ MSG_VAD_END = "vad_end"
 MSG_ERROR = "error"
 MSG_GATE_TIMEOUT_AUDIT = "gate_timeout_audit"
 
-# === 控制类型 (Control: Main → ASR) ===
+# === Control types (Control: Main -> ASR) ===
 CTRL_TTS_START = "tts_start"
 CTRL_TTS_END = "tts_end"
 CTRL_SHUTDOWN = "shutdown"
 
 
-# === ctrl socket セッション認証 ===
-# 防護レベル: 偶発的干渉の防止（残留スクリプト、デバッグツール等）。
-# 同一 UID の蓄意的攻撃者は token ファイル (0o600) を読取可能なため、
-# 本方式では防止できない（SO_PEERCRED + PID ホワイトリストが必要）。
-# Jetson シングルユーザー組込環境では accepted risk として許容。
+# === ctrl socket session authentication ===
+# Protection level: prevention of accidental interference (leftover scripts, debug tools, etc.).
+# A deliberate attacker with the same UID can read the token file (0o600), so this method
+# cannot prevent such attacks (SO_PEERCRED + PID whitelist would be needed).
+# Accepted risk in a Jetson single-user embedded environment.
 #
-# 仕組み: ASR サーバー起動時に 16-byte nonce を生成し token ファイルに書き込み、
-# ctrl クライアントは token を読んでメッセージに含める。トークン不一致は拒否。
+# Mechanism: ASR server generates a 16-byte nonce at startup and writes it to the token file.
+# ctrl clients read the token and include it in messages. Token mismatches are rejected.
 
 
 def generate_session_token():
     # type: () -> str
-    """ctrl socket 認証用セッショントークンを生成 (16-byte hex)"""
+    """Generate a session token for ctrl socket authentication (16-byte hex)"""
     return os.urandom(16).hex()
 
 
 def create_ctrl_message(msg_type, token, **kwargs):
     # type: (str, str, **Any) -> dict
-    """認証トークン付き ctrl メッセージを生成"""
+    """Generate a ctrl message with authentication token"""
     msg = {"type": msg_type, "token": token}
     msg.update(kwargs)
     return msg
@@ -115,13 +115,13 @@ def create_ctrl_message(msg_type, token, **kwargs):
 
 def validate_session_token(msg, expected_token):
     # type: (dict, str) -> bool
-    """ctrl メッセージのセッショントークンを検証"""
+    """Validate the session token in a ctrl message"""
     return msg.get("token") == expected_token
 
 
 def read_session_token():
     # type: () -> Optional[str]
-    """トークンファイルからセッショントークンを読み取り"""
+    """Read session token from the token file"""
     try:
         with open(SESSION_TOKEN_FILE, "r") as f:
             return f.read().strip()
@@ -130,11 +130,11 @@ def read_session_token():
 
 
 # ============================================================
-# 消息工厂 (纯函数, 无副作用)
+# Message factories (pure functions, no side effects)
 # ============================================================
 
 def create_handshake(model: str, vram_mb: int) -> dict:
-    """ASR サービス起動時の ready メッセージ"""
+    """Ready message sent at ASR service startup"""
     return {
         "type": MSG_READY,
         "model": model,
@@ -150,7 +150,7 @@ def create_transcript_msg(
     asr_latency_ms: int,
     utterance_id: str,
 ) -> dict:
-    """ASR 転写結果メッセージ"""
+    """ASR transcription result message"""
     return {
         "type": MSG_TRANSCRIPT,
         "text": text,
@@ -166,7 +166,7 @@ def create_emergency_msg(
     confidence: float,
     utterance_id: str,
 ) -> dict:
-    """緊急停止検出メッセージ"""
+    """Emergency stop detection message"""
     return {
         "type": MSG_EMERGENCY,
         "keyword": keyword,
@@ -176,7 +176,7 @@ def create_emergency_msg(
 
 
 def create_heartbeat() -> dict:
-    """ハートビートメッセージ (watchdog 用)"""
+    """Heartbeat message (for watchdog)"""
     return {
         "type": MSG_HEARTBEAT,
         "ts": time.time(),
@@ -184,11 +184,11 @@ def create_heartbeat() -> dict:
 
 
 def create_vad_event(event_type: str, **kwargs) -> dict:
-    """VAD イベントメッセージ (vad_start / vad_end)
+    """VAD event message (vad_start / vad_end)
 
     Args:
         event_type: "vad_start" or "vad_end"
-        **kwargs: vad_end の場合 duration_ms を含む
+        **kwargs: for vad_end, includes duration_ms
     """
     msg: dict = {"type": event_type}
     if event_type == MSG_VAD_END and "duration_ms" in kwargs:
@@ -197,7 +197,7 @@ def create_vad_event(event_type: str, **kwargs) -> dict:
 
 
 def create_error_msg(msg: str) -> dict:
-    """エラーメッセージ"""
+    """Error message"""
     return {
         "type": MSG_ERROR,
         "msg": msg,
@@ -205,7 +205,7 @@ def create_error_msg(msg: str) -> dict:
 
 
 def create_gate_timeout_audit() -> dict:
-    """TTS ゲートタイムアウト監査メッセージ (30s 保護)"""
+    """TTS gate timeout audit message (30s protection)"""
     return {
         "type": MSG_GATE_TIMEOUT_AUDIT,
         "ts": time.time(),
@@ -213,14 +213,14 @@ def create_gate_timeout_audit() -> dict:
 
 
 # ============================================================
-# 协议验证
+# Protocol validation
 # ============================================================
 
 def validate_proto_version(version: str) -> bool:
-    """プロトコルバージョン互換性チェック
+    """Protocol version compatibility check
 
-    major バージョンが一致すれば互換とみなす。
-    例: "1.0" と "1.1" → True, "1.0" と "2.0" → False
+    Compatible if major versions match.
+    Example: "1.0" and "1.1" -> True, "1.0" and "2.0" -> False
     """
     try:
         remote_major = version.split(".")[0]
@@ -231,63 +231,63 @@ def validate_proto_version(version: str) -> bool:
 
 
 # ============================================================
-# JSON Lines エンコード/デコード
+# JSON Lines encode/decode
 # ============================================================
 
 def encode_message(msg: dict) -> bytes:
-    """dict → JSON bytes + 改行 (JSON Lines 形式)"""
+    """dict -> JSON bytes + newline (JSON Lines format)"""
     return json.dumps(msg, ensure_ascii=False).encode("utf-8") + b"\n"
 
 
 def decode_message(line: bytes) -> dict:
-    """JSON bytes 行 → dict
+    """JSON bytes line -> dict
 
     Raises:
-        json.JSONDecodeError: 不正な JSON
-        UnicodeDecodeError: 不正なエンコーディング
+        json.JSONDecodeError: Invalid JSON
+        UnicodeDecodeError: Invalid encoding
     """
     return json.loads(line.decode("utf-8").strip())
 
 
 # ============================================================
-# Socket ユーティリティ (asyncio ベース)
+# Socket Utilities (asyncio-based)
 # ============================================================
 
 def cleanup_socket(path: str) -> None:
-    """残存ソケットファイルの削除"""
+    """Delete stale socket files"""
     try:
         if os.path.exists(path):
             os.unlink(path)
-            logger.debug("古いソケットファイルを削除: %s", path)
+            logger.debug("Deleted old socket file: %s", path)
     except OSError as e:
-        logger.warning("ソケットファイル削除失敗: %s: %s", path, e)
+        logger.warning("Failed to delete socket file: %s: %s", path, e)
 
 
 async def create_uds_server(
     path: str,
     handler: Callable,
 ) -> asyncio.AbstractServer:
-    """Unix Domain Socket サーバーを作成
+    """Create a Unix Domain Socket server
 
-    古いソケットファイルがあれば先に削除する。
+    Deletes any existing socket file first.
 
     Args:
-        path: ソケットファイルパス
-        handler: asyncio.start_unix_server の client_connected_cb
-                 (reader, writer) を受け取るコールバック
+        path: Socket file path
+        handler: client_connected_cb for asyncio.start_unix_server
+                 Callback receiving (reader, writer)
 
     Returns:
-        asyncio.Server インスタンス
+        asyncio.Server instance
     """
     cleanup_socket(path)
     server = await asyncio.start_unix_server(handler, path=path)
-    # ソケットファイルのパーミッションを owner-only に制限
-    # (同一マシン上の他ユーザーからの不正接続を防止)
+    # Restrict socket file permissions to owner-only
+    # (prevents unauthorized connections from other users on the same machine)
     try:
         os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)  # 0o600
     except OSError as e:
-        logger.warning("ソケットパーミッション設定失敗: %s: %s", path, e)
-    logger.info("UDS サーバー起動: %s", path)
+        logger.warning("Failed to set socket permissions: %s: %s", path, e)
+    logger.info("UDS server started: %s", path)
     return server
 
 
@@ -296,18 +296,18 @@ async def connect_uds(
     retries: int = 5,
     delay: float = 0.5,
 ) -> Tuple[asyncio.StreamReader, asyncio.StreamWriter]:
-    """Unix Domain Socket に接続 (リトライ付き)
+    """Connect to a Unix Domain Socket (with retries)
 
     Args:
-        path: ソケットファイルパス
-        retries: 最大リトライ回数
-        delay: リトライ間隔 (秒, 指数バックオフ)
+        path: Socket file path
+        retries: Maximum number of retry attempts
+        delay: Retry interval in seconds (exponential backoff)
 
     Returns:
-        (StreamReader, StreamWriter) タプル
+        (StreamReader, StreamWriter) tuple
 
     Raises:
-        ConnectionError: 全リトライ失敗時
+        ConnectionError: All retries failed
     """
     last_error: Optional[Exception] = None
     current_delay = delay
@@ -315,38 +315,38 @@ async def connect_uds(
     for attempt in range(1, retries + 1):
         try:
             reader, writer = await asyncio.open_unix_connection(path)
-            logger.debug("UDS 接続成功: %s (試行 %d)", path, attempt)
+            logger.debug("UDS connection successful: %s (attempt %d)", path, attempt)
             return reader, writer
         except (FileNotFoundError, ConnectionRefusedError, OSError) as e:
             last_error = e
             if attempt < retries:
                 logger.debug(
-                    "UDS 接続失敗 (試行 %d/%d): %s: %s, %.1fs 後リトライ",
+                    "UDS connection failed (attempt %d/%d): %s: %s, retrying in %.1fs",
                     attempt, retries, path, e, current_delay,
                 )
                 await asyncio.sleep(current_delay)
                 current_delay = min(current_delay * 2, 10.0)
 
     raise ConnectionError(
-        f"UDS 接続失敗 ({retries} 回リトライ後): {path}: {last_error}"
+        f"UDS connection failed (after {retries} retries): {path}: {last_error}"
     )
 
 
 async def read_json_lines(
     reader: asyncio.StreamReader,
 ) -> AsyncIterator[dict]:
-    """StreamReader から JSON Lines を非同期イテレート
+    """Asynchronously iterate JSON Lines from a StreamReader
 
-    接続切断または空行で終了。不正な JSON 行はスキップしてログ出力。
+    Terminates on connection disconnect or empty line. Invalid JSON lines are skipped with logging.
 
     Yields:
-        パースされた dict
+        Parsed dict
     """
     while True:
         try:
             line = await reader.readline()
         except (ConnectionResetError, BrokenPipeError):
-            logger.warning("JSON Lines 読取中に接続切断")
+            logger.warning("Connection disconnected while reading JSON Lines")
             break
 
         if not line:
@@ -360,16 +360,16 @@ async def read_json_lines(
         try:
             yield decode_message(line)
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            logger.warning("不正な JSON 行をスキップ: %s (エラー: %s)", line[:100], e)
+            logger.warning("Skipping invalid JSON line: %s (error: %s)", line[:100], e)
 
 
 async def write_json_line(
     writer: asyncio.StreamWriter,
     msg: dict,
 ) -> None:
-    """StreamWriter に 1 つの JSON メッセージを書き込み
+    """Write a single JSON message to a StreamWriter
 
-    書き込み失敗時はログ出力して例外を伝播。
+    Logs and propagates exceptions on write failure.
     """
     data = encode_message(msg)
     writer.write(data)

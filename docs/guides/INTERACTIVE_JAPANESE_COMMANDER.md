@@ -1,273 +1,271 @@
-# 🎌 Interactive Japanese Commander
+# Interactive Japanese Commander
 
-## 交互式日语指令测试界面
+## Interactive Japanese Command Test Interface
 
-一个强大的交互式测试界面，让用户可以通过自然的日语命令直接控制Claudia机器人，提供清晰直观的测试和演示环境。
+A powerful interactive test interface that allows users to directly control the Claudia robot through natural Japanese commands, providing a clear and intuitive testing and demonstration environment.
 
-### 🎯 功能特性
+### Features
 
-#### 核心功能
-- **🗣️ 自然日语交互**: 支持多种日语表达方式，包括礼貌语和普通语
-- **🤖 实时机器人控制**: 直接执行机器人动作，支持运动控制和对话交互
-- **🛡️ 安全验证机制**: 内置安全检查，防止冲突指令和危险操作
-- **📊 详细反馈系统**: 实时显示分析过程、执行状态和耗时统计
-- **📝 历史记录管理**: 完整的命令历史和执行日志
+#### Core Features
+- **Natural Japanese interaction**: Supports multiple Japanese expression forms, including polite and casual language
+- **Real-time robot control**: Direct robot action execution, supporting motion control and dialog interaction
+- **Safety verification mechanism**: Built-in safety checks to prevent conflicting commands and dangerous operations
+- **Detailed feedback system**: Real-time display of analysis process, execution status, and timing statistics
+- **History management**: Complete command history and execution logs
 
-#### 技术特性
-- **异步处理架构**: 高性能实时交互
-- **多彩终端界面**: 用户友好的视觉体验
-- **完善错误处理**: 优雅的异常处理和用户提示
-- **资源自动管理**: 自动清理和优雅退出
+#### Technical Features
+- **Async processing architecture**: High-performance real-time interaction
+- **Colorful terminal interface**: User-friendly visual experience
+- **Comprehensive error handling**: Graceful exception handling and user prompts
+- **Automatic resource management**: Automatic cleanup and graceful exit
 
-### 🚀 快速开始
+### Quick Start
 
-#### 方法1: 使用启动脚本（推荐）
+#### Method 1: Using Launch Script (Recommended)
 ```bash
-# 直接运行启动脚本
+# Run launch script directly
 ./scripts/test/run_interactive_japanese_commander.sh
 
-# 或者检查环境状态
+# Or check environment status
 ./scripts/test/run_interactive_japanese_commander.sh --check
 
-# 只设置环境
+# Only set up environment
 ./scripts/test/run_interactive_japanese_commander.sh --setup
 ```
 
-#### 方法2: 手动运行
+#### Method 2: Manual Run
 ```bash
-# 设置环境变量
+# Set environment variables
 source /opt/ros/foxy/setup.bash
 source cyclonedx_ws/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_cyclonedx_cpp
 
-# 运行交互界面
+# Run interactive interface
 python3 src/claudia/interactive_japanese_commander.py
 ```
 
-### 📖 使用指南
+### Usage Guide
 
-#### 支持的日语指令
+#### Supported Japanese Commands
 
-##### 🏃 运动控制命令
-| 日语指令 | 功能描述 | 动作类型 |
+##### Motion Control Commands
+| Japanese Command | Description | Action Type |
 |---------|---------|---------|
-| 前進 / 進む / 前 | 向前移动 | move_forward |
-| 後退 / 戻る / 後ろ | 向后移动 | move_backward |
-| 左 / 左回転 | 向左转 | turn_left |
-| 右 / 右回転 | 向右转 | turn_right |
-| 停止 / 止まる / ストップ | 停止 | stop |
-| 立つ / 立ち上がる | 站立 | stand_up |
-| 座る / すわる | 坐下 | sit_down |
-| 歩く / あるく | 行走 | walk |
+| 前進 / 進む / 前 | Move forward | move_forward |
+| 後退 / 戻る / 後ろ | Move backward | move_backward |
+| 左 / 左回転 | Turn left | turn_left |
+| 右 / 右回転 | Turn right | turn_right |
+| 停止 / 止まる / ストップ | Stop | stop |
+| 立つ / 立ち上がる | Stand up | stand_up |
+| 座る / すわる | Sit down | sit_down |
+| 歩く / あるく | Walk | walk |
 
-##### 💬 对话交互命令
-| 日语指令 | 功能描述 |
+##### Dialog Interaction Commands
+| Japanese Command | Description |
 |---------|---------|
-| こんにちは / おはよう | 打招呼 |
-| ありがとう / 感謝 | 表示感谢 |
-| さようなら / バイバイ | 告别 |
-| 名前 / なまえ | 询问名字 |
-| 調子 / 元気 / どう | 询问状态 |
+| こんにちは / おはよう | Greeting |
+| ありがとう / 感謝 | Express thanks |
+| さようなら / バイバイ | Farewell |
+| 名前 / なまえ | Ask name |
+| 調子 / 元気 / どう | Ask status |
 
-##### ⚙️ 系统查询命令
-| 日语指令 | 功能描述 |
+##### System Query Commands
+| Japanese Command | Description |
 |---------|---------|
-| バッテリー / 電池 | 查看电池状态 |
-| ステータス / 状態 | 查看系统状态 |
+| バッテリー / 電池 | Check battery status |
+| ステータス / 状態 | Check system status |
 
-#### 特殊管理命令
+#### Special Management Commands
 
-| 命令 | 功能描述 |
+| Command | Description |
 |-----|---------|
-| `/help` | 显示完整使用帮助 |
-| `/history` | 查看命令执行历史 |
-| `/status` | 显示系统运行状态 |
-| `/emergency` | 执行紧急停止 |
-| `/exit` | 退出程序 |
+| `/help` | Show complete usage help |
+| `/history` | View command execution history |
+| `/status` | Show system running status |
+| `/emergency` | Execute emergency stop |
+| `/exit` | Exit program |
 
-### 🎨 界面预览
+### Interface Preview
 
-#### 启动界面
+#### Startup Interface
 ```
-╔══════════════════════════════════════════════════════════════╗
-║                  🤖 Claudia Interactive Commander           ║
-║                     交互式日语指令测试界面                       ║
-╠══════════════════════════════════════════════════════════════╣
-║  输入日语命令来控制机器人，例如：                                 ║
-║  • お座り / 座って (坐下)                                      ║
-║  • 立って / 立ち上がって (站立)                                 ║  
-║  • ダンスして / 踊って (跳舞)                                  ║
-║  • こんにちは / お手 (打招呼)                                   ║
-║  • 前進 / 進む (前进)                                          ║
-║  • 停止 / 止まる (停止)                                        ║
-╚══════════════════════════════════════════════════════════════╝
++==============================================================+
+|                  Claudia Interactive Commander                 |
+|              Interactive Japanese Command Test Interface       |
++==============================================================+
+|  Enter Japanese commands to control the robot, for example:   |
+|  - お座り / 座って (sit down)                                  |
+|  - 立って / 立ち上がって (stand up)                             |
+|  - ダンスして / 踊って (dance)                                 |
+|  - こんにちは / お手 (greet)                                   |
+|  - 前進 / 進む (forward)                                      |
+|  - 停止 / 止まる (stop)                                       |
++==============================================================+
 ```
 
-#### 命令执行示例
+#### Command Execution Example
 ```
-🎌 日语指令 > 前進
+Japanese Command > 前進
 
-⚡ 开始处理命令...
-🧠 分析日语指令: '前進'
-💭 分析结果: 
-  类型: motion
-  优先级: normal
-  动作: ['move_forward']
-  置信度: 0.80
-🎯 创建机器人命令...
-🚀 执行机器人动作...
-✅ 动作执行成功: MoveForward (API: 1001)
-⏱️ 处理耗时: 0.12秒
+Processing command...
+Analyzing Japanese command: '前進'
+Analysis result:
+  Type: motion
+  Priority: normal
+  Action: ['move_forward']
+  Confidence: 0.80
+Creating robot command...
+Executing robot action...
+Action executed successfully: MoveForward (API: 1001)
+Processing time: 0.12s
 ------------------------------------------------------------
 ```
 
-### 🧪 测试验证
+### Test Verification
 
-#### 运行测试套件
+#### Run Test Suite
 ```bash
-# 运行完整测试
+# Run complete test
 python3 test/integration/test_interactive_japanese_commander.py
 
-# 或使用测试运行器
+# Or use test runner
 python3 test/run_tests.py --type integration
 ```
 
-#### 测试覆盖范围
-- ✅ 界面初始化和组件集成
-- ✅ 日语指令处理流程
-- ✅ 运动控制命令验证
-- ✅ 对话交互命令验证
-- ✅ 安全验证和紧急停止
-- ✅ 特殊命令处理
-- ✅ 历史记录管理
-- ✅ 关键词覆盖度
+#### Test Coverage
+- Interface initialization and component integration
+- Japanese command processing flow
+- Motion control command verification
+- Dialog interaction command verification
+- Safety validation and emergency stop
+- Special command handling
+- History management
+- Keyword coverage
 
-### 🛠️ 技术架构
+### Technical Architecture
 
-#### 核心组件
+#### Core Components
 ```
 JapaneseCommandInterface
-├── RobotIntegration (日语分析)
-│   ├── analyze_command()      # 指令分析
-│   ├── create_robot_command() # 命令创建
-│   └── validate_command_safety() # 安全验证
-├── ActionMappingEngine (动作执行)
-│   └── execute_action()       # 实际机器人控制
-└── Interface Management (界面管理)
-    ├── process_japanese_command() # 主处理流程
-    ├── handle_special_command()   # 特殊命令
-    └── show_*()                   # 状态显示
++-- RobotIntegration (Japanese analysis)
+|   +-- analyze_command()          # Command analysis
+|   +-- create_robot_command()     # Command creation
+|   +-- validate_command_safety()  # Safety validation
++-- ActionMappingEngine (Action execution)
+|   +-- execute_action()           # Actual robot control
++-- Interface Management
+    +-- process_japanese_command()  # Main processing flow
+    +-- handle_special_command()    # Special commands
+    +-- show_*()                    # Status display
 ```
 
-#### 处理流程
-1. **用户输入** → 日语指令接收
-2. **指令分析** → RobotIntegration解析意图和动作
-3. **安全验证** → 检查指令冲突和风险
-4. **动作执行** → ActionMappingEngine执行机器人控制
-5. **结果反馈** → 显示执行状态和耗时
+#### Processing Flow
+1. **User input** -> Receive Japanese command
+2. **Command analysis** -> RobotIntegration parses intent and actions
+3. **Safety validation** -> Check for command conflicts and risks
+4. **Action execution** -> ActionMappingEngine executes robot control
+5. **Result feedback** -> Display execution status and timing
 
-### 🚨 故障排除
+### Troubleshooting
 
-#### 常见问题
+#### Common Issues
 
-##### 1. 初始化失败
+##### 1. Initialization Failure
 ```
-❌ 初始化失败: 连接失败
+Initialization failed: Connection error
 ```
-**解决方案:**
-- 检查CycloneDDS环境是否正确设置
-- 确认机器人连接状态
-- 验证ROS2环境变量
+**Solution:**
+- Check if CycloneDDS environment is correctly set up
+- Confirm robot connection status
+- Verify ROS2 environment variables
 
-##### 2. 命令不被识别
+##### 2. Command Not Recognized
 ```
-🤔 未识别到可执行的动作
+No executable action recognized
 ```
-**解决方案:**
-- 使用 `/help` 查看支持的命令
-- 尝试不同的日语表达方式
-- 检查指令拼写和语法
+**Solution:**
+- Use `/help` to view supported commands
+- Try different Japanese expressions
+- Check command spelling and grammar
 
-##### 3. 安全检查失败
+##### 3. Safety Check Failure
 ```
-⚠️ 安全检查失败: 冲突的移动指令
+Safety check failed: Conflicting movement commands
 ```
-**解决方案:**
-- 避免同时发送冲突的指令（如前进+后退）
-- 使用 `/emergency` 紧急停止后重新开始
-- 等待当前动作完成后再发送新指令
+**Solution:**
+- Avoid sending conflicting commands simultaneously (e.g., forward + backward)
+- Use `/emergency` for emergency stop then restart
+- Wait for current action to complete before sending new commands
 
-#### 环境检查
+#### Environment Check
 ```bash
-# 检查环境状态
+# Check environment status
 ./scripts/test/run_interactive_japanese_commander.sh --check
 
-# 检查Python依赖
-python3 -c "import asyncio, json, pathlib; print('依赖正常')"
+# Check Python dependencies
+python3 -c "import asyncio, json, pathlib; print('Dependencies OK')"
 
-# 检查ROS2环境
+# Check ROS2 environment
 echo $RMW_IMPLEMENTATION
 ros2 topic list | head -5
 ```
 
-### 📊 性能指标
+### Performance Metrics
 
-- **响应时间**: < 0.2秒 (典型值 0.05-0.15秒)
-- **支持指令**: 30+ 日语关键词映射
-- **安全性**: 100% 冲突检测覆盖
-- **稳定性**: 异常自动恢复机制
+- **Response time**: < 0.2s (typical 0.05-0.15s)
+- **Supported commands**: 30+ Japanese keyword mappings
+- **Safety**: 100% conflict detection coverage
+- **Stability**: Automatic exception recovery mechanism
 
-### 🔮 未来增强
+### Future Enhancements
 
-#### 计划功能
-- 🎤 **语音输入支持**: 集成ASR进行语音到文本转换
-- 🖥️ **GUI界面**: 图形化用户界面选项
-- 🌐 **多语言支持**: 添加中文、英文等其他语言
-- 🤖 **更多动作**: 扩展机器人动作库
-- 📱 **Web界面**: 浏览器访问界面
+#### Planned Features
+- **Voice input support**: Integrate ASR for speech-to-text conversion
+- **GUI interface**: Graphical user interface option
+- **Multilingual support**: Add Chinese, English, and other languages
+- **More actions**: Expand robot action library
+- **Web interface**: Browser-accessible interface
 
-#### 扩展方向
-- 自然语言理解增强
-- 语音交互集成
-- 远程控制能力
-- 多机器人协同
+#### Expansion Directions
+- Natural language understanding enhancement
+- Voice interaction integration
+- Remote control capability
+- Multi-robot coordination
 
-### 📝 开发说明
+### Development Notes
 
-#### 文件结构
+#### File Structure
 ```
 src/claudia/
-├── interactive_japanese_commander.py     # 主界面程序
-├── ai_components/llm_service/
-│   └── integration.py                    # 机器人集成接口
-└── robot_controller/
-    └── action_mapping_engine_real.py     # 动作执行引擎
++-- interactive_japanese_commander.py     # Main interface program
++-- ai_components/llm_service/
+|   +-- integration.py                    # Robot integration interface
++-- robot_controller/
+    +-- action_mapping_engine_real.py     # Action execution engine
 
 scripts/test/
-└── run_interactive_japanese_commander.sh # 启动脚本
++-- run_interactive_japanese_commander.sh # Launch script
 
 test/integration/
-└── test_interactive_japanese_commander.py # 测试套件
++-- test_interactive_japanese_commander.py # Test suite
 
 docs/
-└── INTERACTIVE_JAPANESE_COMMANDER.md     # 本文档
++-- INTERACTIVE_JAPANESE_COMMANDER.md     # This document
 ```
 
-#### 贡献指南
-1. Fork项目仓库
-2. 创建功能分支
-3. 添加测试用例
-4. 提交Pull Request
+#### Contribution Guide
+1. Fork the project repository
+2. Create a feature branch
+3. Add test cases
+4. Submit a Pull Request
 
 ---
 
-## 🎉 总结
+## Summary
 
-Interactive Japanese Commander为Claudia机器人项目提供了一个强大而用户友好的测试和演示平台。通过自然的日语交互，用户可以轻松验证LLM到机器人控制的完整流程，是整个系统集成的重要里程碑。
-
-**享受与Claudia的日语对话吧！** 🤖🎌
+The Interactive Japanese Commander provides a powerful and user-friendly testing and demonstration platform for the Claudia robot project. Through natural Japanese interaction, users can easily verify the complete flow from LLM to robot control, making it an important milestone for the overall system integration.
 
 ---
 
-*Generated: 2024-12-26 13:45:22*  
-*Claudia Robot Project - Task 11.8 完成标志* 
+*Generated: 2024-12-26 13:45:22*
+*Claudia Robot Project - Task 11.8 Completion Marker*

@@ -1,30 +1,31 @@
 # src/claudia/__init__.py
 """
-Claudia智能四足机器人系统
+Claudia Intelligent Quadruped Robot System
 
-基于Unitree Go2 R&D Plus平台的智能四足机器人系统，
-通过深度集成大语言模型技术实现高级自然语言交互功能。
+An intelligent quadruped robot system based on the Unitree Go2 R&D Plus platform,
+featuring advanced natural language interaction through deep integration of
+large language model technology.
 
-主要功能模块：
-- robot_controller: 机器人控制和动作执行
-- ai_components: AI组件（LLM, ASR, TTS, 唤醒词检测）
-- sensors: 传感器数据处理（LiDAR, Camera, IMU, Force）
-- vision: 视觉处理和目标检测
-- navigation: SLAM和路径规划
-- audio: 音频处理和语音交互
-- common: 通用工具和实用函数
+Main functional modules:
+- robot_controller: Robot control and action execution
+- ai_components: AI components (LLM, ASR, TTS, wake word detection)
+- sensors: Sensor data processing (LiDAR, Camera, IMU, Force)
+- vision: Vision processing and object detection
+- navigation: SLAM and path planning
+- audio: Audio processing and voice interaction
+- common: Common utilities and helper functions
 """
 
 __version__ = "0.1.0"
 __author__ = "Claudia Development Team"
-__description__ = "Claudia智能四足机器人系统"
+__description__ = "Claudia Intelligent Quadruped Robot System"
 
-# 版本信息
+# Version information
 VERSION = __version__
 AUTHOR = __author__
 DESCRIPTION = __description__
 
-# 项目配置
+# Project configuration
 PROJECT_NAME = "claudia"
 ROBOT_MODEL = "Unitree Go2 R&D Plus"
 SUPPORTED_ROS_VERSION = "ROS2 Foxy"

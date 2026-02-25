@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""emergency_keywords 单元测试"""
+"""emergency_keywords unit tests"""
 
 import time
 import pytest
@@ -27,7 +27,7 @@ class TestNormalize:
         assert normalize_for_emergency("Stop") == "stop"
 
     def test_nfkc_normalization(self):
-        # 半角カタカナ → 全角カタカナ
+        # Half-width katakana -> full-width katakana
         assert normalize_for_emergency("ｽﾄｯﾌﾟ") == "ストップ"
 
     def test_strips_punctuation(self):
@@ -48,7 +48,7 @@ class TestNormalize:
 
 
 # ============================================================
-# match_emergency: 完全一致 (confidence = 1.0)
+# match_emergency: Exact match (confidence = 1.0)
 # ============================================================
 
 class TestExactMatch:
@@ -90,7 +90,7 @@ class TestExactMatch:
         assert conf == 1.0
 
     def test_with_whitespace_and_punctuation(self):
-        """归一化后能完全匹配"""
+        """Exact match after normalization"""
         result = match_emergency("  止まれ！ ")
         assert result is not None
         _, conf = result
@@ -98,7 +98,7 @@ class TestExactMatch:
 
 
 # ============================================================
-# match_emergency: 子串匹配 (confidence = 0.85)
+# match_emergency: Substring match (confidence = 0.85)
 # ============================================================
 
 class TestSubstringMatch:
@@ -123,33 +123,33 @@ class TestSubstringMatch:
 
 
 # ============================================================
-# match_emergency: 部分/前缀匹配 (confidence = 0.7)
+# match_emergency: Partial/prefix match (confidence = 0.7)
 # ============================================================
 
 class TestPartialMatch:
 
     def test_prefix_of_keyword(self):
-        """ASR 只拾到"とま" → "とまれ"の先頭"""
+        """ASR only captured "とま" -> prefix of "とまれ" """
         result = match_emergency("とま")
         assert result is not None
         _, conf = result
         assert conf == 0.7
 
     def test_single_char_no_match(self):
-        """1 文字だと誤爆防止で不一致"""
+        """Single character does not match to prevent false positives"""
         result = match_emergency("と")
         assert result is None
 
     def test_two_char_partial(self):
-        result = match_emergency("停下")  # 这是完全一致
+        result = match_emergency("停下")  # This is an exact match
         assert result is not None
-        # "停下" 本身是关键词之一，所以应该是 1.0
+        # "停下" is one of the keywords, so it should be 1.0
         _, conf = result
         assert conf == 1.0
 
 
 # ============================================================
-# match_emergency: 非紧急文本
+# match_emergency: Non-emergency text
 # ============================================================
 
 class TestNonEmergency:
@@ -171,11 +171,11 @@ class TestNonEmergency:
 
 
 # ============================================================
-# 全关键词覆盖
+# Full keyword coverage
 # ============================================================
 
 class TestAllKeywordsCovered:
-    """EMERGENCY_KEYWORDS_TEXT 中的每个条目都能被识别"""
+    """Every entry in EMERGENCY_KEYWORDS_TEXT must be recognized"""
 
     @pytest.mark.parametrize("keyword", EMERGENCY_KEYWORDS_TEXT)
     def test_each_keyword_matches(self, keyword):
@@ -186,13 +186,13 @@ class TestAllKeywordsCovered:
 
 
 # ============================================================
-# 性能: 纯字符串操作，无模型依赖
+# Performance: pure string operations, no model dependency
 # ============================================================
 
 class TestPerformance:
 
     def test_matching_is_fast(self):
-        """1000 次匹配应在 50ms 内完成"""
+        """1000 iterations of matching should complete within 50ms"""
         start = time.monotonic()
         for _ in range(1000):
             match_emergency("止まれ")
@@ -203,7 +203,7 @@ class TestPerformance:
 
 
 # ============================================================
-# _NORMALIZED_KEYWORDS 初始化
+# _NORMALIZED_KEYWORDS initialization
 # ============================================================
 
 class TestNormalizedKeywordsInit:
@@ -212,6 +212,6 @@ class TestNormalizedKeywordsInit:
         assert len(_NORMALIZED_KEYWORDS) > 0
 
     def test_count_matches_source(self):
-        """归一化后可能有合并（例如漢字和かな归一化后相同），
-        但至少不会多于源列表"""
+        """After normalization there may be merges (e.g., kanji and kana normalize to the same form),
+        but the count should never exceed the source list"""
         assert len(_NORMALIZED_KEYWORDS) <= len(EMERGENCY_KEYWORDS_TEXT)

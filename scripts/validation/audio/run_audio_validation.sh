@@ -1,23 +1,23 @@
 #!/bin/bash
-# Unitree Go2 音频I/O系统验证启动脚本
+# Unitree Go2 Audio I/O System Validation Startup Script
 # Generated: 2025-06-30 13:06:45
 # Platform: Ubuntu 20.04 - aarch64
 
 set -e
 
-# 脚本配置
+# Script configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 VALIDATION_SCRIPT="$SCRIPT_DIR/audio_validation_main.py"
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 日志函数
+# Logging functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -34,72 +34,72 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 显示帮助信息
+# Display help information
 show_help() {
     cat << EOF
-🎵 Unitree Go2 音频I/O系统验证
+Unitree Go2 Audio I/O System Validation
 
-用法: $0 [选项]
+Usage: $0 [options]
 
-选项:
-  -p, --phases PHASES     要执行的验证阶段 (A,B,C,D,E)，默认: A,B
-  -c, --config CONFIG     配置文件路径
-  -sr, --sample-rate RATE 采样率 (默认: 44100)
-  -ch, --channels NUM     音频通道数 (默认: 2)
-  -d, --duration SECONDS  测试持续时间 (默认: 5.0)
-  -i, --install           安装依赖库
-  -h, --help              显示此帮助信息
+Options:
+  -p, --phases PHASES     Validation phases to execute (A,B,C,D,E), default: A,B
+  -c, --config CONFIG     Configuration file path
+  -sr, --sample-rate RATE Sample rate (default: 44100)
+  -ch, --channels NUM     Number of audio channels (default: 2)
+  -d, --duration SECONDS  Test duration (default: 5.0)
+  -i, --install           Install dependencies
+  -h, --help              Show this help message
 
-阶段说明:
-  Phase A: 硬件连接与基础采集验证
-  Phase B: 麦克风阵列全方位测试
-  Phase C: 扬声器校准与音质评估 (待实现)
-  Phase D: ROS2音频话题集成验证 (待实现)
-  Phase E: 综合可视化与性能报告生成 (待实现)
+Phase descriptions:
+  Phase A: Hardware connection and basic capture verification
+  Phase B: Microphone array full-range testing
+  Phase C: Speaker calibration and audio quality assessment (pending)
+  Phase D: ROS2 audio topic integration verification (pending)
+  Phase E: Comprehensive visualization and performance report generation (pending)
 
-示例:
-  $0                                    # 运行默认验证 (Phase A,B)
-  $0 -p A B C                          # 运行指定阶段
-  $0 -sr 48000 -ch 2 -d 10.0          # 自定义音频参数
-  $0 -i                                 # 安装依赖
-  $0 -c custom_config.json             # 使用自定义配置
+Examples:
+  $0                                    # Run default validation (Phase A,B)
+  $0 -p A B C                          # Run specified phases
+  $0 -sr 48000 -ch 2 -d 10.0          # Custom audio parameters
+  $0 -i                                 # Install dependencies
+  $0 -c custom_config.json             # Use custom configuration
 
 EOF
 }
 
-# 检查依赖
+# Check dependencies
 check_dependencies() {
-    log_info "检查Python依赖..."
-    
+    log_info "Checking Python dependencies..."
+
     local missing_deps=()
-    
-    # 检查Python库
+
+    # Check Python libraries
     for dep in sounddevice scipy librosa matplotlib numpy; do
         if ! python3 -c "import $dep" 2>/dev/null; then
             missing_deps+=("$dep")
         fi
     done
-    
+
     if [ ${#missing_deps[@]} -gt 0 ]; then
-        log_warning "以下依赖缺失: ${missing_deps[*]}"
-        log_info "运行 '$0 -i' 来安装依赖"
+        log_warning "Missing dependencies: ${missing_deps[*]}"
+        log_info "Run '$0 -i' to install dependencies"
         return 1
     fi
-    
-    log_success "所有依赖已满足"
+
+    log_success "All dependencies satisfied"
     return 0
 }
 
-# 安装依赖
+# Install dependencies
 install_dependencies() {
-    log_info "开始安装音频验证依赖..."
-    
-    # 更新包列表
-    log_info "更新系统包列表..."
+    log_info "Starting audio validation dependency installation..."
+
+    # Update package list
+    log_info "Updating system package list..."
     sudo apt update
-    
-    # 安装系统依赖
-    log_info "安装系统音频依赖..."
+
+    # Install system dependencies
+    log_info "Installing system audio dependencies..."
     sudo apt install -y \
         portaudio19-dev \
         libasound2-dev \
@@ -107,133 +107,133 @@ install_dependencies() {
         libfftw3-dev \
         python3-pip \
         python3-dev
-    
-    # 安装Python依赖
-    log_info "安装Python音频处理库..."
+
+    # Install Python dependencies
+    log_info "Installing Python audio processing libraries..."
     pip3 install --user \
         sounddevice \
         scipy \
         librosa \
         matplotlib \
         numpy \
-        audio-common-msgs || log_warning "audio-common-msgs安装失败，ROS2集成将不可用"
-    
-    log_success "依赖安装完成!"
+        audio-common-msgs || log_warning "audio-common-msgs installation failed, ROS2 integration will be unavailable"
+
+    log_success "Dependency installation complete!"
 }
 
-# 检查音频设备
+# Check audio devices
 check_audio_devices() {
-    log_info "检查音频设备..."
-    
-    # 检查ALSA设备
+    log_info "Checking audio devices..."
+
+    # Check ALSA devices
     if command -v aplay &> /dev/null; then
-        log_info "可用音频播放设备:"
-        aplay -l | grep -E "^card" || log_warning "未找到音频播放设备"
+        log_info "Available audio playback devices:"
+        aplay -l | grep -E "^card" || log_warning "No audio playback devices found"
     fi
-    
+
     if command -v arecord &> /dev/null; then
-        log_info "可用音频录制设备:"
-        arecord -l | grep -E "^card" || log_warning "未找到音频录制设备"
+        log_info "Available audio recording devices:"
+        arecord -l | grep -E "^card" || log_warning "No audio recording devices found"
     fi
-    
-    # 检查PulseAudio
+
+    # Check PulseAudio
     if command -v pactl &> /dev/null; then
-        log_info "PulseAudio源设备:"
-        pactl list short sources 2>/dev/null || log_warning "PulseAudio未运行"
-        
-        log_info "PulseAudio汇设备:"
-        pactl list short sinks 2>/dev/null || log_warning "PulseAudio未运行"
+        log_info "PulseAudio source devices:"
+        pactl list short sources 2>/dev/null || log_warning "PulseAudio is not running"
+
+        log_info "PulseAudio sink devices:"
+        pactl list short sinks 2>/dev/null || log_warning "PulseAudio is not running"
     fi
 }
 
-# 预验证环境
+# Pre-validation environment check
 pre_validation_check() {
-    log_info "执行预验证检查..."
-    
-    # 检查Python版本
+    log_info "Performing pre-validation checks..."
+
+    # Check Python version
     python_version=$(python3 --version 2>&1 | awk '{print $2}')
-    log_info "Python版本: $python_version"
-    
-    # 检查是否在Unitree环境中
+    log_info "Python version: $python_version"
+
+    # Check if in Unitree environment
     if [ -f "$PROJECT_ROOT/cyclonedx_ws/install/setup.bash" ]; then
-        log_info "检测到Unitree工作空间"
+        log_info "Unitree workspace detected"
         source "$PROJECT_ROOT/cyclonedx_ws/install/setup.bash" 2>/dev/null || true
     fi
-    
-    # 检查ROS2环境
+
+    # Check ROS2 environment
     if command -v ros2 &> /dev/null; then
-        log_info "检测到ROS2环境"
+        log_info "ROS2 environment detected"
         export ROS2_AVAILABLE=1
     else
-        log_warning "未检测到ROS2环境，将跳过ROS2集成测试"
+        log_warning "ROS2 environment not detected, ROS2 integration tests will be skipped"
         export ROS2_AVAILABLE=0
     fi
-    
-    # 检查权限
+
+    # Check permissions
     if ! groups | grep -q audio; then
-        log_warning "当前用户不在audio组，可能会遇到音频设备权限问题"
-        log_info "可运行: sudo usermod -a -G audio \$USER"
+        log_warning "Current user is not in the audio group, may encounter audio device permission issues"
+        log_info "Run: sudo usermod -a -G audio \$USER"
     fi
-    
+
     check_audio_devices
 }
 
-# 主验证函数
+# Main validation function
 run_validation() {
     local phases="$1"
     local config="$2"
     local sample_rate="$3"
     local channels="$4"
     local duration="$5"
-    
-    log_info "启动音频I/O系统验证..."
-    log_info "阶段: $phases"
-    log_info "采样率: ${sample_rate}Hz"
-    log_info "通道数: $channels"
-    log_info "测试时长: ${duration}s"
-    
-    # 构建命令参数
+
+    log_info "Starting audio I/O system validation..."
+    log_info "Phases: $phases"
+    log_info "Sample rate: ${sample_rate}Hz"
+    log_info "Channels: $channels"
+    log_info "Test duration: ${duration}s"
+
+    # Build command arguments
     local cmd_args=()
-    
+
     if [ -n "$phases" ]; then
         IFS=',' read -ra PHASE_ARRAY <<< "$phases"
         cmd_args+=("--phases" "${PHASE_ARRAY[@]}")
     fi
-    
+
     if [ -n "$config" ]; then
         cmd_args+=("--config" "$config")
     fi
-    
+
     if [ -n "$sample_rate" ]; then
         cmd_args+=("--sample-rate" "$sample_rate")
     fi
-    
+
     if [ -n "$channels" ]; then
         cmd_args+=("--channels" "$channels")
     fi
-    
+
     if [ -n "$duration" ]; then
         cmd_args+=("--duration" "$duration")
     fi
-    
-    # 切换到项目根目录
+
+    # Switch to project root directory
     cd "$PROJECT_ROOT"
-    
-    # 运行验证脚本
-    log_info "执行验证脚本..."
+
+    # Run validation script
+    log_info "Executing validation script..."
     python3 "$VALIDATION_SCRIPT" "${cmd_args[@]}"
-    
+
     local exit_code=$?
-    
+
     if [ $exit_code -eq 0 ]; then
-        log_success "音频验证完成!"
+        log_success "Audio validation complete!"
     else
-        log_error "音频验证失败 (退出码: $exit_code)"
+        log_error "Audio validation failed (exit code: $exit_code)"
         return $exit_code
     fi
 }
 
-# 主函数
+# Main function
 main() {
     local phases=""
     local config=""
@@ -241,8 +241,8 @@ main() {
     local channels="2"
     local duration="5.0"
     local install_deps=false
-    
-    # 解析命令行参数
+
+    # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
             -p|--phases)
@@ -274,45 +274,45 @@ main() {
                 exit 0
                 ;;
             *)
-                log_error "未知参数: $1"
+                log_error "Unknown argument: $1"
                 show_help
                 exit 1
                 ;;
         esac
     done
-    
-    # 显示启动信息
-    echo "🎵 Unitree Go2 音频I/O系统验证"
+
+    # Display startup information
+    echo "Unitree Go2 Audio I/O System Validation"
     echo "=========================================="
-    echo "时间: $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "平台: $(uname -a)"
-    echo "项目: $PROJECT_ROOT"
+    echo "Time: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "Platform: $(uname -a)"
+    echo "Project: $PROJECT_ROOT"
     echo ""
-    
-    # 安装依赖模式
+
+    # Install dependencies mode
     if [ "$install_deps" = true ]; then
         install_dependencies
         exit 0
     fi
-    
-    # 检查验证脚本是否存在
+
+    # Check if validation script exists
     if [ ! -f "$VALIDATION_SCRIPT" ]; then
-        log_error "验证脚本不存在: $VALIDATION_SCRIPT"
+        log_error "Validation script not found: $VALIDATION_SCRIPT"
         exit 1
     fi
-    
-    # 检查依赖
+
+    # Check dependencies
     if ! check_dependencies; then
-        log_error "依赖检查失败，请先安装依赖"
+        log_error "Dependency check failed, please install dependencies first"
         exit 1
     fi
-    
-    # 预验证检查
+
+    # Pre-validation check
     pre_validation_check
-    
-    # 运行验证
+
+    # Run validation
     run_validation "$phases" "$config" "$sample_rate" "$channels" "$duration"
 }
 
-# 脚本入口
-main "$@" 
+# Script entry point
+main "$@"

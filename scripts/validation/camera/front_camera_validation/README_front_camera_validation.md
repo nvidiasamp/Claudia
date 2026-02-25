@@ -1,103 +1,103 @@
-# Unitree Go2前置摄像头验证系统
+# Unitree Go2 Front Camera Validation System
 
-## 📋 概述
+## Overview
 
-本验证系统专为Unitree Go2机器人前置摄像头设计，提供全面的性能测试、图像质量分析和环境适应性验证。
+This validation system is designed specifically for the Unitree Go2 robot front camera, providing comprehensive performance testing, image quality analysis, and environmental adaptability validation.
 
-## 🎯 验证内容
+## Validation Content
 
-### 核心验证项目
-- **分辨率验证**: 确认1280x720 HD规格
-- **性能测试**: 帧率、延迟、稳定性测量
-- **图像质量**: 色彩准确性、清晰度、噪声分析
-- **环境适应**: 不同光照条件下的表现
-- **压力测试**: 高负载下的系统稳定性
+### Core Validation Items
+- **Resolution Verification**: Confirm 1280x720 HD specification
+- **Performance Testing**: Frame rate, latency, stability measurement
+- **Image Quality**: Color accuracy, sharpness, noise analysis
+- **Environmental Adaptation**: Performance under different lighting conditions
+- **Stress Testing**: System stability under high load
 
-### 技术指标
-- **分辨率**: 目标1280x720，回退480x1280
-- **帧率**: 目标30fps，最低20fps
-- **延迟**: <100ms（实时控制要求）
-- **图像质量**: SSIM>0.8, 色彩ΔE<5
-- **成功率**: >95%捕获成功率
+### Technical Metrics
+- **Resolution**: Target 1280x720, fallback 480x1280
+- **Frame Rate**: Target 30fps, minimum 20fps
+- **Latency**: <100ms (real-time control requirement)
+- **Image Quality**: SSIM>0.8, color Delta E<5
+- **Success Rate**: >95% capture success rate
 
-## 🛠️ 系统架构
+## System Architecture
 
 ```
 front_camera_validation/
-├── validation_config.json      # 配置文件
-├── camera_config.py            # 摄像头配置管理
-├── performance_tester.py       # 性能测试模块
-├── image_quality_analyzer.py   # 图像质量分析
-├── main_validation_script.py   # 主验证脚本
-└── README_front_camera_validation.md  # 本文档
+├── validation_config.json      # Configuration file
+├── camera_config.py            # Camera configuration management
+├── performance_tester.py       # Performance testing module
+├── image_quality_analyzer.py   # Image quality analysis
+├── main_validation_script.py   # Main validation script
+└── README_front_camera_validation.md  # This document
 ```
 
-## 🚀 快速开始
+## Quick Start
 
-### 环境要求
+### Environment Requirements
 ```bash
-# Python依赖
+# Python dependencies
 pip install opencv-python numpy scikit-image matplotlib
 
-# 系统要求
+# System requirements
 - Python 3.7+
 - OpenCV 4.0+
-- 摄像头访问权限
+- Camera access permissions
 ```
 
-### 基础使用
+### Basic Usage
 
-1. **快速验证**（推荐）:
+1. **Quick Validation** (recommended):
 ```bash
 cd scripts/validation/camera/front_camera_validation
 python3 main_validation_script.py
 ```
 
-2. **自定义配置**:
+2. **Custom Configuration**:
 ```bash
 python3 main_validation_script.py --config custom_config.json --output /path/to/output
 ```
 
-3. **详细输出**:
+3. **Verbose Output**:
 ```bash
 python3 main_validation_script.py --verbose
 ```
 
-### 单独模块测试
+### Individual Module Testing
 
-1. **摄像头配置测试**:
+1. **Camera Configuration Test**:
 ```bash
 python3 camera_config.py
 ```
 
-2. **性能测试**:
+2. **Performance Test**:
 ```bash
 python3 performance_tester.py
 ```
 
-3. **图像质量分析**:
+3. **Image Quality Analysis**:
 ```bash
 python3 image_quality_analyzer.py
 ```
 
-## 📊 验证流程
+## Validation Workflow
 
-### 标准验证序列
-1. **摄像头初始化** - 连接和配置验证
-2. **分辨率验证** - HD规格确认
-3. **基础性能测试** - 30秒性能基准测试
-4. **图像质量分析** - 20样本质量评估
-5. **压力测试** - 60秒高负载测试
-6. **报告生成** - HTML和JSON结果报告
+### Standard Validation Sequence
+1. **Camera Initialization** - Connection and configuration verification
+2. **Resolution Verification** - HD specification confirmation
+3. **Basic Performance Test** - 30-second performance benchmark
+4. **Image Quality Analysis** - 20-sample quality assessment
+5. **Stress Test** - 60-second high-load test
+6. **Report Generation** - HTML and JSON result reports
 
-### 测试时长
-- **快速验证**: ~5分钟
-- **完整验证**: ~10分钟
-- **扩展验证**: ~15分钟（包含环境测试）
+### Test Duration
+- **Quick Validation**: ~5 minutes
+- **Full Validation**: ~10 minutes
+- **Extended Validation**: ~15 minutes (includes environmental tests)
 
-## 📋 配置说明
+## Configuration Guide
 
-### 主要配置项
+### Main Configuration Items
 
 ```json
 {
@@ -120,7 +120,7 @@ python3 image_quality_analyzer.py
 }
 ```
 
-### 自定义验证序列
+### Custom Validation Sequence
 
 ```json
 {
@@ -135,114 +135,114 @@ python3 image_quality_analyzer.py
 }
 ```
 
-## 📈 结果解读
+## Results Interpretation
 
-### 性能指标
+### Performance Metrics
 
-| 指标 | 优秀 | 良好 | 可接受 | 需改进 |
-|------|------|------|--------|--------|
-| FPS | ≥30 | 25-29 | 20-24 | <20 |
-| 延迟(ms) | <50 | 50-80 | 80-100 | >100 |
-| 成功率(%) | ≥99 | 97-98 | 95-96 | <95 |
+| Metric | Excellent | Good | Acceptable | Needs Improvement |
+|--------|-----------|------|------------|-------------------|
+| FPS | >=30 | 25-29 | 20-24 | <20 |
+| Latency (ms) | <50 | 50-80 | 80-100 | >100 |
+| Success Rate (%) | >=99 | 97-98 | 95-96 | <95 |
 
-### 图像质量指标
+### Image Quality Metrics
 
-| 指标 | 优秀 | 良好 | 可接受 | 需改进 |
-|------|------|------|--------|--------|
-| 清晰度 | ≥90 | 80-89 | 70-79 | <70 |
-| 色彩准确性 | ΔE<2 | 2-3 | 3-5 | >5 |
-| 噪声水平 | <0.05 | 0.05-0.08 | 0.08-0.1 | >0.1 |
+| Metric | Excellent | Good | Acceptable | Needs Improvement |
+|--------|-----------|------|------------|-------------------|
+| Sharpness | >=90 | 80-89 | 70-79 | <70 |
+| Color Accuracy | Delta E<2 | 2-3 | 3-5 | >5 |
+| Noise Level | <0.05 | 0.05-0.08 | 0.08-0.1 | >0.1 |
 
-### 整体评级
+### Overall Rating
 
-- **EXCELLENT**: ≥90分，所有关键指标优秀
-- **GOOD**: 80-89分，主要指标良好
-- **ACCEPTABLE**: 70-79分，基本满足要求
-- **POOR**: 60-69分，存在明显问题
-- **UNACCEPTABLE**: <60分，需要重大改进
+- **EXCELLENT**: >=90 points, all key metrics excellent
+- **GOOD**: 80-89 points, main metrics good
+- **ACCEPTABLE**: 70-79 points, basically meets requirements
+- **POOR**: 60-69 points, significant issues present
+- **UNACCEPTABLE**: <60 points, major improvements needed
 
-## 📄 输出结果
+## Output Results
 
-### 文件结构
+### File Structure
 ```
 logs/camera_validation/validation_YYYYMMDD_HHMMSS/
-├── validation_results.json          # 完整验证结果
-├── validation_report.html           # HTML可视化报告
-├── validation_report.json          # JSON格式报告
-├── basic_performance_metrics.json  # 基础性能数据
-├── image_quality_metrics.json      # 图像质量数据
-└── stress_test_metrics.json        # 压力测试数据
+├── validation_results.json          # Complete validation results
+├── validation_report.html           # HTML visual report
+├── validation_report.json          # JSON format report
+├── basic_performance_metrics.json  # Basic performance data
+├── image_quality_metrics.json      # Image quality data
+└── stress_test_metrics.json        # Stress test data
 ```
 
-### HTML报告特点
-- 直观的状态显示（通过/失败/警告）
-- 详细的性能图表
-- 图像质量样本展示
-- 优化建议和问题诊断
+### HTML Report Features
+- Intuitive status display (pass/fail/warning)
+- Detailed performance charts
+- Image quality sample showcase
+- Optimization suggestions and problem diagnosis
 
-### JSON报告用途
-- 自动化分析和监控
-- 历史数据对比
-- 集成到CI/CD流程
-- 生成趋势报告
+### JSON Report Uses
+- Automated analysis and monitoring
+- Historical data comparison
+- CI/CD pipeline integration
+- Trend report generation
 
-## 🔧 故障排除
+## Troubleshooting
 
-### 常见问题
+### Common Issues
 
-1. **摄像头无法初始化**
+1. **Camera Cannot Initialize**
 ```bash
-# 检查摄像头设备
+# Check camera devices
 ls /dev/video*
-# 检查权限
+# Check permissions
 sudo usermod -a -G video $USER
-# 重新登录后重试
+# Log out and log back in, then retry
 ```
 
-2. **分辨率不匹配**
+2. **Resolution Mismatch**
 ```bash
-# 检查摄像头支持的分辨率
+# Check camera supported resolutions
 v4l2-ctl --list-formats-ext
-# 修改配置文件中的target_resolution
+# Modify target_resolution in configuration file
 ```
 
-3. **性能问题**
+3. **Performance Issues**
 ```bash
-# 检查系统负载
+# Check system load
 htop
-# 关闭不必要的应用程序
-# 调整camera_config中的buffer_size
+# Close unnecessary applications
+# Adjust buffer_size in camera_config
 ```
 
-4. **权限问题**
+4. **Permission Issues**
 ```bash
-# 添加摄像头权限
+# Add camera permissions
 sudo usermod -a -G video $USER
-# 重新登录生效
+# Log out and log back in for changes to take effect
 ```
 
-### 日志分析
+### Log Analysis
 
-1. **查看详细日志**:
+1. **View Detailed Logs**:
 ```bash
 tail -f front_camera_validation.log
 ```
 
-2. **调试模式**:
+2. **Debug Mode**:
 ```bash
 python3 main_validation_script.py --verbose
 ```
 
-3. **检查配置**:
+3. **Check Configuration**:
 ```bash
 python3 -c "import json; print(json.load(open('validation_config.json')))"
 ```
 
-## 🎛️ 高级用法
+## Advanced Usage
 
-### 自定义测试
+### Custom Tests
 
-1. **仅性能测试**:
+1. **Performance Test Only**:
 ```python
 from performance_tester import PerformanceTester
 from camera_config import CameraConfig
@@ -254,7 +254,7 @@ with CameraConfig() as camera:
         print(f"FPS: {metrics.fps_actual:.2f}")
 ```
 
-2. **仅质量分析**:
+2. **Quality Analysis Only**:
 ```python
 from image_quality_analyzer import ImageQualityAnalyzer
 from camera_config import CameraConfig
@@ -263,48 +263,48 @@ with CameraConfig() as camera:
     if camera.initialize_camera():
         analyzer = ImageQualityAnalyzer(camera)
         metrics = analyzer.analyze_image_quality(50)
-        print(f"质量评分: {metrics.overall_quality_score:.2f}")
+        print(f"Quality score: {metrics.overall_quality_score:.2f}")
 ```
 
-### 批量验证
+### Batch Validation
 
 ```bash
 #!/bin/bash
-# 多次验证以获得统计数据
+# Multiple validations to obtain statistical data
 for i in {1..5}; do
-    echo "验证轮次 $i"
+    echo "Validation round $i"
     python3 main_validation_script.py --output logs/batch_$i
     sleep 30
 done
 ```
 
-### CI/CD集成
+### CI/CD Integration
 
 ```bash
 #!/bin/bash
-# 自动化验证脚本
+# Automated validation script
 python3 main_validation_script.py --config ci_config.json
 exit_code=$?
 
 if [ $exit_code -eq 0 ]; then
-    echo "验证通过"
+    echo "Validation passed"
 else
-    echo "验证失败"
+    echo "Validation failed"
     exit 1
 fi
 ```
 
-## 📞 技术支持
+## Technical Support
 
-### 联系方式
-- 技术文档: [内部技术文档]
-- 问题报告: [内部问题跟踪系统]
-- 技术支持: [内部技术支持]
+### Contact
+- Technical Documentation: [Internal technical documentation]
+- Issue Reporting: [Internal issue tracking system]
+- Technical Support: [Internal technical support]
 
-### 版本信息
-- 当前版本: 1.0.0
-- 更新日期: 2024-12-26
-- 兼容性: Unitree Go2, Python 3.7+
+### Version Information
+- Current Version: 1.0.0
+- Update Date: 2024-12-26
+- Compatibility: Unitree Go2, Python 3.7+
 
-### 许可信息
-内部使用，遵循公司技术开发规范。 
+### License Information
+Internal use, following company technical development standards.

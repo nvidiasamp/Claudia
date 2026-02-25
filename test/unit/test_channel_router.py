@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-test_channel_router.py — PR2 Slice B: ChannelRouter 骨架验证
+test_channel_router.py — PR2 Slice B: ChannelRouter skeleton validation
 
-验证:
-  - B1: RouterMode 枚举和 BRAIN_ROUTER_MODE 环境变量
-  - B2: Legacy 模式透传现有 LLM 路径
-  - B3: Dual 模式: action → template / a=null → voice
-  - B4: Shadow 模式: legacy 为主，dual 并行观测
-  - B5: SafetyCompiler 在所有模式下仍然验证（Invariant 1）
-  - B6: 无效 BRAIN_ROUTER_MODE → 降级 legacy
-  - B7: RouterResult 数据完整性
+Validates:
+  - B1: RouterMode enum and BRAIN_ROUTER_MODE env var
+  - B2: Legacy mode passthrough to existing LLM path
+  - B3: Dual mode: action -> template / a=null -> voice
+  - B4: Shadow mode: legacy as primary, dual parallel observation
+  - B5: SafetyCompiler still validates in all modes (Invariant 1)
+  - B6: Invalid BRAIN_ROUTER_MODE -> fallback to legacy
+  - B7: RouterResult data integrity
 """
 
 import sys
@@ -33,10 +33,10 @@ from claudia.brain.audit_routes import (
 )
 
 
-# === 辅助工具 ===
+# === Helpers ===
 
 def _make_brain():
-    """创建最小化 mock brain"""
+    """Create a minimal mock brain"""
     with patch.object(ProductionBrain, '__init__', lambda self, **kw: None):
         brain = ProductionBrain.__new__(ProductionBrain)
     brain.logger = logging.getLogger("test_router")
@@ -51,7 +51,7 @@ def _make_brain():
     brain.EMERGENCY_COMMANDS = {}
     brain._generate_conversational_response = lambda cmd: "はい、何でしょうか？"
 
-    # _ensure_model_loaded は実際の Ollama API を呼ぶため、テストではモック化
+    # _ensure_model_loaded calls real Ollama API, so mock it in tests
     async def _mock_ensure(model, **kwargs):
         return True
     brain._ensure_model_loaded = _mock_ensure
@@ -59,10 +59,10 @@ def _make_brain():
     return brain
 
 
-# === B1: RouterMode 枚举 ===
+# === B1: RouterMode enum ===
 
 class TestRouterMode:
-    """验证 RouterMode 枚举值"""
+    """Validate RouterMode enum values"""
 
     def test_legacy_mode(self):
         assert RouterMode("legacy") == RouterMode.LEGACY
@@ -79,13 +79,13 @@ class TestRouterMode:
             RouterMode("invalid")
 
 
-# === B2: Legacy 模式 ===
+# === B2: Legacy mode ===
 
 class TestLegacyRoute:
-    """验证 Legacy 模式透传 7B LLM"""
+    """Validate Legacy mode passthrough to 7B LLM"""
 
     def test_legacy_delegates_to_ollama_v2(self):
-        """Legacy 模式调用 brain._call_ollama_v2"""
+        """Legacy mode calls brain._call_ollama_v2"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.LEGACY)
 
@@ -107,7 +107,7 @@ class TestLegacyRoute:
             loop.close()
 
     def test_legacy_none_response(self):
-        """Legacy 模式 LLM 无响应时返回默认文本"""
+        """Legacy mode returns default text when LLM has no response"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.LEGACY)
 
@@ -126,7 +126,7 @@ class TestLegacyRoute:
             loop.close()
 
     def test_legacy_returns_sequence(self):
-        """Legacy 模式返回序列"""
+        """Legacy mode returns sequence"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.LEGACY)
 
@@ -145,13 +145,13 @@ class TestLegacyRoute:
             loop.close()
 
 
-# === B3: Dual 模式 ===
+# === B3: Dual mode ===
 
 class TestDualRoute:
-    """验证 Dual 模式: action 通道 + voice 回退"""
+    """Validate Dual mode: action channel + voice fallback"""
 
     def test_dual_action_returns_template(self):
-        """Dual: action 通道返回有效 api_code → 模板响应"""
+        """Dual: action channel returns valid api_code -> template response"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
@@ -174,20 +174,20 @@ class TestDualRoute:
             assert result.api_code == 1009
             assert result.route == ROUTE_ACTION_CHANNEL
             assert call_count["action"] == 1
-            # 不应调用 legacy（action 成功）
+            # Should not call legacy (action succeeded)
             assert call_count["legacy"] == 0
-            # 响应应为模板（非 LLM 生成）
+            # Response should be template (not LLM generated)
             assert len(result.response) > 0
         finally:
             loop.close()
 
     def test_dual_a_null_goes_voice(self):
-        """Dual: a=null → 模板対話応答（Invariant 2: 不为空）"""
+        """Dual: a=null -> template conversational response (Invariant 2: not empty)"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
-            return {"a": None}  # Action 模型: 无动作
+            return {"a": None}  # Action model: no action
 
         brain._call_ollama_v2 = mock_ollama
 
@@ -196,19 +196,19 @@ class TestDualRoute:
             result = loop.run_until_complete(router.route("お名前は？"))
             assert result.api_code is None
             assert result.route == ROUTE_VOICE_CHANNEL
-            # Invariant 2: 响应不为空（模板生成）
+            # Invariant 2: response is not empty (template generated)
             assert len(result.response) > 0
         finally:
             loop.close()
 
     def test_dual_action_timeout_fallback(self):
-        """Dual: action 通道超时 → 模板回退（不调用 7B）"""
+        """Dual: action channel timeout -> template fallback (no 7B call)"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                return None  # 超時
+                return None  # Timeout
             else:
                 return {"r": "座ります", "a": 1009}
 
@@ -217,7 +217,7 @@ class TestDualRoute:
         loop = asyncio.new_event_loop()
         try:
             result = loop.run_until_complete(router.route("おすわり"))
-            # 模板回退: 無動作，模板文本応答
+            # Template fallback: no action, template text response
             assert result.api_code is None
             assert result.route == ROUTE_ACTION_FALLBACK
             assert len(result.response) > 0
@@ -225,12 +225,12 @@ class TestDualRoute:
             loop.close()
 
     def test_dual_invalid_api_code_fallback(self):
-        """Dual: action 通道返回非法 api_code → 模板回退"""
+        """Dual: action channel returns invalid api_code -> template fallback"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
-            return {"a": 9999}  # 非法代码（只需 action model 路径）
+            return {"a": 9999}  # Invalid code (only action model path)
 
         brain._call_ollama_v2 = mock_ollama
 
@@ -244,7 +244,7 @@ class TestDualRoute:
             loop.close()
 
     def test_dual_sequence_valid(self):
-        """Dual: action 通道返回有效序列"""
+        """Dual: action channel returns valid sequence"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
@@ -264,21 +264,21 @@ class TestDualRoute:
             loop.close()
 
 
-# === B4: Shadow 模式 ===
+# === B4: Shadow mode ===
 
 class TestShadowRoute:
-    """验证 Shadow 模式: legacy 为主，dual 并行"""
+    """Validate Shadow mode: legacy as primary, dual parallel"""
 
     def test_shadow_returns_legacy_result(self):
-        """Shadow 模式总是返回 legacy 结果"""
+        """Shadow mode always returns legacy result"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.SHADOW)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                return {"a": 1016}  # dual 选 hello
+                return {"a": 1016}  # dual picks hello
             else:
-                return {"r": "座ります", "a": 1009}  # legacy 选 sit
+                return {"r": "座ります", "a": 1009}  # legacy picks sit
 
         brain._call_ollama_v2 = mock_ollama
         brain._sanitize_response = lambda x: x
@@ -286,14 +286,14 @@ class TestShadowRoute:
         loop = asyncio.new_event_loop()
         try:
             result = loop.run_until_complete(router.route("test"))
-            # 主路径是 legacy
+            # Primary path is legacy
             assert result.api_code == 1009
             assert result.route == ROUTE_SHADOW
         finally:
             loop.close()
 
     def test_shadow_has_comparison(self):
-        """Shadow 模式包含 shadow_comparison 数据"""
+        """Shadow mode includes shadow_comparison data"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.SHADOW)
 
@@ -313,12 +313,12 @@ class TestShadowRoute:
             sc = result.shadow_comparison
             assert sc["legacy_api_code"] == 1009
             assert sc["dual_api_code"] == 1016
-            assert sc["raw_agreement"] is False  # 不一致
+            assert sc["raw_agreement"] is False  # Disagreement
         finally:
             loop.close()
 
     def test_shadow_agreement_when_same(self):
-        """Shadow: legacy 和 dual 一致时 raw_agreement=True"""
+        """Shadow: legacy and dual agree -> raw_agreement=True"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.SHADOW)
 
@@ -337,17 +337,17 @@ class TestShadowRoute:
             loop.close()
 
     def test_shadow_timeout_recorded(self):
-        """Shadow: _action_channel_shadow 超时 → dual_status='timeout'（Invariant 4）
+        """Shadow: _action_channel_shadow timeout -> dual_status='timeout' (Invariant 4)
 
-        单 GPU 顺序设计: _action_channel_shadow 包装了 action 通道调用，
-        超时时返回 _action_status="timeout" 的 RouterResult。
+        Single GPU sequential design: _action_channel_shadow wraps action channel call,
+        returns RouterResult with _action_status="timeout" on timeout.
         """
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.SHADOW)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                await asyncio.sleep(10)  # 超时
+                await asyncio.sleep(10)  # Timeout
                 return {"a": 1009}
             else:
                 return {"r": "座ります", "a": 1009}
@@ -357,7 +357,7 @@ class TestShadowRoute:
 
         loop = asyncio.new_event_loop()
         try:
-            # monkey-patch _action_channel_shadow 使用短超时（避免等待 10s）
+            # Monkey-patch _action_channel_shadow with short timeout (avoid waiting 10s)
             original = router._action_channel_shadow
 
             async def fast_action_shadow(command, request_id, timeout=20):
@@ -372,18 +372,18 @@ class TestShadowRoute:
             loop.close()
 
     def test_shadow_action_channel_internal_timeout_encoded(self):
-        """action channel 内部超时(raw=None) → dual_status='timeout'
+        """Action channel internal timeout (raw=None) -> dual_status='timeout'
 
-        当 _call_ollama_v2 返回 None（Ollama 自身超时）且 allow_fallback=False 时，
-        _action_channel 返回 _action_status="timeout"。
-        _build_shadow_comparison 应读取 _action_status，编码 dual_status="timeout"。
+        When _call_ollama_v2 returns None (Ollama internal timeout) and allow_fallback=False,
+        _action_channel returns _action_status="timeout".
+        _build_shadow_comparison should read _action_status and encode dual_status="timeout".
         """
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.SHADOW)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                return None  # Ollama 内部超时
+                return None  # Ollama internal timeout
             else:
                 return {"r": "座ります", "a": 1009}
 
@@ -394,26 +394,26 @@ class TestShadowRoute:
         try:
             result = loop.run_until_complete(router.route("座って"))
             sc = result.shadow_comparison
-            assert sc is not None, "shadow_comparison 应存在"
+            assert sc is not None, "shadow_comparison should exist"
             assert sc["dual_status"] == "timeout", \
-                "action channel 内部超时: dual_status='timeout', got: {}".format(
+                "Action channel internal timeout: dual_status='timeout', got: {}".format(
                     sc["dual_status"])
             assert sc["raw_agreement"] is False
         finally:
             loop.close()
 
     def test_shadow_invalid_output_encoded(self):
-        """action channel 非法 api_code → dual_status='invalid_output'
+        """Action channel invalid api_code -> dual_status='invalid_output'
 
-        Finding #2: 模型输出非法 api_code 时，shadow 应记录 dual_status="invalid_output"，
-        而不是将清零后的 None 与正常 a=null 混淆。
+        Finding #2: When model outputs invalid api_code, shadow should record
+        dual_status="invalid_output" instead of confusing zeroed None with normal a=null.
         """
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.SHADOW)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                return {"a": 9999}  # 非法 api_code
+                return {"a": 9999}  # Invalid api_code
             else:
                 return {"r": "やります", "a": None}
 
@@ -426,20 +426,20 @@ class TestShadowRoute:
             sc = result.shadow_comparison
             assert sc is not None
             assert sc["dual_status"] == "invalid_output", \
-                "非法 api_code: dual_status='invalid_output', got: {}".format(
+                "Invalid api_code: dual_status='invalid_output', got: {}".format(
                     sc["dual_status"])
             assert sc["raw_agreement"] is False
         finally:
             loop.close()
 
     def test_shadow_ok_status_on_normal_response(self):
-        """正常 action channel 返回 → dual_status='ok'"""
+        """Normal action channel return -> dual_status='ok'"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.SHADOW)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                return {"a": 1009}  # 合法
+                return {"a": 1009}  # Valid
             else:
                 return {"r": "座ります", "a": 1009}
 
@@ -456,33 +456,33 @@ class TestShadowRoute:
             loop.close()
 
 
-# === B5: SafetyCompiler 在所有模式下验证（Invariant 1） ===
+# === B5: SafetyCompiler validates in all modes (Invariant 1) ===
 
 class TestSafetyCompilerIntegration:
-    """验证 SafetyCompiler 在 Dual/Shadow 路径仍然生效"""
+    """Validate SafetyCompiler still works in Dual/Shadow paths"""
 
     def test_router_result_feeds_safety_compiler(self):
-        """Dual 模式的 RouterResult 经过 SafetyCompiler 验证"""
+        """Dual mode RouterResult is verified by SafetyCompiler"""
         brain = _make_brain()
         brain._router_mode = RouterMode.DUAL
         brain._channel_router = ChannelRouter(brain, RouterMode.DUAL)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                return {"a": 1030}  # FrontFlip（高风险）
+                return {"a": 1030}  # FrontFlip (high-risk)
             return {"r": "やります", "a": 1030}
 
         brain._call_ollama_v2 = mock_ollama
         brain._sanitize_response = lambda x: x
 
-        # 模拟 SafetyCompiler 拒绝高风险动作
+        # Mock SafetyCompiler rejecting high-risk action
         mock_verdict = MagicMock()
         mock_verdict.is_blocked = True
         mock_verdict.block_reason = "high_energy_blocked"
         mock_verdict.response_override = "バッテリー不足です"
         brain.safety_compiler.compile.return_value = mock_verdict
 
-        # 模拟 _log_audit
+        # Mock _log_audit
         brain._log_audit = MagicMock()
 
         result = brain._apply_safety_to_router_result(
@@ -497,25 +497,25 @@ class TestSafetyCompilerIntegration:
             snapshot_monotonic_ts=None,
             start_time=time.time(),
         )
-        # SafetyCompiler 拒绝了
+        # SafetyCompiler rejected
         assert result.api_code is None
         assert "バッテリー" in result.response
         brain.safety_compiler.compile.assert_called_once()
 
 
-# === B6: 无效 BRAIN_ROUTER_MODE ===
+# === B6: Invalid BRAIN_ROUTER_MODE ===
 
 class TestInvalidRouterMode:
-    """验证无效模式降级为 legacy"""
+    """Validate invalid mode fallback to legacy"""
 
     def test_invalid_mode_in_brain_init(self):
-        """无效 BRAIN_ROUTER_MODE → 降级 legacy"""
+        """Invalid BRAIN_ROUTER_MODE -> fallback to legacy"""
         with patch.dict(os.environ, {"BRAIN_ROUTER_MODE": "invalid_mode"}):
             with patch.object(ProductionBrain, '__init__', lambda self, **kw: None):
                 brain = ProductionBrain.__new__(ProductionBrain)
             brain.logger = logging.getLogger("test")
 
-            # 模拟 __init__ 中的路由器初始化逻辑
+            # Simulate router initialization logic from __init__
             router_mode_str = os.getenv("BRAIN_ROUTER_MODE", "legacy")
             try:
                 mode = RouterMode(router_mode_str)
@@ -524,10 +524,10 @@ class TestInvalidRouterMode:
             assert mode == RouterMode.LEGACY
 
 
-# === B7: RouterResult 属性 ===
+# === B7: RouterResult properties ===
 
 class TestRouterResultProperties:
-    """验证 RouterResult 数据完整性"""
+    """Validate RouterResult data integrity"""
 
     def test_has_action_with_api_code(self):
         r = RouterResult(api_code=1009, sequence=None, response="",
@@ -560,19 +560,19 @@ class TestRouterResultProperties:
         assert r.request_id == ""
 
 
-# === Fix #4: 序列校验 ===
+# === Fix #4: Sequence validation ===
 
 class TestSequenceValidation:
-    """验证 action 通道的序列校验逻辑"""
+    """Validate action channel sequence validation logic"""
 
     def test_sequence_items_validated(self):
-        """序列中每项都检查 VALID_API_CODES"""
+        """Each item in sequence is checked against VALID_API_CODES"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                return {"s": [1004, 1009]}  # 全部合法
+                return {"s": [1004, 1009]}  # All valid
             return None
 
         brain._call_ollama_v2 = mock_ollama
@@ -585,13 +585,13 @@ class TestSequenceValidation:
             loop.close()
 
     def test_sequence_invalid_items_filtered(self):
-        """非法项被过滤，合法项保留"""
+        """Invalid items are filtered, valid items retained"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                return {"s": [1004, 9999, 1009]}  # 9999 非法
+                return {"s": [1004, 9999, 1009]}  # 9999 is invalid
             return None
 
         brain._call_ollama_v2 = mock_ollama
@@ -605,7 +605,7 @@ class TestSequenceValidation:
             loop.close()
 
     def test_sequence_all_invalid_fallback(self):
-        """序列全部非法 → 回退 legacy"""
+        """All items invalid -> fallback"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
@@ -626,11 +626,11 @@ class TestSequenceValidation:
             loop.close()
 
     def test_sequence_length_limit(self):
-        """超过 MAX_SEQUENCE_LENGTH 的序列被截断"""
+        """Sequence exceeding MAX_SEQUENCE_LENGTH is truncated"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
-        long_seq = [1004, 1009, 1016, 1017, 1022]  # 5 项
+        long_seq = [1004, 1009, 1016, 1017, 1022]  # 5 items
         assert len(long_seq) > MAX_SEQUENCE_LENGTH
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
@@ -649,12 +649,12 @@ class TestSequenceValidation:
             loop.close()
 
     def test_sequence_empty_fallback(self):
-        """空序列 [] → 模板回退"""
+        """Empty sequence [] -> template fallback"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
-            return {"s": []}  # 空序列
+            return {"s": []}  # Empty sequence
 
         brain._call_ollama_v2 = mock_ollama
 
@@ -668,7 +668,7 @@ class TestSequenceValidation:
             loop.close()
 
     def test_sequence_non_list_fallback(self):
-        """s 不是列表 → 模板回退"""
+        """s is not a list -> template fallback"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
@@ -686,21 +686,21 @@ class TestSequenceValidation:
             loop.close()
 
 
-# === Shadow 高风险分歧检测（Fix #3）===
+# === Shadow high-risk divergence detection (Fix #3) ===
 
 class TestShadowHighRiskDivergence:
-    """验证 shadow_comparison 的 high_risk_divergence 检测"""
+    """Validate shadow_comparison high_risk_divergence detection"""
 
     def test_high_risk_divergence_flagged(self):
-        """legacy 选高风险动作，dual 不选 → high_risk_divergence=True"""
+        """Legacy picks high-risk action, dual does not -> high_risk_divergence=True"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.SHADOW)
 
         async def mock_ollama(model, command, timeout=10, **kwargs):
             if model == "claudia-action-v3":
-                return {"a": 1009}  # dual: Sit（安全）
+                return {"a": 1009}  # dual: Sit (safe)
             else:
-                return {"r": "フリップ!", "a": 1030}  # legacy: FrontFlip（高风险）
+                return {"r": "フリップ!", "a": 1030}  # legacy: FrontFlip (high-risk)
 
         brain._call_ollama_v2 = mock_ollama
         brain._sanitize_response = lambda x: x
@@ -714,7 +714,7 @@ class TestShadowHighRiskDivergence:
             loop.close()
 
     def test_no_divergence_both_safe(self):
-        """两侧都选安全动作 → high_risk_divergence=False"""
+        """Both sides pick safe actions -> high_risk_divergence=False"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.SHADOW)
 
@@ -736,13 +736,13 @@ class TestShadowHighRiskDivergence:
             loop.close()
 
 
-# === 审查修复: Fix #1 — Action 通道 token 预算 ===
+# === Review fix: Fix #1 -- Action channel token budget ===
 
 class TestActionChannelTokenBudget:
-    """Fix #1: Action 通道使用 num_predict=30, num_ctx=1024"""
+    """Fix #1: Action channel uses num_predict=30, num_ctx=1024"""
 
     def test_action_channel_passes_low_token_budget(self):
-        """_action_channel() 调用 _call_ollama_v2 时传入紧凑参数"""
+        """_action_channel() passes compact parameters to _call_ollama_v2"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
@@ -761,16 +761,16 @@ class TestActionChannelTokenBudget:
         try:
             loop.run_until_complete(router._action_channel("おすわり", "test1"))
             assert captured_kwargs['num_predict'] == 30, (
-                "Action 通道应传 num_predict=30, 实际={}".format(
+                "Action channel should pass num_predict=30, actual={}".format(
                     captured_kwargs['num_predict']))
             assert captured_kwargs['num_ctx'] == 1024, (
-                "Action 通道应传 num_ctx=1024, 实际={}".format(
+                "Action channel should pass num_ctx=1024, actual={}".format(
                     captured_kwargs['num_ctx']))
         finally:
             loop.close()
 
     def test_legacy_route_uses_default_budget(self):
-        """_legacy_route() 调用 _call_ollama_v2 时使用默认参数"""
+        """_legacy_route() uses default parameters for _call_ollama_v2"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.LEGACY)
 
@@ -790,22 +790,22 @@ class TestActionChannelTokenBudget:
         try:
             loop.run_until_complete(router._legacy_route("おすわり", "test1"))
             assert captured_kwargs['num_predict'] == 100, (
-                "Legacy 路由应用默认 num_predict=100, 实际={}".format(
+                "Legacy route should use default num_predict=100, actual={}".format(
                     captured_kwargs['num_predict']))
             assert captured_kwargs['num_ctx'] == 2048, (
-                "Legacy 路由应用默认 num_ctx=2048, 实际={}".format(
+                "Legacy route should use default num_ctx=2048, actual={}".format(
                     captured_kwargs['num_ctx']))
         finally:
             loop.close()
 
 
-# === 审查修复: Fix #2 — a+s 冲突归一化 ===
+# === Review fix: Fix #2 -- a+s conflict normalization ===
 
 class TestActionSequenceConflict:
-    """Fix #2: a 和 s 同时出现时 s 优先"""
+    """Fix #2: When both a and s are present, s takes priority"""
 
     def test_both_a_and_s_present_s_wins(self):
-        """a=1009 + s=[1004,1016] 同时出现 → s 优先，a 被清除"""
+        """a=1009 + s=[1004,1016] both present -> s takes priority, a is cleared"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
@@ -813,7 +813,7 @@ class TestActionSequenceConflict:
                               num_predict=100, num_ctx=2048,
                               output_format='json'):
             if model == "claudia-action-v3":
-                return {"a": 1009, "s": [1004, 1016]}  # 冲突!
+                return {"a": 1009, "s": [1004, 1016]}  # Conflict!
             return {"r": "ok", "a": None}
 
         brain._call_ollama_v2 = mock_ollama
@@ -821,17 +821,17 @@ class TestActionSequenceConflict:
         loop = asyncio.new_event_loop()
         try:
             result = loop.run_until_complete(router.route("test"))
-            # s 优先: sequence 保留，api_code 被清除
+            # s takes priority: sequence retained, api_code cleared
             assert result.sequence == [1004, 1016]
             assert result.api_code is None
-            # 模板响应应基于 sequence，不是 api_code
+            # Template response should be based on sequence, not api_code
             assert "立ちます" in result.response
             assert "挨拶します" in result.response
         finally:
             loop.close()
 
     def test_only_a_present_works_normally(self):
-        """只有 a，无 s → 正常处理"""
+        """Only a present, no s -> normal processing"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
 
@@ -853,13 +853,13 @@ class TestActionSequenceConflict:
             loop.close()
 
 
-# === 审查修复: Fix #3 — 避免双重 legacy 调用 ===
+# === Review fix: Fix #3 -- Avoid double legacy call ===
 
 class TestNoDoubleLegacyCall:
-    """Fix #3: action fallback 后不再重复调用 legacy"""
+    """Fix #3: No duplicate legacy call after action fallback"""
 
     def test_action_fail_template_fallback_no_7b(self):
-        """Action 模型失败 → 模板回复，不调用 7B"""
+        """Action model failure -> template response, no 7B call"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
         call_count = {"legacy": 0}
@@ -868,7 +868,7 @@ class TestNoDoubleLegacyCall:
                               num_predict=100, num_ctx=2048,
                               output_format='json'):
             if model == "claudia-action-v3":
-                return None  # action 模型失败
+                return None  # Action model failure
             else:
                 call_count["legacy"] += 1
                 return {"r": "fallback", "a": None}
@@ -878,17 +878,17 @@ class TestNoDoubleLegacyCall:
         loop = asyncio.new_event_loop()
         try:
             result = loop.run_until_complete(router.route("天気について"))
-            # Action-primary: 失败时用模板回复，7B 不被调用
+            # Action-primary: on failure use template response, 7B is not called
             assert call_count["legacy"] == 0, (
-                "7B 不应被调用, 实际 {} 次".format(call_count["legacy"]))
+                "7B should not be called, actual {} times".format(call_count["legacy"]))
             assert result.route == ROUTE_ACTION_FALLBACK
             assert result.api_code is None
-            assert result.response  # 模板回复非空
+            assert result.response  # Template response is non-empty
         finally:
             loop.close()
 
     def test_action_null_template_response_no_7b(self):
-        """Action 正常返回 a=null → 模板对话回复，不调用 7B"""
+        """Action returns a=null normally -> template conversational response, no 7B call"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
         call_count = {"total": 0}
@@ -898,24 +898,24 @@ class TestNoDoubleLegacyCall:
                               output_format='json'):
             call_count["total"] += 1
             if model == "claudia-action-v3":
-                return {"a": None}  # 正常: 无动作
+                return {"a": None}  # Normal: no action
             else:
-                return {"r": "不应到达", "a": None}
+                return {"r": "不応到達", "a": None}
 
         brain._call_ollama_v2 = mock_ollama
 
         loop = asyncio.new_event_loop()
         try:
             result = loop.run_until_complete(router.route("天気について"))
-            # Action-primary: a=null 用模板，只调 action 模型 1 次
+            # Action-primary: a=null uses template, only calls action model once
             assert call_count["total"] == 1
             assert result.route == ROUTE_VOICE_CHANNEL
-            assert result.response  # 模板回复非空
+            assert result.response  # Template response is non-empty
         finally:
             loop.close()
 
     def test_action_success_no_7b_call(self):
-        """Action 返回有效动作 → 模板响应，7B 不被调用"""
+        """Action returns valid action -> template response, 7B is not called"""
         brain = _make_brain()
         router = ChannelRouter(brain, RouterMode.DUAL)
         call_count = {"legacy": 0}
@@ -924,31 +924,31 @@ class TestNoDoubleLegacyCall:
                               num_predict=100, num_ctx=2048,
                               output_format='json'):
             if model == "claudia-action-v3":
-                return {"a": 1009}  # 座る
+                return {"a": 1009}  # Sit
             else:
                 call_count["legacy"] += 1
-                return {"r": "不应到达", "a": 1009}
+                return {"r": "不応到達", "a": 1009}
 
         brain._call_ollama_v2 = mock_ollama
 
         loop = asyncio.new_event_loop()
         try:
             result = loop.run_until_complete(router.route("おすわり"))
-            # 7B 完全不被调用
+            # 7B is not called at all
             assert call_count["legacy"] == 0
             assert result.api_code == 1009
-            assert result.response  # ACTION_RESPONSES 模板
+            assert result.response  # ACTION_RESPONSES template
         finally:
             loop.close()
 
 
-# === 审查修复: Fix #4 — 审计 success 语义 ===
+# === Review fix: Fix #4 -- Audit success semantics ===
 
 class TestAuditSuccessSemantics:
-    """Fix #4: success 反映流水线成功，不是'有无动作'"""
+    """Fix #4: success reflects pipeline success, not 'whether there is an action'"""
 
     def test_conversational_is_success(self):
-        """纯对话命令（无动作）→ success=True"""
+        """Pure conversational command (no action) -> success=True"""
         brain = _make_brain()
         brain._log_audit = MagicMock()
         brain.audit_logger = MagicMock()
@@ -956,11 +956,11 @@ class TestAuditSuccessSemantics:
         from claudia.brain.audit_logger import AuditEntry
         from dataclasses import asdict
 
-        # 构造纯对话 output（无 api_code/sequence）
+        # Construct pure conversational output (no api_code/sequence)
         output = BrainOutput(response="今日はいい天気ですね", api_code=None)
 
-        # 手动调用 _log_audit 并检查 success 计算
-        # 重新启用 _log_audit（去掉 mock）
+        # Manually call _log_audit and check success calculation
+        # Re-enable _log_audit (remove mock)
         brain._log_audit = ProductionBrain._log_audit.__get__(brain)
 
         brain._log_audit(
@@ -971,15 +971,15 @@ class TestAuditSuccessSemantics:
             safety_verdict="ok",
         )
 
-        # 验证 audit_logger.log_entry 被调用
+        # Verify audit_logger.log_entry was called
         brain.audit_logger.log_entry.assert_called_once()
         entry = brain.audit_logger.log_entry.call_args[0][0]
-        # 关键: 纯对话应 success=True（流水线正常完成）
+        # Key: pure conversational should be success=True (pipeline completed normally)
         assert entry.success is True, (
-            "纯对话命令应 success=True, 实际={}".format(entry.success))
+            "Pure conversational command should be success=True, actual={}".format(entry.success))
 
     def test_action_is_success(self):
-        """有动作命令 → success=True"""
+        """Action command -> success=True"""
         brain = _make_brain()
         brain.audit_logger = MagicMock()
         brain._log_audit = ProductionBrain._log_audit.__get__(brain)
@@ -997,7 +997,7 @@ class TestAuditSuccessSemantics:
         assert entry.success is True
 
     def test_safety_rejected_is_success(self):
-        """安全拒绝 → success=True（系统正确地拒绝了危险动作）"""
+        """Safety rejection -> success=True (system correctly rejected dangerous action)"""
         brain = _make_brain()
         brain.audit_logger = MagicMock()
         brain._log_audit = ProductionBrain._log_audit.__get__(brain)
@@ -1014,6 +1014,6 @@ class TestAuditSuccessSemantics:
         )
 
         entry = brain.audit_logger.log_entry.call_args[0][0]
-        # 安全拒绝也是 success=True（流水线正常运行，正确拒绝了）
+        # Safety rejection is also success=True (pipeline ran correctly, properly rejected)
         assert entry.success is True, (
-            "安全拒绝应 success=True, 实际={}".format(entry.success))
+            "Safety rejection should be success=True, actual={}".format(entry.success))

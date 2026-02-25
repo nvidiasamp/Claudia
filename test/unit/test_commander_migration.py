@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-test_commander_migration.py — PR2 Slice A: Commander 迁移验证
+test_commander_migration.py — PR2 Slice A: Commander migration validation
 
-验证:
-  - A1: Commander 使用 process_and_execute（不再直接调用 process_command + execute_action）
-  - A2: execution_status 完整性（success/unknown/failed/skipped）
-  - A3: 软废弃警告（contextvars 协程安全）
+Validates:
+  - A1: Commander uses process_and_execute (no longer directly calls process_command + execute_action)
+  - A2: execution_status completeness (success/unknown/failed/skipped)
+  - A3: Soft deprecation warning (contextvars coroutine safe)
 """
 
 import sys
@@ -21,39 +21,39 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from claudia.brain.production_brain import ProductionBrain, BrainOutput, _pae_depth
 
 
-# === A1: Commander 源码级检查 ===
+# === A1: Commander source-level check ===
 
 class TestCommanderSourceMigration:
-    """确认 commander 不再直接调用 process_command + execute_action"""
+    """Confirm commander no longer directly calls process_command + execute_action"""
 
     def test_commander_uses_process_and_execute(self):
-        """production_commander.py 中不应有 self.brain.process_command 的直接调用"""
+        """production_commander.py should not have direct calls to self.brain.process_command"""
         commander_path = os.path.join(
             os.path.dirname(__file__), '..', '..', 'production_commander.py'
         )
         with open(commander_path, 'r', encoding='utf-8') as f:
             source = f.read()
 
-        # 不应有直调 self.brain.process_command（warmup 注释中的引用除外）
-        # 排除注释行和 warmup 方法中的说明性注释
+        # Should not have direct call to self.brain.process_command (excluding comment references in warmup)
+        # Exclude comment lines and explanatory comments in warmup method
         lines = source.split('\n')
         violations = []
         for i, line in enumerate(lines, 1):
             stripped = line.strip()
-            # 跳过注释
+            # Skip comments
             if stripped.startswith('#') or stripped.startswith('//'):
                 continue
-            # 检查直接调用（不是方法定义）
+            # Check for direct calls (not method definitions)
             if 'self.brain.process_command(' in stripped:
                 violations.append(f"line {i}: {stripped}")
 
         assert not violations, (
-            "Commander 仍直接调用 brain.process_command:\n"
+            "Commander still directly calls brain.process_command:\n"
             + "\n".join(violations)
         )
 
     def test_commander_no_direct_execute_action(self):
-        """production_commander.py 中不应有 self.brain.execute_action 的直接调用"""
+        """production_commander.py should not have direct calls to self.brain.execute_action"""
         commander_path = os.path.join(
             os.path.dirname(__file__), '..', '..', 'production_commander.py'
         )
@@ -70,18 +70,18 @@ class TestCommanderSourceMigration:
                 violations.append(f"line {i}: {stripped}")
 
         assert not violations, (
-            "Commander 仍直接调用 brain.execute_action:\n"
+            "Commander still directly calls brain.execute_action:\n"
             + "\n".join(violations)
         )
 
 
-# === A2: execution_status 完整性 ===
+# === A2: execution_status completeness ===
 
 class TestExecutionStatus:
-    """验证 process_and_execute 的 execution_status 语义"""
+    """Validate process_and_execute execution_status semantics"""
 
     def _make_brain(self):
-        """创建最小化 mock brain 用于测试"""
+        """Create a minimal mock brain for testing"""
         with patch.object(ProductionBrain, '__init__', lambda self, **kw: None):
             brain = ProductionBrain.__new__(ProductionBrain)
         brain.logger = logging.getLogger("test")
@@ -95,7 +95,7 @@ class TestExecutionStatus:
         return brain
 
     def test_execution_status_skipped_for_text_only(self):
-        """纯文本回复（无 api_code/sequence）→ execution_status='skipped'"""
+        """Text-only response (no api_code/sequence) -> execution_status='skipped'"""
         brain = self._make_brain()
         text_output = BrainOutput(response="こんにちは")
 
@@ -114,7 +114,7 @@ class TestExecutionStatus:
             loop.close()
 
     def test_execution_status_success(self):
-        """动作执行成功 → execution_status='success'"""
+        """Action execution succeeded -> execution_status='success'"""
         brain = self._make_brain()
         action_output = BrainOutput(response="座ります", api_code=1009)
 
@@ -135,7 +135,7 @@ class TestExecutionStatus:
             loop.close()
 
     def test_execution_status_unknown(self):
-        """动作超时 → execution_status='unknown'"""
+        """Action timeout -> execution_status='unknown'"""
         brain = self._make_brain()
         action_output = BrainOutput(response="ダンスします", api_code=1022)
 
@@ -156,7 +156,7 @@ class TestExecutionStatus:
             loop.close()
 
     def test_execution_status_failed(self):
-        """动作执行失败 → execution_status='failed'"""
+        """Action execution failed -> execution_status='failed'"""
         brain = self._make_brain()
         action_output = BrainOutput(response="立ちます", api_code=1004)
 
@@ -177,7 +177,7 @@ class TestExecutionStatus:
             loop.close()
 
     def test_emergency_sets_execution_status(self):
-        """紧急停止 → execution_status 不为 None"""
+        """Emergency stop -> execution_status is not None"""
         brain = self._make_brain()
 
         async def mock_handle_emergency(cmd):
@@ -197,10 +197,10 @@ class TestExecutionStatus:
             loop.close()
 
 
-# === A3: 软废弃警告（contextvars 安全） ===
+# === A3: Soft deprecation warning (contextvars safe) ===
 
 class TestDeprecationWarning:
-    """验证 process_command 在 process_and_execute 外调用时产生警告"""
+    """Validate process_command produces warning when called outside process_and_execute"""
 
     def _make_brain(self):
         with patch.object(ProductionBrain, '__init__', lambda self, **kw: None):
@@ -218,23 +218,23 @@ class TestDeprecationWarning:
         return brain
 
     def test_deprecation_warning_logged(self):
-        """直接调用 process_command 应产生警告日志"""
-        # 确保 _pae_depth 为 0（非 process_and_execute 上下文）
+        """Directly calling process_command should produce a warning log"""
+        # Ensure _pae_depth is 0 (not in process_and_execute context)
         assert _pae_depth.get(0) == 0, "Test precondition: _pae_depth should be 0"
 
         brain = self._make_brain()
         with patch.object(brain.logger, 'warning') as mock_warn:
-            # 由于 process_command 内部逻辑复杂，mock 掉后续部分
-            # 只需验证第一行的警告被触发
+            # Since process_command has complex internal logic, mock the rest
+            # Only need to verify the first line warning is triggered
             try:
                 loop = asyncio.new_event_loop()
                 loop.run_until_complete(brain.process_command("test"))
             except Exception:
-                pass  # process_command 内部会因缺少其他属性而失败
+                pass  # process_command will fail due to missing other attributes
             finally:
                 loop.close()
 
-            # 检查是否有警告
+            # Check for warning
             warn_calls = [
                 str(c) for c in mock_warn.call_args_list
                 if 'process_and_execute' in str(c)
@@ -245,10 +245,10 @@ class TestDeprecationWarning:
             )
 
     def test_no_warning_inside_pae_context(self):
-        """在 process_and_execute 内调用 process_command 不应产生警告"""
+        """Calling process_command inside process_and_execute should not produce warning"""
         brain = self._make_brain()
 
-        # 模拟 process_and_execute 的上下文
+        # Simulate process_and_execute context
         token = _pae_depth.set(1)
         try:
             with patch.object(brain.logger, 'warning') as mock_warn:
@@ -260,7 +260,7 @@ class TestDeprecationWarning:
                 finally:
                     loop.close()
 
-                # 不应有 process_and_execute 相关的警告
+                # Should not have process_and_execute related warnings
                 pae_warns = [
                     str(c) for c in mock_warn.call_args_list
                     if 'process_and_execute' in str(c)
@@ -272,21 +272,21 @@ class TestDeprecationWarning:
             _pae_depth.reset(token)
 
     def test_contextvars_coroutine_isolation(self):
-        """不同协程的 _pae_depth 互不干扰"""
+        """Different coroutines' _pae_depth do not interfere with each other"""
         results = {}
 
         async def check_depth(name, expected):
             results[name] = _pae_depth.get(0) == expected
 
         async def run():
-            # 主协程设置 depth=1
+            # Main coroutine sets depth=1
             token = _pae_depth.set(1)
             try:
-                # 子任务应继承 depth=1
+                # Child task should inherit depth=1
                 task1 = asyncio.ensure_future(check_depth("inherited", 1))
                 await task1
 
-                # 子任务内部修改不影响父
+                # Child task internal modification does not affect parent
                 async def modify_and_check():
                     inner_token = _pae_depth.set(99)
                     results["inner"] = _pae_depth.get(0) == 99
@@ -295,7 +295,7 @@ class TestDeprecationWarning:
                 task2 = asyncio.ensure_future(modify_and_check())
                 await task2
 
-                # 父协程 depth 仍为 1
+                # Parent coroutine depth still 1
                 results["parent_unchanged"] = _pae_depth.get(0) == 1
             finally:
                 _pae_depth.reset(token)

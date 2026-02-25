@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ipc_protocol 单元测试"""
+"""ipc_protocol unit tests"""
 
 import asyncio
 import json
@@ -12,7 +12,7 @@ import time
 import pytest
 
 from claudia.audio.asr_service.ipc_protocol import (
-    # 常量
+    # Constants
     PROTO_VERSION,
     AUDIO_SOCKET,
     ASR_RESULT_SOCKET,
@@ -29,7 +29,7 @@ from claudia.audio.asr_service.ipc_protocol import (
     CTRL_TTS_START,
     CTRL_TTS_END,
     CTRL_SHUTDOWN,
-    # 消息工厂
+    # Message factories
     create_handshake,
     create_transcript_msg,
     create_emergency_msg,
@@ -37,12 +37,12 @@ from claudia.audio.asr_service.ipc_protocol import (
     create_vad_event,
     create_error_msg,
     create_gate_timeout_audit,
-    # セッション認証
+    # Session authentication
     generate_session_token,
     create_ctrl_message,
     validate_session_token,
     read_session_token,
-    # 协议
+    # Protocol
     validate_proto_version,
     encode_message,
     decode_message,
@@ -56,7 +56,7 @@ from claudia.audio.asr_service.ipc_protocol import (
 
 
 # ============================================================
-# encode / decode 往返
+# encode / decode round-trip
 # ============================================================
 
 class TestEncodeDecode:
@@ -95,7 +95,7 @@ class TestEncodeDecode:
 
 
 # ============================================================
-# 消息工厂: type フィールド
+# Message factory: type field
 # ============================================================
 
 class TestMessageFactoryTypes:
@@ -289,7 +289,7 @@ class TestValidateProtoVersion:
 
 
 # ============================================================
-# Socket 常量
+# Socket constants
 # ============================================================
 
 class TestSocketPaths:
@@ -335,7 +335,7 @@ class TestCleanupSocket:
 
 
 # ============================================================
-# セッション認証: token 生成 / 検証 / 読取
+# Session authentication: token generation / validation / reading
 # ============================================================
 
 class TestGenerateSessionToken:
@@ -433,26 +433,26 @@ class TestSessionTokenFilePath:
 
 
 # ============================================================
-# _socket_dir() 分岐カバレッジ
+# _socket_dir() branch coverage
 # ============================================================
 
 class TestSocketDirBranches:
-    """_socket_dir() の XDG 回退/owner 検査/symlink 拒否の分岐テスト"""
+    """Branch tests for _socket_dir() XDG fallback / owner check / symlink rejection"""
 
     def test_xdg_unavailable_falls_back_to_tmp(self, tmp_path, monkeypatch):
-        """XDG_RUNTIME_DIR 未設定時 /tmp/claudia_ipc_<uid> にフォールバック"""
+        """Falls back to /tmp/claudia_ipc_<uid> when XDG_RUNTIME_DIR is not set"""
         import claudia.audio.asr_service.ipc_protocol as proto
         monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
-        # _socket_dir は module-level で呼ばれ済みだが、関数を直接テスト
+        # _socket_dir is already called at module level, but we test the function directly
         result = proto._socket_dir()
         uid = os.getuid()
         assert result == "/tmp/claudia_ipc_{}".format(uid)
 
     def test_xdg_unwritable_falls_back_to_tmp(self, tmp_path, monkeypatch):
-        """XDG 配下の makedirs が OSError → /tmp フォールバック
+        """Falls back to /tmp when makedirs under XDG raises OSError
 
-        chmod 0o500 は root/CAP_DAC_OVERRIDE で無視されるため、
-        monkeypatch で makedirs を直接失敗させて確実にテストする。
+        chmod 0o500 is ignored by root/CAP_DAC_OVERRIDE, so we
+        monkeypatch makedirs to fail directly for reliable testing.
         """
         import claudia.audio.asr_service.ipc_protocol as proto
         xdg_dir = str(tmp_path / "fake_xdg")
@@ -472,12 +472,12 @@ class TestSocketDirBranches:
         assert result == "/tmp/claudia_ipc_{}".format(uid)
 
     def test_symlink_rejected(self, tmp_path, monkeypatch):
-        """symlink ディレクトリは拒否され次の候補にフォールバック"""
+        """Symlink directories are rejected and fall back to the next candidate"""
         import claudia.audio.asr_service.ipc_protocol as proto
         monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
         uid = os.getuid()
         target_name = "/tmp/claudia_ipc_{}".format(uid)
-        # 既存ディレクトリがある場合は一時退避
+        # Temporarily back up existing directory if present
         backup = None
         if os.path.exists(target_name) and not os.path.islink(target_name):
             backup = target_name + "_backup_test"
@@ -485,11 +485,11 @@ class TestSocketDirBranches:
         elif os.path.islink(target_name):
             os.unlink(target_name)
         try:
-            # symlink を作成 (target は tmp_path 内の自分所有ディレクトリ)
+            # Create symlink (target is a self-owned directory within tmp_path)
             real_dir = str(tmp_path / "real_target")
             os.makedirs(real_dir, mode=0o700)
             os.symlink(real_dir, target_name)
-            # _socket_dir は symlink を拒否すべき → RuntimeError (全候補失敗)
+            # _socket_dir should reject symlink -> RuntimeError (all candidates failed)
             with pytest.raises(RuntimeError):
                 proto._socket_dir()
         finally:
@@ -499,10 +499,10 @@ class TestSocketDirBranches:
                 os.rename(backup, target_name)
 
     def test_other_user_dir_skipped(self, tmp_path, monkeypatch):
-        """他ユーザー所有ディレクトリはスキップされ次の候補へ
+        """Directories owned by other users are skipped and fall through to next candidate
 
-        非 root では他 UID のディレクトリを作れないため、
-        os.lstat の返り値を monkeypatch で偽装する。
+        Cannot create directories owned by other UIDs as non-root, so
+        we monkeypatch os.lstat return value to fake it.
         """
         import claudia.audio.asr_service.ipc_protocol as proto
         monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
@@ -511,10 +511,10 @@ class TestSocketDirBranches:
         _real_lstat = os.lstat
 
         class _FakeStat:
-            """1 回目の lstat だけ他ユーザー UID を返す"""
+            """First lstat call returns a different user UID"""
             def __init__(self, real):
                 self.st_mode = real.st_mode
-                self.st_uid = uid + 1  # 他ユーザー偽装
+                self.st_uid = uid + 1  # Fake other user
                 self.st_size = real.st_size
 
         call_count = [0]
@@ -527,17 +527,17 @@ class TestSocketDirBranches:
             return result
 
         monkeypatch.setattr(os, "lstat", _patched_lstat)
-        # 唯一の候補 (/tmp/claudia_ipc_<uid>) が owner 不一致でスキップ → RuntimeError
+        # The only candidate (/tmp/claudia_ipc_<uid>) has owner mismatch and is skipped -> RuntimeError
         with pytest.raises(RuntimeError):
             proto._socket_dir()
 
     def test_permissions_repaired(self, tmp_path, monkeypatch):
-        """0o700 以外のパーミッションは自動修復される"""
+        """Non-0o700 permissions are automatically repaired"""
         import claudia.audio.asr_service.ipc_protocol as proto
         test_dir = str(tmp_path / "claudia")
         os.makedirs(test_dir, mode=0o755)
         assert stat.S_IMODE(os.lstat(test_dir).st_mode) == 0o755
-        # XDG を test_dir の親に向ける
+        # Point XDG to parent of test_dir
         monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
         result = proto._socket_dir()
         assert result == test_dir
@@ -545,13 +545,13 @@ class TestSocketDirBranches:
 
 
 # ============================================================
-# UDS server/client + JSON Lines (集成式)
-# pytest 4.6.9 互換: loop.run_until_complete() で実行
-# (pytest-asyncio は pytest >= 7.0 が必要で ROS2 環境と非互換)
+# UDS server/client + JSON Lines (integration-style)
+# pytest 4.6.9 compatible: runs via loop.run_until_complete()
+# (pytest-asyncio requires pytest >= 7.0 which is incompatible with ROS2 environment)
 # ============================================================
 
 def _run_async(coro):
-    """Python 3.8 / pytest 4.6.9 互換の async テストランナー"""
+    """Python 3.8 / pytest 4.6.9 compatible async test runner"""
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(coro)

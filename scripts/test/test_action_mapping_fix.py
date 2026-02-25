@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-测试比心等动作映射修复
+Test Heart Gesture and Other Action Mapping Fixes
 Generated: 2025-07-10
-Purpose: 验证WALLOW(1021)和其他缺失动作的映射是否正确
+Purpose: Verify that WALLOW(1021) and other missing action mappings are correct
 """
 
 import sys
@@ -11,295 +11,299 @@ import os
 import re
 from pathlib import Path
 
-# 添加项目路径
+# Add project path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 def test_enhanced_japanese_commander_mapping():
-    """测试增强版日语指令界面的动作映射"""
-    print("🧪 测试增强版日语指令界面的动作映射...")
-    
+    """Test the enhanced Japanese command interface action mappings"""
+    print("Testing enhanced Japanese command interface action mappings...")
+
     try:
         from src.claudia.interactive_japanese_commander_enhanced import EnhancedJapaneseCommandInterface
-        
+
         interface = EnhancedJapaneseCommandInterface()
-        
-        # 测试比心相关映射
+
+        # Test heart gesture related mappings
+        # Note: Japanese/Chinese strings are intentional test inputs for the robot
         test_cases = [
-            # 🔧 比心动作测试
-            ("比心", "heart"),
-            ("ハート", "heart"), 
+            # Heart gesture action tests
+            ("比心", "heart"),           # Chinese: heart gesture
+            ("ハート", "heart"),          # Japanese: heart
             ("heart", "heart"),
             ("love", "love"),
-            ("可愛い", None),  # 这个应该通过模式匹配到heart
-            
-            # 🔧 ちんちん动作测试 (应该映射到cheer)
-            ("ちんちん", "cheer"),
-            ("拜年", None),  # 通过模式匹配到cheer
-            
-            # 基础动作测试
-            ("お座り", "sit"),
-            ("ダンス", "dance"),
-            ("お辞儀", "bow"),
-            ("握手", "shake_hands"),
-            
-            # 新增高级动作
-            ("ジャンプ", "jump"),
-            ("がんばれ", "cheer"),
-            ("パンチ", "punch"),
+            ("可愛い", None),             # Japanese: cute - should match to heart via pattern matching
+
+            # Cheer action tests (should map to cheer)
+            ("ちんちん", "cheer"),         # Japanese: chintin -> cheer
+            ("拜年", None),              # Chinese: New Year greeting - should match to cheer via pattern matching
+
+            # Basic action tests
+            ("お座り", "sit"),            # Japanese: sit
+            ("ダンス", "dance"),          # Japanese: dance
+            ("お辞儀", "bow"),           # Japanese: bow
+            ("握手", "shake_hands"),     # Japanese: handshake
+
+            # New advanced actions
+            ("ジャンプ", "jump"),         # Japanese: jump
+            ("がんばれ", "cheer"),        # Japanese: go for it / cheer
+            ("パンチ", "punch"),          # Japanese: punch
         ]
-        
-        print("\n📋 动作API映射测试:")
+
+        print("\nAction API mapping test:")
         success_count = 0
         total_count = len(test_cases)
-        
+
         for japanese_input, expected_action in test_cases:
             mapped_api = interface.action_api_map.get(expected_action if expected_action else japanese_input)
-            
+
             if mapped_api:
-                print(f"✅ '{japanese_input}' → {expected_action or japanese_input} → API {mapped_api}")
+                print(f"[PASS] '{japanese_input}' -> {expected_action or japanese_input} -> API {mapped_api}")
                 success_count += 1
             else:
-                # 尝试通过模式匹配
+                # Try pattern matching
                 action, confidence = interface.extract_action_from_llm_response("", japanese_input)
                 if action and action in interface.action_api_map:
                     api_code = interface.action_api_map[action]
-                    print(f"✅ '{japanese_input}' → {action} (模式匹配, 置信度:{confidence:.2f}) → API {api_code}")
+                    print(f"[PASS] '{japanese_input}' -> {action} (pattern match, confidence:{confidence:.2f}) -> API {api_code}")
                     success_count += 1
                 else:
-                    print(f"❌ '{japanese_input}' → 无映射")
-        
-        print(f"\n📊 映射成功率: {success_count}/{total_count} ({success_count/total_count*100:.1f}%)")
-        print(f"📊 总计映射数量: {len(interface.action_api_map)}")
-        
-        # 🔧 测试动作序列规划（比心的关键修复）
-        print("\n🔧 测试动作序列规划（比心修复）:")
+                    print(f"[FAIL] '{japanese_input}' -> no mapping")
+
+        print(f"\nMapping success rate: {success_count}/{total_count} ({success_count/total_count*100:.1f}%)")
+        print(f"Total mapping count: {len(interface.action_api_map)}")
+
+        # Test action sequence planning (key fix for heart gesture)
+        print("\nTesting action sequence planning (heart gesture fix):")
         test_action_sequences(interface)
-        
-        # 测试模式匹配
-        print("\n🔍 日语模式匹配测试:")
+
+        # Test pattern matching
+        print("\nJapanese pattern matching test:")
         test_pattern_matching(interface)
-        
+
     except ImportError as e:
-        print(f"❌ 导入失败: {e}")
+        print(f"Import failed: {e}")
         return False
     except Exception as e:
-        print(f"❌ 测试异常: {e}")
+        print(f"Test exception: {e}")
         return False
-    
+
     return True
 
 def test_action_sequences(interface):
-    """测试动作序列规划"""
+    """Test action sequence planning"""
     from src.claudia.interactive_japanese_commander_enhanced import RobotState
-    
-    # 创建不同状态的机器人状态
+
+    # Create different robot states for testing
+    # Note: Japanese/Chinese test inputs are intentional robot commands
     test_states = [
-        ("lying", "比心"),     # 关键测试：从lying状态执行比心
-        ("sitting", "hello"),  # 从sitting状态执行hello
-        ("standing", "heart"), # 从standing状态执行heart
-        ("unknown", "dance"),  # 从unknown状态执行dance
+        ("lying", "比心"),     # Key test: execute heart gesture from lying state
+        ("sitting", "hello"),  # Execute hello from sitting state
+        ("standing", "heart"), # Execute heart from standing state
+        ("unknown", "dance"),  # Execute dance from unknown state
     ]
-    
+
     for state, action in test_states:
-        # 模拟机器人状态
+        # Simulate robot state
         interface.robot_state.current_state = state
-        
-        # 获取动作API
+
+        # Get action API
         api_code = interface.action_api_map.get(action)
         if api_code:
-            # 规划动作序列
+            # Plan action sequence
             sequence = interface.action_sequencer.plan_action_sequence(action, api_code)
-            
-            print(f"  状态:{state} → 动作:{action}")
+
+            print(f"  State:{state} -> Action:{action}")
             for i, step in enumerate(sequence, 1):
                 print(f"    {i}. {step['action']} (API: {step['api']})")
-            
-            # 验证比心动作的特殊处理
+
+            # Verify special handling for heart gesture action
             if action in ["比心", "heart"] and state == "lying":
                 expected_steps = ["stand_up", action]
                 actual_steps = [step['action'] for step in sequence]
                 if actual_steps == expected_steps:
-                    print(f"    ✅ 比心序列规划正确: {actual_steps}")
+                    print(f"    [PASS] Heart gesture sequence planning correct: {actual_steps}")
                 else:
-                    print(f"    ❌ 比心序列规划错误: 期望{expected_steps}, 实际{actual_steps}")
+                    print(f"    [FAIL] Heart gesture sequence planning error: expected {expected_steps}, actual {actual_steps}")
 
 def test_pattern_matching(interface):
-    """测试日语模式匹配"""
+    """Test Japanese pattern matching"""
+    # Note: Japanese test inputs are intentional robot command phrases
     test_inputs = [
-        "比心して",        # 比心动作
-        "ハートをお願い",   # 心形请求 
-        "可愛いポーズ",     # 可爱姿势
-        "お座りして",      # 坐下
-        "ちんちんしよう",   # 拜年动作
-        "がんばれ！",      # 加油
-        "お辞儀します",     # 鞠躬
-        "握手しませんか",   # 握手邀请
+        "比心して",        # Heart gesture action
+        "ハートをお願い",   # Heart shape request
+        "可愛いポーズ",     # Cute pose
+        "お座りして",      # Sit down
+        "ちんちんしよう",   # Cheer action
+        "がんばれ！",      # Encouragement
+        "お辞儀します",     # Bow
+        "握手しませんか",   # Handshake invitation
     ]
-    
+
     for test_input in test_inputs:
         action, confidence = interface.extract_action_from_llm_response("", test_input)
         api_code = interface.action_api_map.get(action) if action else None
-        
+
         if action and api_code:
-            print(f"  ✅ '{test_input}' → {action} (置信度:{confidence:.2f}) → API {api_code}")
+            print(f"  [PASS] '{test_input}' -> {action} (confidence:{confidence:.2f}) -> API {api_code}")
         else:
-            print(f"  ❌ '{test_input}' → 无法识别 ({action}, {confidence:.2f})")
+            print(f"  [FAIL] '{test_input}' -> unrecognized ({action}, {confidence:.2f})")
 
 def test_real_action_mapping_engine():
-    """测试真实动作映射引擎的API覆盖"""
-    print("\n🤖 测试真实动作映射引擎...")
-    
+    """Test the real action mapping engine API coverage"""
+    print("\nTesting the real action mapping engine...")
+
     try:
         from src.claudia.robot_controller.action_mapping_engine_real import RealActionMappingEngine
-        
+
         engine = RealActionMappingEngine()
-        
-        # 测试API注册表完整性
-        print(f"📊 API注册表大小: {len(engine.api_registry)}")
-        print(f"📊 日语映射数量: {len(engine.intent_mapping)}")
-        print(f"📊 英语映射数量: {len(engine.english_intent_mapping)}")
-        
-        # 测试关键API是否存在
+
+        # Test API registry completeness
+        print(f"API registry size: {len(engine.api_registry)}")
+        print(f"Japanese mapping count: {len(engine.intent_mapping)}")
+        print(f"English mapping count: {len(engine.english_intent_mapping)}")
+
+        # Test whether key APIs exist
         key_apis = [1021, 1024, 1025, 1026, 1027, 1028, 1029, 1030, 1031]
-        print("\n🔧 关键新增API测试:")
+        print("\nKey new API test:")
         for api_code in key_apis:
             if api_code in engine.api_registry:
                 action_def = engine.api_registry[api_code]
-                print(f"  ✅ API {api_code}: {action_def.function_name} - {action_def.description}")
+                print(f"  [PASS] API {api_code}: {action_def.function_name} - {action_def.description}")
             else:
-                print(f"  ❌ API {api_code}: 缺失")
-        
-        # 测试"ちんちん"映射
-        print("\n🎯 特殊词汇映射测试:")
+                print(f"  [FAIL] API {api_code}: missing")
+
+        # Test special word mappings
+        # Note: Japanese/Chinese test words are intentional robot command vocabulary
+        print("\nSpecial vocabulary mapping test:")
         test_words = ["ちんちん", "比心", "heart", "bow", "cheer"]
         for word in test_words:
             if word in engine.intent_mapping:
                 api_code = engine.intent_mapping[word]
-                print(f"  ✅ '{word}' → API {api_code}")
+                print(f"  [PASS] '{word}' -> API {api_code}")
             elif word in engine.english_intent_mapping:
                 api_code = engine.english_intent_mapping[word]
-                print(f"  ✅ '{word}' → API {api_code} (英语)")
+                print(f"  [PASS] '{word}' -> API {api_code} (English)")
             else:
-                print(f"  ❌ '{word}' → 无映射")
-        
+                print(f"  [FAIL] '{word}' -> no mapping")
+
         return True
-        
+
     except ImportError as e:
-        print(f"❌ 导入失败: {e}")
+        print(f"Import failed: {e}")
         return False
     except Exception as e:
-        print(f"❌ 测试异常: {e}")
+        print(f"Test exception: {e}")
         return False
 
 def show_available_actions():
-    """显示所有可用动作"""
-    print("\n📚 完整动作映射表:")
-    
+    """Show all available actions"""
+    print("\nComplete action mapping table:")
+
     action_mapping = {
-        1001: "Damp - 紧急停止",
-        1002: "BalanceStand - 平衡站立",
-        1003: "StopMove - 停止移动", 
-        1004: "StandUp - 站立",
-        1005: "StandDown - 趴下",
-        1006: "RecoveryStand - 恢复站立",
-        1007: "Euler - 欧拉角控制",
-        1008: "Move - 移动控制",
-        1009: "Sit - 坐下",
-        1010: "RiseSit - 从坐姿站起",
-        1011: "SwitchGait - 切换步态",
-        1012: "Trigger - 触发器",
-        1013: "BodyHeight - 身体高度",
-        1014: "FootRaiseHeight - 抬脚高度",
-        1015: "SpeedLevel - 速度等级",
-        1016: "Hello - 招手/握手",
-        1017: "Stretch - 伸展",
-        1018: "TrajectoryFollow - 轨迹跟随",
-        1019: "ContinuousGait - 连续步态",
-        1020: "Content - 内容",
-        1021: "Wallow - 比心动作 🔧",
-        1022: "Dance1 - 舞蹈1",
-        1023: "Dance2 - 舞蹈2",
-        1024: "GetBodyHeight - 获取身体高度",
-        1025: "GetFootRaiseHeight - 获取抬脚高度",
-        1026: "GetSpeedLevel - 获取速度等级",
-        1027: "SwitchJoystick - 切换手柄",
+        1001: "Damp - Emergency stop",
+        1002: "BalanceStand - Balance stand",
+        1003: "StopMove - Stop moving",
+        1004: "StandUp - Stand up",
+        1005: "StandDown - Lie down",
+        1006: "RecoveryStand - Recovery stand",
+        1007: "Euler - Euler angle control",
+        1008: "Move - Movement control",
+        1009: "Sit - Sit down",
+        1010: "RiseSit - Rise from sitting",
+        1011: "SwitchGait - Switch gait",
+        1012: "Trigger - Trigger",
+        1013: "BodyHeight - Body height",
+        1014: "FootRaiseHeight - Foot raise height",
+        1015: "SpeedLevel - Speed level",
+        1016: "Hello - Wave/handshake",
+        1017: "Stretch - Stretch",
+        1018: "TrajectoryFollow - Trajectory follow",
+        1019: "ContinuousGait - Continuous gait",
+        1020: "Content - Content",
+        1021: "Wallow - Heart gesture (FIXED)",
+        1022: "Dance1 - Dance 1",
+        1023: "Dance2 - Dance 2",
+        1024: "GetBodyHeight - Get body height",
+        1025: "GetFootRaiseHeight - Get foot raise height",
+        1026: "GetSpeedLevel - Get speed level",
+        1027: "SwitchJoystick - Switch joystick",
     }
-    
+
     for api_id, description in action_mapping.items():
-        marker = " 🔧" if api_id == 1021 else ""
+        marker = " (FIXED)" if api_id == 1021 else ""
         print(f"  {api_id:4d}: {description}{marker}")
 
 def main():
-    """主测试函数"""
-    print("🤖 Claudia机器人动作映射修复测试")
+    """Main test function"""
+    print("Claudia Robot Action Mapping Fix Test")
     print("=" * 50)
-    
-    # 显示修复的动作
+
+    # Show fixed actions
     show_available_actions()
-    
-    # 测试增强版界面
+
+    # Test enhanced interface
     success1 = test_enhanced_japanese_commander_mapping()
-    
-    # 测试真实映射引擎
+
+    # Test real mapping engine
     success2 = test_real_action_mapping_engine()
-    
+
     print("\n" + "=" * 50)
     if success1 and success2:
-        print("✅ 所有测试通过！比心动作映射修复成功")
-        print("\n🎯 现在您可以使用以下指令:")
-        print("   - '比心' / '比心して'")
-        print("   - 'ハート' / 'ハートお願い'") 
-        print("   - 'heart' / 'make a heart'")
-        print("   - '可愛いポーズ' (会映射到heart)")
-        print("\n🚀 请重新运行 run_enhanced_japanese_commander.sh 测试修复效果")
+        print("All tests passed! Heart gesture action mapping fix successful")
+        print("\nYou can now use the following commands:")
+        print("   - 'heart gesture' (比心 / 比心して)")
+        print("   - 'heart' (ハート / ハートお願い)")
+        print("   - 'heart' in English")
+        print("   - 'cute pose' (可愛いポーズ, maps to heart)")
+        print("\nPlease re-run run_enhanced_japanese_commander.sh to test the fix")
     else:
-        print("❌ 部分测试失败，请检查错误信息")
+        print("Some tests failed, please check error messages")
 
 if __name__ == "__main__":
-    print("🚀 开始比心等动作映射修复验证测试")
+    print("Starting heart gesture and other action mapping fix verification test")
     print("=" * 60)
-    
-    # 运行所有测试
+
+    # Run all tests
     tests = [
-        ("增强版日语指令界面", test_enhanced_japanese_commander_mapping),
-        ("真实动作映射引擎", test_real_action_mapping_engine),
-        ("可用动作展示", show_available_actions),
+        ("Enhanced Japanese command interface", test_enhanced_japanese_commander_mapping),
+        ("Real action mapping engine", test_real_action_mapping_engine),
+        ("Available actions display", show_available_actions),
     ]
-    
+
     passed = 0
     total = len(tests)
-    
+
     for test_name, test_func in tests:
         print(f"\n{'='*20} {test_name} {'='*20}")
         try:
             if test_func():
-                print(f"✅ {test_name} 测试通过")
+                print(f"[PASS] {test_name} test passed")
                 passed += 1
             else:
-                print(f"❌ {test_name} 测试失败")
+                print(f"[FAIL] {test_name} test failed")
         except Exception as e:
-            print(f"❌ {test_name} 测试异常: {e}")
-    
+            print(f"[FAIL] {test_name} test exception: {e}")
+
     print("\n" + "="*60)
-    print(f"🎯 测试总结: {passed}/{total} 通过 ({passed/total*100:.1f}%)")
-    
+    print(f"Test summary: {passed}/{total} passed ({passed/total*100:.1f}%)")
+
     if passed == total:
-        print("🎉 所有测试通过！比心动作映射修复成功")
-        print("\n📋 修复内容总结:")
-        print("  ✅ 扩展了action_api_map，添加7个新API映射")
-        print("  ✅ 增强了日语模式匹配，包含比心、ちんちん等词汇")
-        print("  ✅ 修复了动作序列规划器，比心前自动站立")
-        print("  ✅ 完善了API注册表，支持27个官方API")
-        print("  ✅ 解决了'ちんちん'映射到cheer动作")
-        print("\n🎯 关键修复:")
-        print("  🔧 比心动作错误码3203 → 现在会先执行stand_up再执行wallow")
-        print("  🔧 'ちんちん'无法识别 → 现在映射到cheer庆祝动作")
+        print("All tests passed! Heart gesture action mapping fix successful")
+        print("\nFix summary:")
+        print("  [DONE] Extended action_api_map with 7 new API mappings")
+        print("  [DONE] Enhanced Japanese pattern matching to include heart gesture and cheer vocabulary")
+        print("  [DONE] Fixed action sequence planner to auto-stand before heart gesture")
+        print("  [DONE] Completed API registry to support 27 official APIs")
+        print("  [DONE] Resolved 'cheer' mapping to celebration action")
+        print("\nKey fixes:")
+        print("  - Heart gesture error code 3203 -> now executes stand_up before wallow")
+        print("  - Unrecognized cheer command -> now maps to cheer celebration action")
     else:
-        print("⚠️ 部分测试失败，需要进一步调试")
-    
-    print("\n🔧 下一步建议:")
-    print("  1. 运行真实机器人测试验证修复效果")
-    print("  2. 测试指令: python3 scripts/run_enhanced_japanese_commander.sh")
-    print("  3. 输入: '比心' (应该先站立再执行比心动作)")
-    print("  4. 输入: 'ちんちん' (应该执行cheer庆祝动作)")
-    print("  5. 观察是否解决错误码3203问题") 
+        print("Some tests failed, further debugging needed")
+
+    print("\nNext steps:")
+    print("  1. Run real robot test to verify fix")
+    print("  2. Test command: python3 scripts/run_enhanced_japanese_commander.sh")
+    print("  3. Input: 'heart gesture' (should stand up first then perform heart gesture)")
+    print("  4. Input: 'cheer' (should execute celebration action)")
+    print("  5. Observe whether error code 3203 issue is resolved")

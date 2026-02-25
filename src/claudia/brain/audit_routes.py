@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-审计日志 route 字段的规范名称 — 一次定稿，禁止随意新增
+Canonical route field names for audit logs -- finalized once, no ad-hoc additions
 
-所有 _log_audit() 调用的 route= 参数必须使用本模块的常量，
-运行时 assert + AST 级 CI 测试双重保证。
+All _log_audit() calls must use constants from this module for the route= parameter.
+Enforced by runtime assert + AST-level CI test dual guarantee.
 """
 
-# === PR1 路由 ===
-ROUTE_EMERGENCY = "emergency"                      # 紧急停止
-ROUTE_HOTPATH = "hotpath"                          # 热缓存命中
-ROUTE_HOTPATH_REJECTED = "hotpath_safety_rejected"  # 热缓存安全拒绝
-ROUTE_SEQUENCE = "sequence_predefined"             # 序列预定义
-ROUTE_DANCE = "dance"                              # 舞蹈随机分支
-ROUTE_CONVERSATIONAL = "conversational"            # 对话检测
-ROUTE_PRECHECK_REJECTED = "precheck_rejected"      # 预检拒绝
-ROUTE_LLM_7B = "7B"                               # Legacy 7B 单通道
+# === PR1 Routes ===
+ROUTE_EMERGENCY = "emergency"                      # Emergency stop
+ROUTE_HOTPATH = "hotpath"                          # Hot cache hit
+ROUTE_HOTPATH_REJECTED = "hotpath_safety_rejected"  # Hot cache safety rejection
+ROUTE_SEQUENCE = "sequence_predefined"             # Predefined sequence
+ROUTE_DANCE = "dance"                              # Dance random branch
+ROUTE_CONVERSATIONAL = "conversational"            # Conversational detection
+ROUTE_PRECHECK_REJECTED = "precheck_rejected"      # Precheck rejection
+ROUTE_LLM_7B = "7B"                               # Legacy 7B single-channel
 
-# === PR2 路由（BRAIN_ROUTER_MODE != legacy 时）===
-ROUTE_ACTION_CHANNEL = "action_channel"            # 双通道 action channel 正式执行
-ROUTE_VOICE_CHANNEL = "voice_channel"              # 双通道 voice channel（纯文本）
-ROUTE_SHADOW = "shadow"                            # Shadow 模式记录
-ROUTE_ACTION_FALLBACK = "action_fallback"          # Action channel 失败回退 legacy
-ROUTE_STARTUP = "startup"                          # 唤醒动画（Commander 起動時）
+# === PR2 Routes (when BRAIN_ROUTER_MODE != legacy) ===
+ROUTE_ACTION_CHANNEL = "action_channel"            # Dual-channel action channel execution
+ROUTE_VOICE_CHANNEL = "voice_channel"              # Dual-channel voice channel (text-only)
+ROUTE_SHADOW = "shadow"                            # Shadow mode logging
+ROUTE_ACTION_FALLBACK = "action_fallback"          # Action channel failure fallback to legacy
+ROUTE_STARTUP = "startup"                          # Wake animation (Commander startup)
 
-# === 所有合法 route 值（Go/No-Go 统计脚本用）===
+# === All valid route values (for Go/No-Go statistics scripts) ===
 ALL_ROUTES = frozenset([
     ROUTE_EMERGENCY, ROUTE_HOTPATH, ROUTE_HOTPATH_REJECTED,
     ROUTE_SEQUENCE, ROUTE_DANCE, ROUTE_CONVERSATIONAL,

@@ -1,125 +1,125 @@
-# 🚨 SDK功能限制分析 - 为什么APP能做但SDK不能
+# SDK Functionality Limitation Analysis - Why the App Can Do It But SDK Cannot
 
-## 📊 **问题本质**
+## **Core Issue**
 
-### **不是硬件限制，是SDK限制！**
+### **It's Not a Hardware Limitation, It's an SDK Limitation!**
 
-根据官方GitHub Issue #63的回复：
-> "目前Python SDK未支持，官网文档对应的是cpp SDK。推荐使用基于DDS的cppSDK进行开发。"
-> -- blogdefotsec (Unitree官方)
+According to the official GitHub Issue #63 reply:
+> "The Python SDK does not currently support this. The official documentation corresponds to the C++ SDK. It is recommended to use the DDS-based C++ SDK for development."
+> -- blogdefotsec (Unitree Official)
 
-## 🔧 **三层架构对比**
+## **Three-Layer Architecture Comparison**
 
 ```
-┌──────────────┐
-│   遥控器/APP  │ ──► 使用内部C++ API（功能完整）
-└──────────────┘
-        │
-┌──────────────┐
-│  机器人硬件   │ ──► 支持所有动作
-└──────────────┘
-        │
-┌──────────────┐
-│  Python SDK   │ ──► 只封装了部分API（功能不全）
-└──────────────┘
++----------------+
+| Remote/App     | --> Uses internal C++ API (full functionality)
++----------------+
+        |
++----------------+
+| Robot Hardware  | --> Supports all actions
++----------------+
+        |
++----------------+
+| Python SDK     | --> Only wraps partial APIs (incomplete functionality)
++----------------+
 ```
 
-## ❌ **Python SDK缺失的功能**
+## **Features Missing from Python SDK**
 
-### 官方确认缺失的API（Issue #63）：
-- `SwitchMoveMode` - 模式切换
-- `HandStand` - 倒立 
-- `MoveToPos` - 移动到位置
-- 可能还包括：`Wallow`（比心）、`ShakeHands`（握手）等
+### Officially Confirmed Missing APIs (Issue #63):
+- `SwitchMoveMode` - Mode switching
+- `HandStand` - Handstand
+- `MoveToPos` - Move to position
+- Possibly also: `Wallow` (heart gesture), `ShakeHands` (handshake), etc.
 
-### PR #76尝试添加的功能：
+### Features PR #76 Attempted to Add:
 ```python
-# 新增的V2.0 API (ID 2044-2058)
-- HandStand (倒立)
-- ClassicWalk (经典行走)
-- FreeBound (自由跳跃)
-- FreeJump (自由跳)
-- FreeAvoid (自由避障)
-- WalkUpright (直立行走)
-- CrossStep (交叉步)
+# New V2.0 APIs (ID 2044-2058)
+- HandStand (handstand)
+- ClassicWalk (classic walking)
+- FreeBound (free bounding)
+- FreeJump (free jumping)
+- FreeAvoid (free obstacle avoidance)
+- WalkUpright (upright walking)
+- CrossStep (cross stepping)
 ```
 
-**但这个PR可能还未合并到主分支！**
+**However, this PR may not have been merged into the main branch yet!**
 
-## ✅ **解决方案**
+## **Solutions**
 
-### 方案1：使用C++ SDK（推荐）
+### Solution 1: Use C++ SDK (Recommended)
 ```cpp
-// C++ SDK功能完整
+// C++ SDK has full functionality
 #include "unitree_sdk2/sport/sport_client.hpp"
-client.Wallow();  // 比心可用
-client.HandStand(); // 倒立可用
+client.Wallow();  // Heart gesture available
+client.HandStand(); // Handstand available
 ```
 
-### 方案2：等待Python SDK更新
-- 关注PR #76的合并状态
-- 或手动应用PR的修改
+### Solution 2: Wait for Python SDK Update
+- Monitor the merge status of PR #76
+- Or manually apply the PR's changes
 
-### 方案3：自行扩展Python SDK
+### Solution 3: Extend Python SDK Yourself
 ```python
-# 手动添加缺失的API
+# Manually add missing APIs
 class SportClient:
     def Wallow(self):
-        # 发送API ID 1021
+        # Send API ID 1021
         return self._call(1021)
 ```
 
-### 方案4：直接使用DDS通信
+### Solution 4: Use DDS Communication Directly
 ```python
-# 绕过SDK，直接发送DDS消息
-# 需要了解底层协议
+# Bypass SDK, send DDS messages directly
+# Requires understanding of the underlying protocol
 ```
 
-## 📝 **3203错误的新解释**
+## **New Interpretation of 3203 Error**
 
 ```python
 3203 = RPC_ERR_SERVER_API_NOT_IMPL
 ```
 
-- **之前理解**：机器人不支持该动作 ❌
-- **正确理解**：Python SDK未实现该API封装 ✅
+- **Previous understanding**: Robot does not support the action (incorrect)
+- **Correct understanding**: Python SDK has not implemented the API wrapper
 
-机器人硬件**确实支持**这些动作（遥控器能执行证明了这点），只是Python SDK没有提供接口！
+The robot hardware **does actually support** these actions (the fact that the remote controller can execute them proves this) -- the Python SDK just hasn't provided the interface!
 
-## 🎯 **验证方法**
+## **Verification Methods**
 
-### 检查SDK版本
+### Check SDK Version
 ```python
-# 查看当前SDK是否包含这些方法
+# Check if the current SDK contains these methods
 import unitree_sdk2py.go2.sport.sport_client as sc
-print(dir(sc.SportClient))  # 列出所有方法
+print(dir(sc.SportClient))  # List all methods
 ```
 
-### 尝试手动调用
+### Try Manual Calls
 ```python
-# 即使方法不存在，也可以尝试直接调用API
-sport_client._call(1021)  # 比心API
-sport_client._call(1031)  # 倒立API
+# Even if the method doesn't exist, you can try calling the API directly
+sport_client._call(1021)  # Heart gesture API
+sport_client._call(1031)  # Handstand API
 ```
 
-## 💡 **关键发现总结**
+## **Key Findings Summary**
 
-1. **遥控器/APP** = 使用完整的C++内部API
-2. **Python SDK** = 只是部分封装，功能不全
-3. **3203错误** = SDK限制，不是硬件限制
-4. **Go2硬件** = 实际支持所有遥控器上的动作
+1. **Remote/App** = Uses the complete internal C++ API
+2. **Python SDK** = Only a partial wrapper, functionality is incomplete
+3. **3203 Error** = SDK limitation, not hardware limitation
+4. **Go2 Hardware** = Actually supports all actions available on the remote controller
 
-## 🚀 **推荐行动**
+## **Recommended Actions**
 
-### 短期方案
-1. 只使用Python SDK已有的方法
-2. 过滤掉不支持的动作
+### Short-term Solution
+1. Only use methods available in the Python SDK
+2. Filter out unsupported actions
 
-### 长期方案
-1. 迁移到C++ SDK
-2. 或等待Python SDK更新
-3. 或自行扩展缺失的API
+### Long-term Solution
+1. Migrate to C++ SDK
+2. Or wait for Python SDK updates
+3. Or extend the missing APIs yourself
 
 ---
 
-**结论：不是Go2不支持比心，是Python SDK没有封装这个功能！** 🎯
+**Conclusion: It's not that Go2 doesn't support heart gesture -- the Python SDK hasn't wrapped this functionality!**

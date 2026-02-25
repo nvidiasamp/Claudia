@@ -1,1 +1,1 @@
-# 硬件测试模块
+# Hardware test module

@@ -1,18 +1,18 @@
 #!/bin/bash
 # scripts/validation/camera/install_camera_validation_deps.sh
 # Generated: 2025-06-27 14:10:00
-# Purpose: 安装前置摄像头验证系统的依赖包
+# Purpose: Install dependencies for the front camera validation system
 
 set -e
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 日志函数
+# Logging functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -29,35 +29,35 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 检查是否为root用户
+# Check if running as root
 check_root() {
     if [ "$EUID" -eq 0 ]; then
-        log_warning "建议使用普通用户运行此脚本"
-        log_warning "系统包将使用sudo安装"
+        log_warning "It is recommended to run this script as a regular user"
+        log_warning "System packages will be installed using sudo"
     fi
 }
 
-# 更新系统包
+# Update system packages
 update_system_packages() {
-    log_info "更新系统包列表..."
-    
+    log_info "Updating system package list..."
+
     if command -v apt-get &> /dev/null; then
         sudo apt-get update
-        log_success "APT包列表更新完成"
+        log_success "APT package list update complete"
     elif command -v yum &> /dev/null; then
         sudo yum update
-        log_success "YUM包列表更新完成"
+        log_success "YUM package list update complete"
     else
-        log_warning "未识别的包管理器，跳过系统更新"
+        log_warning "Unrecognized package manager, skipping system update"
     fi
 }
 
-# 安装系统依赖
+# Install system dependencies
 install_system_deps() {
-    log_info "安装系统依赖包..."
-    
+    log_info "Installing system dependency packages..."
+
     if command -v apt-get &> /dev/null; then
-        # Ubuntu/Debian系统
+        # Ubuntu/Debian systems
         local packages=(
             "python3"
             "python3-pip"
@@ -78,12 +78,12 @@ install_system_deps() {
             "libatlas-base-dev"
             "gfortran"
         )
-        
-        log_info "安装APT包: ${packages[*]}"
+
+        log_info "Installing APT packages: ${packages[*]}"
         sudo apt-get install -y "${packages[@]}"
-        
+
     elif command -v yum &> /dev/null; then
-        # CentOS/RHEL系统
+        # CentOS/RHEL systems
         local packages=(
             "python3"
             "python3-pip"
@@ -97,26 +97,26 @@ install_system_deps() {
             "libtiff-devel"
             "opencv-devel"
         )
-        
-        log_info "安装YUM包: ${packages[*]}"
+
+        log_info "Installing YUM packages: ${packages[*]}"
         sudo yum install -y "${packages[@]}"
-        
+
     else
-        log_error "未识别的Linux发行版，请手动安装依赖"
+        log_error "Unrecognized Linux distribution, please install dependencies manually"
         return 1
     fi
-    
-    log_success "系统依赖安装完成"
+
+    log_success "System dependency installation complete"
 }
 
-# 安装Python包
+# Install Python packages
 install_python_deps() {
-    log_info "安装Python依赖包..."
-    
-    # 升级pip
+    log_info "Installing Python dependency packages..."
+
+    # Upgrade pip
     python3 -m pip install --upgrade pip
-    
-    # 核心依赖包
+
+    # Core dependency packages
     local python_packages=(
         "opencv-python>=4.0.0"
         "numpy>=1.18.0"
@@ -124,118 +124,118 @@ install_python_deps() {
         "matplotlib>=3.0.0"
         "Pillow>=7.0.0"
     )
-    
-    log_info "安装Python包: ${python_packages[*]}"
-    
-    # 使用用户模式安装，避免权限问题
+
+    log_info "Installing Python packages: ${python_packages[*]}"
+
+    # Install in user mode to avoid permission issues
     python3 -m pip install --user "${python_packages[@]}"
-    
-    log_success "Python依赖安装完成"
+
+    log_success "Python dependency installation complete"
 }
 
-# 验证安装
+# Verify installation
 verify_installation() {
-    log_info "验证安装结果..."
-    
-    # 检查Python包
+    log_info "Verifying installation results..."
+
+    # Check Python packages
     local packages_to_verify=("cv2" "numpy" "skimage" "matplotlib" "PIL")
-    
+
     for package in "${packages_to_verify[@]}"; do
         if python3 -c "import $package" &> /dev/null; then
-            log_success "✓ $package 安装成功"
+            log_success "$package installed successfully"
         else
-            log_error "✗ $package 安装失败"
+            log_error "$package installation failed"
         fi
     done
-    
-    # 检查摄像头设备
+
+    # Check camera devices
     if ls /dev/video* &> /dev/null; then
-        log_success "✓ 找到摄像头设备: $(ls /dev/video* | tr '\n' ' ')"
+        log_success "Camera devices found: $(ls /dev/video* | tr '\n' ' ')"
     else
-        log_warning "✗ 未找到摄像头设备"
+        log_warning "No camera devices found"
     fi
-    
-    # 检查用户权限
+
+    # Check user permissions
     if groups | grep -q video; then
-        log_success "✓ 用户在video组中"
+        log_success "User is in the video group"
     else
-        log_warning "✗ 用户不在video组中"
-        log_info "运行以下命令添加video组权限:"
+        log_warning "User is not in the video group"
+        log_info "Run the following command to add video group permissions:"
         log_info "sudo usermod -a -G video $USER"
-        log_info "然后重新登录"
+        log_info "Then log out and log back in"
     fi
-    
-    log_success "安装验证完成"
+
+    log_success "Installation verification complete"
 }
 
-# 安装完成后的配置
+# Post-installation configuration
 post_install_config() {
-    log_info "执行安装后配置..."
-    
-    # 检查是否需要添加用户到video组
+    log_info "Performing post-installation configuration..."
+
+    # Check if user needs to be added to video group
     if ! groups | grep -q video; then
-        log_info "添加用户到video组..."
+        log_info "Adding user to video group..."
         sudo usermod -a -G video "$USER"
-        log_warning "需要重新登录以使组权限生效"
+        log_warning "You need to log out and log back in for group permissions to take effect"
     fi
-    
-    # 创建必要的目录
+
+    # Create necessary directories
     mkdir -p logs/camera_validation
     mkdir -p tmp/downloads
-    
-    log_success "安装后配置完成"
+
+    log_success "Post-installation configuration complete"
 }
 
-# 显示安装完成信息
+# Display installation completion information
 show_completion_info() {
     echo ""
     echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}前置摄像头验证系统依赖安装完成！${NC}"
+    echo -e "${GREEN}Front camera validation system dependency installation complete!${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
-    
-    log_info "下一步操作:"
-    echo "1. 如果添加了video组权限，请重新登录"
-    echo "2. 运行验证脚本:"
+
+    log_info "Next steps:"
+    echo "1. If video group permissions were added, please log out and log back in"
+    echo "2. Run the validation script:"
     echo "   ./scripts/validation/camera/run_front_camera_validation.sh --dry-run"
-    echo "3. 进行实际验证:"
+    echo "3. Perform actual validation:"
     echo "   ./scripts/validation/camera/run_front_camera_validation.sh"
     echo ""
-    
-    log_info "如果遇到问题，请查看:"
+
+    log_info "If you encounter issues, please refer to:"
     echo "- scripts/validation/camera/front_camera_validation/README_front_camera_validation.md"
-    echo "- 日志文件: front_camera_validation.log"
+    echo "- Log file: front_camera_validation.log"
 }
 
-# 主函数
+# Main function
 main() {
     echo -e "${BLUE}================================${NC}"
-    echo -e "${BLUE}前置摄像头验证系统依赖安装${NC}"
+    echo -e "${BLUE}Front Camera Validation System Dependency Installation${NC}"
     echo -e "${BLUE}================================${NC}"
     echo ""
-    
+
     check_root
-    
-    log_info "开始安装依赖..."
-    
-    # 检查是否有网络连接
+
+    log_info "Starting dependency installation..."
+
+    # Check network connectivity
     if ! ping -c 1 google.com &> /dev/null && ! ping -c 1 baidu.com &> /dev/null; then
-        log_error "网络连接失败，无法下载依赖包"
+        log_error "Network connection failed, unable to download dependency packages"
         exit 1
     fi
-    
-    # 执行安装步骤
+
+    # Execute installation steps
     update_system_packages
     install_system_deps
     install_python_deps
     verify_installation
     post_install_config
     show_completion_info
-    
-    log_success "依赖安装脚本执行完成！"
+
+    log_success "Dependency installation script execution complete!"
 }
 
-# 脚本入口
+# Script entry point
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
-fi 
+fi

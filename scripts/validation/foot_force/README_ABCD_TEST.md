@@ -1,66 +1,66 @@
-# Unitree Go2 足端力传感器 ABCD 验证流程
+# Unitree Go2 Foot Force Sensor ABCD Validation Workflow
 
-## 概述
+## Overview
 
-本文档说明如何运行Unitree Go2足端力传感器的完整ABCD验证流程。
+This document explains how to run the complete ABCD validation workflow for the Unitree Go2 foot force sensors.
 
-## 测试阶段
+## Test Phases
 
-### 阶段A: 数据读取框架验证 ✅
-- **目标**: 验证足端力数据读取能力
-- **组件**: `FootForceConfig`, `DataCollector`
-- **测试内容**: 传感器连接、数据采样率、基本数据格式
+### Phase A: Data Reading Framework Validation
+- **Objective**: Validate foot force data reading capability
+- **Components**: `FootForceConfig`, `DataCollector`
+- **Test Content**: Sensor connection, data sampling rate, basic data format
 
-### 阶段B: 静态力分布验证 ✅
-- **目标**: 验证静态条件下的力分布准确性
-- **组件**: `StaticFootForceTester`
-- **测试内容**: 零负载测试、静态站立测试、重量分布分析
+### Phase B: Static Force Distribution Validation
+- **Objective**: Validate force distribution accuracy under static conditions
+- **Components**: `StaticFootForceTester`
+- **Test Content**: Zero-load test, static standing test, weight distribution analysis
 
-### 阶段C: 动态响应测试 🆕
-- **目标**: 验证动态条件下的传感器响应
-- **组件**: `DynamicFootForceTester`
-- **测试内容**: 缓慢行走、正常行走、冲击测试
+### Phase C: Dynamic Response Testing
+- **Objective**: Validate sensor response under dynamic conditions
+- **Components**: `DynamicFootForceTester`
+- **Test Content**: Slow walking, normal walking, impact testing
 
-### 阶段D: 综合可视化和文档 🆕
-- **目标**: 生成综合报告和可视化
-- **组件**: `ComprehensiveFootForceDashboard`
-- **输出**: JSON报告、HTML报告、可视化图表
+### Phase D: Comprehensive Visualization and Documentation
+- **Objective**: Generate comprehensive reports and visualizations
+- **Components**: `ComprehensiveFootForceDashboard`
+- **Output**: JSON report, HTML report, visualization charts
 
-## 运行方式
+## How to Run
 
-### 1. 快速组件测试
+### 1. Quick Component Test
 
-首先运行快速测试验证所有组件是否正常工作：
+First run the quick test to verify all components are working correctly:
 
 ```bash
 cd ~/claudia
 python3 scripts/validation/foot_force/run_quick_abcd_test.py
 ```
 
-**功能**:
-- 测试所有ABCD组件导入
-- 运行模拟数据测试
-- 生成测试报告
-- 不需要连接真实机器人
+**Features**:
+- Tests all ABCD component imports
+- Runs mock data tests
+- Generates test reports
+- Does not require connection to real robot
 
-### 2. 完整ABCD验证流程
+### 2. Full ABCD Validation Workflow
 
-在确认组件测试通过后，运行完整验证：
+After confirming component tests pass, run the full validation:
 
 ```bash
 cd ~/claudia
 python3 scripts/validation/foot_force/run_complete_validation.py
 ```
 
-**功能**:
-- 连接真实Unitree Go2机器人
-- 依次执行ABCD四个阶段
-- 生成完整验证报告
-- 需要机器人网络连接 (192.168.123.161)
+**Features**:
+- Connects to real Unitree Go2 robot
+- Sequentially executes all four ABCD phases
+- Generates complete validation report
+- Requires robot network connection (192.168.123.161)
 
-## 环境要求
+## Environment Requirements
 
-### 系统环境
+### System Environment
 ```bash
 # ROS2 Foxy + CycloneDDS
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
@@ -68,98 +68,98 @@ source /opt/ros/foxy/setup.bash
 source cyclonedx_ws/install/setup.bash
 ```
 
-### Python依赖
+### Python Dependencies
 - numpy
 - matplotlib
-- pandas (可选)
+- pandas (optional)
 - unitree_sdk2py
 
-### 网络连接
-- 机器人IP: 192.168.123.161
-- 网络接口: eth0
+### Network Connection
+- Robot IP: 192.168.123.161
+- Network interface: eth0
 
-## 输出文件
+## Output Files
 
-所有测试结果保存在: `scripts/validation/foot_force/foot_force_validation/output/`
+All test results are saved in: `scripts/validation/foot_force/foot_force_validation/output/`
 
-### 目录结构
+### Directory Structure
 ```
 output/
-├── logs/                           # 测试日志
+├── logs/                           # Test logs
 │   └── complete_validation_*.log
-├── mock_test_report_*.json         # 快速测试报告
-├── final_validation_report_*.json  # 完整验证报告
-├── dynamic_test_results_*.json     # 动态测试结果
-└── comprehensive_report_*.html     # 综合HTML报告
+├── mock_test_report_*.json         # Quick test report
+├── final_validation_report_*.json  # Full validation report
+├── dynamic_test_results_*.json     # Dynamic test results
+└── comprehensive_report_*.html     # Comprehensive HTML report
 ```
 
-## 故障排除
+## Troubleshooting
 
-### 1. 组件导入失败
+### 1. Component Import Failure
 ```bash
-# 检查Python路径
+# Check Python path
 export PYTHONPATH="~/claudia:$PYTHONPATH"
 ```
 
-### 2. 机器人连接失败
+### 2. Robot Connection Failure
 ```bash
-# 检查网络连接
+# Check network connection
 ping 192.168.123.161
 
-# 检查CycloneDDS环境
+# Check CycloneDDS environment
 ros2 topic list
 ```
 
-### 3. 数据收集失败
-- 确认机器人已开机并连接
-- 验证DDS通信正常
-- 检查传感器状态
+### 3. Data Collection Failure
+- Confirm the robot is powered on and connected
+- Verify DDS communication is working
+- Check sensor status
 
-## 测试流程
+## Test Workflow
 
-### 完整验证流程
-1. **预检查**: 网络连接、环境变量
-2. **阶段A**: 数据读取框架验证 (5秒)
-3. **阶段B**: 静态验证测试 (10秒)
-4. **阶段C**: 动态测试套件 (135秒)
-   - 缓慢行走 (60秒)
-   - 正常行走 (45秒)
-   - 冲击测试 (30秒)
-5. **阶段D**: 报告生成和可视化
-6. **后处理**: 清理资源、生成最终报告
+### Full Validation Workflow
+1. **Pre-check**: Network connection, environment variables
+2. **Phase A**: Data reading framework validation (5 seconds)
+3. **Phase B**: Static validation test (10 seconds)
+4. **Phase C**: Dynamic test suite (135 seconds)
+   - Slow walking (60 seconds)
+   - Normal walking (45 seconds)
+   - Impact test (30 seconds)
+5. **Phase D**: Report generation and visualization
+6. **Post-processing**: Resource cleanup, final report generation
 
-### 预期运行时间
-- 快速测试: < 30秒
-- 完整验证: 5-10分钟
+### Expected Run Time
+- Quick test: < 30 seconds
+- Full validation: 5-10 minutes
 
-## 评分标准
+## Scoring Criteria
 
-### 阶段评分
-- **阶段A**: 数据采样率、连接稳定性
-- **阶段B**: 零点准确性、力分布平衡 (静态60%权重)
-- **阶段C**: 步态一致性、动态响应 (动态40%权重)  
-- **阶段D**: 报告生成成功率
+### Phase Scoring
+- **Phase A**: Data sampling rate, connection stability
+- **Phase B**: Zero-point accuracy, force distribution balance (static 60% weight)
+- **Phase C**: Gait consistency, dynamic response (dynamic 40% weight)
+- **Phase D**: Report generation success rate
 
-### 总体评分
-- **A级**: ≥90分 - 优秀
-- **B级**: 80-89分 - 良好
-- **C级**: 70-79分 - 合格
-- **D级**: 60-69分 - 需要改进
-- **F级**: <60分 - 不合格
+### Overall Scoring
+- **Grade A**: >=90 points - Excellent
+- **Grade B**: 80-89 points - Good
+- **Grade C**: 70-79 points - Acceptable
+- **Grade D**: 60-69 points - Needs Improvement
+- **Grade F**: <60 points - Failing
 
-## 重要提醒
+## Important Reminders
 
-⚠️ **安全注意事项**:
-- 动态测试期间确保机器人周围有足够空间
-- 遵循机器人操作安全规范
-- 测试过程中保持人员安全距离
+**Safety Notes**:
+- Ensure sufficient space around the robot during dynamic tests
+- Follow robot operation safety guidelines
+- Maintain safe distance from personnel during testing
 
-📊 **数据处理**:
-- 所有数据自动保存，无需手动备份
-- 报告包含时间戳，便于历史对比
-- 支持多次运行，结果会累积保存
+**Data Processing**:
+- All data is saved automatically, no manual backup needed
+- Reports include timestamps for historical comparison
+- Supports multiple runs, results are saved cumulatively
 
-🔧 **维护建议**:
-- 定期运行快速测试验证系统状态
-- 在重要测试前运行完整验证
-- 保存历史测试数据以进行趋势分析 
+**Maintenance Recommendations**:
+- Regularly run quick tests to verify system status
+- Run full validation before important tests
+- Save historical test data for trend analysis

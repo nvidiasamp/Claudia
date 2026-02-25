@@ -1,154 +1,154 @@
-# 🖥️ SSH环境下LiDAR点云可视化指南
+# LiDAR Point Cloud Visualization Guide for SSH Environments
 
-> **适用场景**: 远程SSH连接，无法直接查看图形界面的环境  
-> **目标**: 查看Unitree Go2 4D LiDAR L1的点云数据  
-> **话题**: `/utlidar/cloud`  
+> **Applicable scenario**: Remote SSH connection where graphical interfaces are not directly accessible
+> **Goal**: View Unitree Go2 4D LiDAR L1 point cloud data
+> **Topic**: `/utlidar/cloud`
 
 ---
 
-## 🚀 **快速开始**
+## Quick Start
 
-### 环境准备
+### Environment Setup
 ```bash
-# 进入项目目录
+# Enter the project directory
 cd ~/claudia
 
-# 加载ROS2环境
+# Load ROS2 environment
 source /opt/ros/foxy/setup.bash
 source cyclonedds_ws/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
-# 验证点云话题可用
+# Verify point cloud topic is available
 ros2 topic list | grep utlidar
 ros2 topic info /utlidar/cloud
 ```
 
 ---
 
-## 🎯 **方案选择**
+## Option Selection
 
-### **方案1: X11转发 (最佳用户体验)**
+### **Option 1: X11 Forwarding (Best User Experience)**
 ```bash
-# 重新连接SSH时启用X11转发
+# Reconnect SSH with X11 forwarding enabled
 ssh -X username@robot_ip
-# 或
-ssh -Y username@robot_ip  # 可信任X11转发
+# Or
+ssh -Y username@robot_ip  # Trusted X11 forwarding
 
-# 运行RViz2查看器
+# Run RViz2 viewer
 ./scripts/hardware_validation/rviz_pointcloud_viewer.sh
 ```
 
-**配置RViz2步骤**:
-1. 添加 `PointCloud2` 显示类型
-2. Topic设置为: `/utlidar/cloud`
-3. Fixed Frame设置为: `utlidar_lidar`
-4. 调整点云大小和颜色方案
+**RViz2 Configuration Steps**:
+1. Add `PointCloud2` display type
+2. Set Topic to: `/utlidar/cloud`
+3. Set Fixed Frame to: `utlidar_lidar`
+4. Adjust point cloud size and color scheme
 
-**优点**: 实时交互，3D操作  
-**缺点**: 需要X11支持，带宽要求高
+**Pros**: Real-time interaction, 3D manipulation
+**Cons**: Requires X11 support, high bandwidth requirements
 
 ---
 
-### **方案2: 生成静态图像 (推荐SSH用户)**
+### **Option 2: Generate Static Images (Recommended for SSH Users)**
 ```bash
-# 生成多视角点云图像
+# Generate multi-view point cloud images
 python3 scripts/hardware_validation/static_pointcloud_viewer.py
 ```
 
-**输出结果**:
-- 📁 `logs/pointcloud_images/` 目录
-- 🖼️ 5张高分辨率PNG图像 
-- 📊 包含统计信息和多视角视图
+**Output**:
+- `logs/pointcloud_images/` directory
+- 5 high-resolution PNG images
+- Includes statistics and multi-view visualizations
 
-**特点**:
-- ✅ 顶视图、侧视图、前视图
-- ✅ 距离分布直方图
-- ✅ 详细统计信息
-- ✅ 300 DPI高清输出
+**Features**:
+- Top view, side view, front view
+- Distance distribution histogram
+- Detailed statistics
+- 300 DPI high-quality output
 
-**优点**: 无需图形界面，文件小，易分享  
-**缺点**: 静态图像，无交互
+**Pros**: No graphical interface needed, small file size, easy to share
+**Cons**: Static images, no interaction
 
 ---
 
-### **方案3: 保存PCD文件 (专业分析)**
+### **Option 3: Save PCD Files (Professional Analysis)**
 ```bash
-# 保存标准PCD格式文件
+# Save standard PCD format files
 python3 scripts/hardware_validation/save_pointcloud_pcd.py
 ```
 
-**输出结果**:
-- 📁 `logs/pointcloud_pcd/` 目录
-- 📄 3个标准PCD格式文件
-- 💾 包含完整点云数据
+**Output**:
+- `logs/pointcloud_pcd/` directory
+- 3 standard PCD format files
+- Contains complete point cloud data
 
-**本地查看工具**:
+**Local Viewing Tools**:
 ```bash
-# CloudCompare (推荐)
-# 下载: https://www.cloudcompare.org/
+# CloudCompare (recommended)
+# Download: https://www.cloudcompare.org/
 
 # PCL Viewer
 pcl_viewer filename.pcd
 
 # MeshLab
-# 下载: https://www.meshlab.net/
+# Download: https://www.meshlab.net/
 
 # Python Open3D
 python3 -c "import open3d as o3d; pcd = o3d.io.read_point_cloud('filename.pcd'); o3d.visualization.draw_geometries([pcd])"
 ```
 
-**优点**: 标准格式，专业工具支持，完整数据  
-**缺点**: 需要下载，本地软件
+**Pros**: Standard format, professional tool support, complete data
+**Cons**: Requires download, local software needed
 
 ---
 
-### **方案4: 实时数据监控**
+### **Option 4: Real-time Data Monitoring**
 ```bash
-# 查看点云话题实时统计
+# View real-time point cloud topic statistics
 ros2 topic hz /utlidar/cloud
 ros2 topic bw /utlidar/cloud
 
-# 查看点云消息结构
+# View point cloud message structure
 ros2 topic echo --no-arr /utlidar/cloud | head -20
 ```
 
-**输出信息**:
-- 发布频率 (Hz)
-- 带宽使用 (MB/s)  
-- 消息结构和字段
-- Frame ID信息
+**Output Information**:
+- Publish frequency (Hz)
+- Bandwidth usage (MB/s)
+- Message structure and fields
+- Frame ID information
 
 ---
 
-## 🔧 **故障排除**
+## Troubleshooting
 
-### **无法连接到话题**
+### **Cannot connect to topic**
 ```bash
-# 检查ROS2环境
-echo $RMW_IMPLEMENTATION  # 应显示: rmw_cyclonedds_cpp
+# Check ROS2 environment
+echo $RMW_IMPLEMENTATION  # Should display: rmw_cyclonedds_cpp
 ros2 daemon stop && ros2 daemon start
 
-# 检查话题状态
+# Check topic status
 ros2 topic list | grep -i lidar
 ros2 node list | grep -i lidar
 ```
 
-### **Python脚本错误**
+### **Python script errors**
 ```bash
-# 检查依赖
-python3 -c "import rclpy, numpy, matplotlib; print('✅ 依赖正常')"
+# Check dependencies
+python3 -c "import rclpy, numpy, matplotlib; print('Dependencies OK')"
 
-# 重新安装必要包
+# Reinstall necessary packages
 pip3 install --upgrade numpy matplotlib open3d
 ```
 
-### **X11转发失败**
+### **X11 forwarding failure**
 ```bash
-# 测试X11
+# Test X11
 echo $DISPLAY
-xeyes  # 测试程序
+xeyes  # Test program
 
-# 本地SSH配置 (~/.ssh/config)
+# Local SSH configuration (~/.ssh/config)
 Host robot
     ForwardX11 yes
     ForwardX11Trusted yes
@@ -156,60 +156,60 @@ Host robot
 
 ---
 
-## 📊 **性能基准**
+## Performance Benchmarks
 
-| 方案 | 文件大小 | 生成时间 | 带宽需求 | 适用场景 |
-|------|----------|----------|----------|----------|
-| X11转发 | N/A | 实时 | 高 (>1MB/s) | 实时调试 |
-| 静态图像 | ~2MB/张 | 10-30秒 | 低 | 报告展示 |
-| PCD文件 | ~1-5MB/个 | 5-15秒 | 低 | 专业分析 |
-| 数据监控 | N/A | 实时 | 极低 | 系统诊断 |
-
----
-
-## 🎯 **最佳实践**
-
-### **开发阶段**
-1. 使用方案4监控数据流状态
-2. 使用方案2生成静态图像验证
-3. 必要时使用方案3保存关键数据
-
-### **调试阶段**  
-1. 优先尝试方案1 (X11转发)
-2. 备用方案2生成多角度视图
-3. 使用方案3保存问题数据
-
-### **部署阶段**
-1. 使用方案4进行持续监控
-2. 定期使用方案2生成报告图像
-3. 关键节点使用方案3保存数据
+| Option | File Size | Generation Time | Bandwidth Required | Use Case |
+|--------|-----------|-----------------|-------------------|----------|
+| X11 Forwarding | N/A | Real-time | High (>1MB/s) | Real-time debugging |
+| Static Images | ~2MB/image | 10-30s | Low | Reports/presentations |
+| PCD Files | ~1-5MB/file | 5-15s | Low | Professional analysis |
+| Data Monitoring | N/A | Real-time | Very low | System diagnostics |
 
 ---
 
-## 📁 **输出文件组织**
+## Best Practices
+
+### **Development Phase**
+1. Use Option 4 to monitor data stream status
+2. Use Option 2 to generate static images for verification
+3. Use Option 3 to save critical data when needed
+
+### **Debugging Phase**
+1. Try Option 1 first (X11 forwarding)
+2. Fall back to Option 2 for multi-angle views
+3. Use Option 3 to save problematic data
+
+### **Deployment Phase**
+1. Use Option 4 for continuous monitoring
+2. Periodically use Option 2 to generate report images
+3. Use Option 3 to save data at critical checkpoints
+
+---
+
+## Output File Organization
 
 ```
 logs/
-├── pointcloud_images/          # 静态图像
+├── pointcloud_images/          # Static images
 │   ├── pointcloud_frame_001_20250627_101530.png
 │   ├── pointcloud_frame_002_20250627_101535.png
 │   └── ...
-├── pointcloud_pcd/            # PCD文件
+├── pointcloud_pcd/            # PCD files
 │   ├── unitree_go2_lidar_20250627_101530_001.pcd
 │   ├── unitree_go2_lidar_20250627_101535_002.pcd
 │   └── ...
-└── lidar_l1_validation_*.json # 验证报告
+└── lidar_l1_validation_*.json # Validation reports
 ```
 
 ---
 
-## 📞 **支持信息**
+## Support Information
 
-- **项目文档**: `docs/`
-- **验证报告**: `logs/lidar_l1_validation_summary.md`
-- **技术支持**: 参考TaskMaster任务4.1详情
+- **Project documentation**: `docs/`
+- **Validation report**: `logs/lidar_l1_validation_summary.md`
+- **Technical support**: See TaskMaster task 4.1 details
 
-**脚本位置**:
+**Script locations**:
 - `scripts/hardware_validation/rviz_pointcloud_viewer.sh`
-- `scripts/hardware_validation/static_pointcloud_viewer.py`  
-- `scripts/hardware_validation/save_pointcloud_pcd.py` 
+- `scripts/hardware_validation/static_pointcloud_viewer.py`
+- `scripts/hardware_validation/save_pointcloud_pcd.py`

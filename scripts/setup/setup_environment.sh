@@ -1,70 +1,70 @@
 #!/bin/bash
-# Claudia机器人环境设置脚本
+# Claudia Robot Environment Setup Script
 # Generated: 2025-06-26 18:40:00
-# Purpose: 自动设置Claudia机器人项目的运行环境
+# Purpose: Automatically set up the runtime environment for the Claudia robot project
 
 set -e
 
-echo "🔧 设置Claudia机器人环境..."
+echo "Setting up Claudia robot environment..."
 
-# 检查项目根目录
+# Check project root directory
 if [ ! -f "pyproject.toml" ]; then
-    echo "❌ 请在项目根目录运行此脚本"
-    echo "📍 当前目录: $(pwd)"
-    echo "💡 请切换到包含pyproject.toml的目录"
+    echo "Please run this script from the project root directory"
+    echo "Current directory: $(pwd)"
+    echo "Please switch to the directory containing pyproject.toml"
     exit 1
 fi
 
-echo "📍 项目根目录: $(pwd)"
+echo "Project root directory: $(pwd)"
 
-# 设置ROS2环境
+# Set up ROS2 environment
 if [ -f "/opt/ros/foxy/setup.bash" ]; then
     source /opt/ros/foxy/setup.bash
-    echo "✅ ROS2 Foxy环境已加载"
+    echo "ROS2 Foxy environment loaded"
 else
-    echo "⚠️ ROS2 Foxy未找到，请确保已正确安装"
+    echo "ROS2 Foxy not found, please ensure it is correctly installed"
 fi
 
-# 设置CycloneDDS工作空间
+# Set up CycloneDDS workspace
 if [ -f "cyclonedds_ws/install/setup.bash" ]; then
     source cyclonedds_ws/install/setup.bash
-    echo "✅ CycloneDDS工作空间已加载"
+    echo "CycloneDDS workspace loaded"
 else
-    echo "⚠️ CycloneDDS工作空间未找到 (cyclonedds_ws/install/setup.bash)"
-    echo "💡 如果首次运行，这是正常的，请先构建工作空间"
+    echo "CycloneDDS workspace not found (cyclonedds_ws/install/setup.bash)"
+    echo "If running for the first time, this is normal. Please build the workspace first"
 fi
 
-# 设置RMW实现 - 这是关键！
+# Set RMW implementation - this is critical!
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-echo "✅ RMW_IMPLEMENTATION设置为: $RMW_IMPLEMENTATION"
+echo "RMW_IMPLEMENTATION set to: $RMW_IMPLEMENTATION"
 
-# 设置Python路径
+# Set Python path
 if [ -d "unitree_sdk2_python" ]; then
     export PYTHONPATH=$PYTHONPATH:$(pwd)/unitree_sdk2_python
-    echo "✅ Python路径已设置: $(pwd)/unitree_sdk2_python"
+    echo "Python path set: $(pwd)/unitree_sdk2_python"
 else
-    echo "⚠️ unitree_sdk2_python目录未找到"
+    echo "unitree_sdk2_python directory not found"
 fi
 
-# 验证关键环境变量
+# Verify key environment variables
 echo ""
-echo "🔍 环境变量验证:"
-echo "   ROS_DISTRO: ${ROS_DISTRO:-未设置}"
-echo "   RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-未设置}"
-echo "   PYTHONPATH: ${PYTHONPATH:-未设置}"
+echo "Environment variable verification:"
+echo "   ROS_DISTRO: ${ROS_DISTRO:-not set}"
+echo "   RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-not set}"
+echo "   PYTHONPATH: ${PYTHONPATH:-not set}"
 
-# 检查关键文件
+# Check key files
 echo ""
-echo "📁 关键文件检查:"
-[ -f "cyclonedds_ws/install/setup.bash" ] && echo "   ✅ CycloneDDS setup.bash" || echo "   ❌ CycloneDDS setup.bash"
-[ -d "unitree_sdk2_python" ] && echo "   ✅ Unitree SDK2 Python" || echo "   ❌ Unitree SDK2 Python"
-[ -d "test/hardware" ] && echo "   ✅ 硬件测试目录" || echo "   ❌ 硬件测试目录"
+echo "Key file check:"
+[ -f "cyclonedds_ws/install/setup.bash" ] && echo "   [OK] CycloneDDS setup.bash" || echo "   [MISSING] CycloneDDS setup.bash"
+[ -d "unitree_sdk2_python" ] && echo "   [OK] Unitree SDK2 Python" || echo "   [MISSING] Unitree SDK2 Python"
+[ -d "test/hardware" ] && echo "   [OK] Hardware test directory" || echo "   [MISSING] Hardware test directory"
 
 echo ""
-echo "🎉 环境设置完成！"
+echo "Environment setup complete!"
 echo ""
-echo "📋 接下来可以运行："
-echo "   python3 test/hardware/test_unitree_connection.py           # 基础连接测试"
-echo "   python3 test/hardware/test_basic_control_commands.py       # 基础控制命令测试"
-echo "   python3 test/hardware/test_communication_performance.py    # 通信性能测试"
-echo "   python3 test/run_tests.py --type hardware                  # 运行所有硬件测试" 
+echo "You can now run:"
+echo "   python3 test/hardware/test_unitree_connection.py           # Basic connection test"
+echo "   python3 test/hardware/test_basic_control_commands.py       # Basic control command test"
+echo "   python3 test/hardware/test_communication_performance.py    # Communication performance test"
+echo "   python3 test/run_tests.py --type hardware                  # Run all hardware tests"

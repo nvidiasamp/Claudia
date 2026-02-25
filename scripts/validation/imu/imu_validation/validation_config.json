@@ -1,11 +1,11 @@
 {
   "meta": {
     "version": "1.0.0",
-    "description": "Unitree Go2 IMU综合验证配置",
+    "description": "Unitree Go2 IMU comprehensive validation configuration",
     "created": "2025-01-27",
     "author": "Claudia Robot Project"
   },
-  
+
   "imu_config": {
     "sampling_rate_hz": 100,
     "test_duration_seconds": 30,
@@ -13,7 +13,7 @@
     "network_interface": "eth0",
     "data_buffer_size": 1000
   },
-  
+
   "validation_sequence": [
     "imu_initialization",
     "data_stream_verification",
@@ -23,7 +23,7 @@
     "visualization_test",
     "report_generation"
   ],
-  
+
   "test_parameters": {
   "static_test": {
       "duration_seconds": 60,
@@ -37,7 +37,7 @@
       "duration_seconds": 120,
       "response_tests": [
         "pitch_test",
-        "roll_test", 
+        "roll_test",
         "yaw_test",
         "translation_test"
       ],
@@ -50,7 +50,7 @@
       "temperature_analysis": true
     }
   },
-  
+
   "quality_thresholds": {
     "data_rate": {
       "expected_hz": 100,
@@ -68,7 +68,7 @@
       "angular_velocity_error_max_percent": 5
     }
   },
-  
+
   "visualization": {
     "real_time_plots": true,
     "plot_update_interval_ms": 100,
@@ -76,7 +76,7 @@
     "enable_3d_orientation": true,
     "save_plots": true
   },
-  
+
   "output": {
     "log_level": "INFO",
     "save_raw_data": true,

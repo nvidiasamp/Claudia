@@ -1,5 +1,5 @@
 #!/bin/bash
-# 任务2
+# Task 2
 # Generated: 2025-06-26
 # Purpose: Install and Verify Core Unitree SDKs (unitree_sdk2, unitree_ros2)
 # Platform: aarch64 Ubuntu 20.04.5 LTS

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Go2 内置麦克风 SSH 録音テスト (Phase 0)
-SSH 経由で Go2 の arecord でマイクデバイスを探索し、録音・音質分析を行う
+Go2 Built-in Microphone SSH Recording Test (Phase 0)
+Explores mic devices via arecord over SSH to Go2, records audio, and analyzes quality
 
-使用方法:
+Usage:
   python3 scripts/validation/audio/go2_mic_ssh_test.py
   python3 scripts/validation/audio/go2_mic_ssh_test.py --continuous
 
@@ -45,7 +45,7 @@ OUTPUT_DIR = Path(__file__).parent / "output"
 # ---------------------------------------------------------------------------
 
 def run_ssh_command(command, timeout=15):
-    """SSH 経由でコマンドを実行し stdout/stderr を返す"""
+    """Execute a command via SSH and return stdout/stderr"""
     cmd = ["ssh"] + SSH_OPTS + [GO2_HOST, command]
     try:
         result = subprocess.run(
@@ -59,40 +59,40 @@ def run_ssh_command(command, timeout=15):
 
 
 def test_ssh_connection():
-    """SSH 接続テスト (BatchMode=yes で鍵認証のみ)"""
-    print("\n[1/4] SSH 接続テスト")
+    """SSH connection test (BatchMode=yes, key authentication only)"""
+    print("\n[1/4] SSH Connection Test")
     print("-" * 50)
 
     result = run_ssh_command("echo OK", timeout=10)
 
     if result is None:
-        print("[FAIL] SSH 接続タイムアウト")
+        print("[FAIL] SSH connection timed out")
         _print_ssh_fix()
         return False
 
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", errors="replace").strip()
-        print("[FAIL] SSH 接続失敗: %s" % stderr)
+        print("[FAIL] SSH connection failed: %s" % stderr)
         _print_ssh_fix()
         return False
 
     stdout = result.stdout.decode("utf-8", errors="replace").strip()
     if stdout == "OK":
-        print("[OK] SSH 接続成功 (%s)" % GO2_HOST)
+        print("[OK] SSH connection successful (%s)" % GO2_HOST)
         return True
 
-    print("[FAIL] SSH 応答異常: %s" % stdout)
+    print("[FAIL] SSH response abnormal: %s" % stdout)
     _print_ssh_fix()
     return False
 
 
 def _print_ssh_fix():
-    """SSH 修復コマンドを表示"""
+    """Display SSH fix commands"""
     print("")
-    print("SSH 鍵認証が設定されていません。以下を実行してください:")
+    print("SSH key authentication is not configured. Please run:")
     print("  ssh-copy-id %s" % GO2_HOST)
     print("")
-    print("接続確認:")
+    print("Verify connection:")
     print("  ssh %s 'echo OK'" % GO2_HOST)
 
 
@@ -101,22 +101,22 @@ def _print_ssh_fix():
 # ---------------------------------------------------------------------------
 
 def detect_recording_devices():
-    """arecord -l の出力を解析して録音デバイス一覧を返す
+    """Parse arecord -l output and return a list of recording devices
 
-    locale に依存しないよう、 'card N:' と 'device N:' のパターンで
-    正規表現マッチする。
+    Uses regex matching on 'card N:' and 'device N:' patterns
+    to avoid locale dependency.
     """
-    print("\n[2/4] 録音デバイス探索")
+    print("\n[2/4] Recording Device Discovery")
     print("-" * 50)
 
     result = run_ssh_command("arecord -l", timeout=10)
     if result is None:
-        print("[FAIL] arecord -l タイムアウト")
+        print("[FAIL] arecord -l timed out")
         return []
 
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", errors="replace").strip()
-        print("[FAIL] arecord -l 失敗: %s" % stderr)
+        print("[FAIL] arecord -l failed: %s" % stderr)
         return []
 
     output = result.stdout.decode("utf-8", errors="replace")
@@ -146,11 +146,11 @@ def detect_recording_devices():
             })
 
     if devices:
-        print("\n[OK] 検出されたデバイス: %d 件" % len(devices))
+        print("\n[OK] Detected devices: %d" % len(devices))
         for dev in devices:
             print("  %s - %s" % (dev["hw_id"], dev["description"]))
     else:
-        print("[FAIL] 録音デバイスが見つかりません")
+        print("[FAIL] No recording devices found")
 
     return devices
 
@@ -160,7 +160,7 @@ def detect_recording_devices():
 # ---------------------------------------------------------------------------
 
 def record_from_device(hw_id, duration, label=""):
-    """SSH 経由で指定デバイスから PCM 録音し、WAV として保存して返す
+    """Record PCM audio from a specified device via SSH and save as WAV
 
     Returns:
         tuple: (wav_path, pcm_data_bytes) or (None, None) on failure
@@ -188,19 +188,19 @@ def record_from_device(hw_id, duration, label=""):
             timeout=duration + 15,  # extra slack for SSH overhead
         )
     except subprocess.TimeoutExpired:
-        print("  [FAIL] 録音タイムアウト (%s)" % hw_id)
+        print("  [FAIL] Recording timed out (%s)" % hw_id)
         return None, None
 
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", errors="replace").strip()
         # arecord writes progress to stderr, only fail on empty stdout
         if not result.stdout:
-            print("  [FAIL] arecord 失敗 (%s): %s" % (hw_id, stderr))
+            print("  [FAIL] arecord failed (%s): %s" % (hw_id, stderr))
             return None, None
 
     pcm_data = result.stdout
     if len(pcm_data) == 0:
-        print("  [FAIL] PCM データが空です (%s)" % hw_id)
+        print("  [FAIL] PCM data is empty (%s)" % hw_id)
         return None, None
 
     expected_bytes = SAMPLE_RATE * CHANNELS * SAMPLE_WIDTH * duration
@@ -224,7 +224,7 @@ def record_from_device(hw_id, duration, label=""):
 # ---------------------------------------------------------------------------
 
 def analyze_pcm(pcm_data):
-    """PCM S16_LE データの振幅・RMS・SNR を計算する (numpy なし)
+    """Calculate amplitude, RMS, and SNR of PCM S16_LE data (without numpy)
 
     Returns:
         dict with peak_amplitude, rms_amplitude, snr_estimate_db, num_samples
@@ -281,8 +281,8 @@ def analyze_pcm(pcm_data):
 # ---------------------------------------------------------------------------
 
 def test_devices(devices, duration=RECORD_SECONDS):
-    """各デバイスで録音・分析し、結果一覧を返す"""
-    print("\n[3/4] デバイス録音テスト (%ds)" % duration)
+    """Record and analyze from each device, return results list"""
+    print("\n[3/4] Device Recording Test (%ds)" % duration)
     print("-" * 50)
 
     results = []
@@ -328,15 +328,15 @@ def test_devices(devices, duration=RECORD_SECONDS):
 # ---------------------------------------------------------------------------
 
 def test_continuous_stream(hw_id, duration=CONTINUOUS_SECONDS):
-    """長時間連続ストリーミングテスト"""
-    print("\n[Continuous] %ds 連続ストリームテスト (%s)" % (duration, hw_id))
+    """Long-duration continuous streaming test"""
+    print("\n[Continuous] %ds continuous stream test (%s)" % (duration, hw_id))
     print("-" * 50)
 
     wav_path, pcm_data = record_from_device(
         hw_id, duration, label="continuous"
     )
     if pcm_data is None:
-        print("[FAIL] 連続ストリーム失敗")
+        print("[FAIL] Continuous stream failed")
         return False
 
     analysis = analyze_pcm(pcm_data)
@@ -377,12 +377,12 @@ def test_continuous_stream(hw_id, duration=CONTINUOUS_SECONDS):
 # ---------------------------------------------------------------------------
 
 def measure_ssh_audio_latency(hw_id, iterations=5):
-    """SSH 経由録音の遅延を測定する (コマンド発行 → 最初のバイト受信)
+    """Measure SSH recording latency (command issued -> first byte received)
 
-    Popen で SSH arecord を起動し、最初の PCM チャンクが届くまでの時間を計測。
-    iterations 回繰り返して平均・最小・最大を報告。
+    Starts SSH arecord via Popen and measures time until first PCM chunk arrives.
+    Repeats for the given number of iterations and reports average/min/max.
     """
-    print("\n[Latency] SSH 録音遅延測定 (%s, %d 回)" % (hw_id, iterations))
+    print("\n[Latency] SSH recording latency measurement (%s, %d iterations)" % (hw_id, iterations))
     print("-" * 50)
 
     arecord_cmd = (
@@ -424,7 +424,7 @@ def measure_ssh_audio_latency(hw_id, iterations=5):
             print("  Run %d: error - %s" % (i + 1, e))
 
     if not latencies:
-        print("\n[FAIL] 遅延測定失敗")
+        print("\n[FAIL] Latency measurement failed")
         return None
 
     avg_ms = sum(latencies) / len(latencies)
@@ -451,12 +451,12 @@ def measure_ssh_audio_latency(hw_id, iterations=5):
 # ---------------------------------------------------------------------------
 
 def print_report(results, continuous_result=None):
-    """テスト結果サマリーを表示"""
-    print("\n[4/4] テスト結果サマリー")
+    """Display test results summary"""
+    print("\n[4/4] Test Results Summary")
     print("=" * 60)
 
     if not results:
-        print("[FAIL] テスト結果がありません")
+        print("[FAIL] No test results available")
         return False
 
     pass_count = sum(1 for r in results if r["status"] == "PASS")
@@ -503,18 +503,18 @@ def print_report(results, continuous_result=None):
     print("")
     if overall:
         print("=" * 60)
-        print("OVERALL: PASS - Go2 マイク SSH 経由録音可能")
+        print("OVERALL: PASS - Go2 microphone recording via SSH is working")
         print("=" * 60)
     else:
         print("=" * 60)
-        print("OVERALL: FAIL - 録音可能なデバイスがありません")
+        print("OVERALL: FAIL - No devices capable of recording found")
         print("=" * 60)
         print("")
-        print("トラブルシューティング:")
-        print("  1. Go2 が起動しているか確認")
-        print("  2. SSH 接続: ssh %s" % GO2_HOST)
-        print("  3. Go2 上で arecord -l を手動実行")
-        print("  4. マイクが物理的に有効か確認")
+        print("Troubleshooting:")
+        print("  1. Verify Go2 is powered on")
+        print("  2. SSH connection: ssh %s" % GO2_HOST)
+        print("  3. Run arecord -l manually on Go2")
+        print("  4. Verify microphone is physically enabled")
 
     return overall
 
@@ -524,35 +524,35 @@ def print_report(results, continuous_result=None):
 # ---------------------------------------------------------------------------
 
 def main():
-    """メイン実行"""
+    """Main execution"""
     parser = argparse.ArgumentParser(
-        description="Go2 内置マイク SSH 録音テスト (Phase 0)"
+        description="Go2 Built-in Microphone SSH Recording Test (Phase 0)"
     )
     parser.add_argument(
         "--continuous",
         action="store_true",
-        help="ベストデバイスで %ds 連続ストリームテストも実行" % CONTINUOUS_SECONDS,
+        help="Also run %ds continuous stream test on best device" % CONTINUOUS_SECONDS,
     )
     parser.add_argument(
         "--device",
         type=str,
         default=None,
-        help="特定デバイスのみテスト (例: hw:0,0)",
+        help="Test a specific device only (e.g., hw:0,0)",
     )
     parser.add_argument(
         "--duration",
         type=int,
         default=RECORD_SECONDS,
-        help="録音時間 (秒、デフォルト: %d)" % RECORD_SECONDS,
+        help="Recording duration in seconds (default: %d)" % RECORD_SECONDS,
     )
     parser.add_argument(
         "--latency",
         action="store_true",
-        help="ベストデバイスで SSH 録音遅延を測定 (5 回)",
+        help="Measure SSH recording latency on best device (5 iterations)",
     )
     args = parser.parse_args()
 
-    print("Go2 内置マイク SSH 録音テスト (Phase 0)")
+    print("Go2 Built-in Microphone SSH Recording Test (Phase 0)")
     print("=" * 60)
     print("Time: %s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     print("Host: %s" % GO2_HOST)
@@ -572,11 +572,11 @@ def main():
             "hw_id": args.device,
             "description": "user-specified",
         }]
-        print("\n[2/4] デバイス指定: %s" % args.device)
+        print("\n[2/4] Device specified: %s" % args.device)
     else:
         devices = detect_recording_devices()
         if not devices:
-            print("\n[FAIL] デバイスが検出されませんでした")
+            print("\n[FAIL] No devices detected")
             sys.exit(1)
 
     # Step 3: Record and analyze
@@ -592,7 +592,7 @@ def main():
                 best["hw_id"], duration=CONTINUOUS_SECONDS
             )
         else:
-            print("\n[SKIP] 連続テスト: PASS デバイスなし")
+            print("\n[SKIP] Continuous test: no PASS devices")
             continuous_result = False
 
     # Step 3.6: Latency measurement (if requested)
@@ -603,7 +603,7 @@ def main():
             best = max(passed_devices, key=lambda r: r.get("peak_amplitude", 0))
             latency_result = measure_ssh_audio_latency(best["hw_id"])
         else:
-            print("\n[SKIP] 遅延測定: PASS デバイスなし")
+            print("\n[SKIP] Latency measurement: no PASS devices")
 
     # Step 4: Report
     overall = print_report(results, continuous_result)
@@ -620,10 +620,10 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\nユーザーにより中断されました")
+        print("\n\nInterrupted by user")
         sys.exit(1)
     except Exception as e:
-        print("\n[ERROR] テスト中にエラーが発生: %s" % e)
+        print("\n[ERROR] An error occurred during testing: %s" % e)
         import traceback
         traceback.print_exc()
         sys.exit(1)

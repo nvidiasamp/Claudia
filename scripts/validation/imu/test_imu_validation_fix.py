@@ -1,33 +1,33 @@
 #!/usr/bin/env python3
 # scripts/validation/imu/test_imu_validation_fix.py
 # Generated: 2025-06-27 12:15:30 CST
-# Purpose: 测试IMU验证修复，检查方法缺失问题
+# Purpose: Test IMU validation fixes and check for missing methods
 
 import sys
 import os
 from pathlib import Path
 import logging
 
-# 添加项目根目录到Python路径
+# Add project root to Python path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(Path(__file__).parent / "imu_validation"))
 
 def test_method_availability():
-    """测试关键方法是否可用"""
-    print("🔍 测试IMU验证方法可用性...")
-    
+    """Test whether key methods are available"""
+    print("Testing IMU validation method availability...")
+
     try:
-        # 测试导入
+        # Test imports
         from imu_validation.static_tester import IMUStaticTester
-        from imu_validation.dynamic_tester import IMUDynamicTester  
+        from imu_validation.dynamic_tester import IMUDynamicTester
         from imu_validation.calibration_analyzer import IMUCalibrationAnalyzer
         from imu_validation.data_collector import IMUDataCollector
         from imu_validation.visualizer import IMUVisualizer
         from imu_validation.imu_config import IMUConfig
-        print("✅ 所有模块导入成功")
-        
-        # 检查方法存在性
+        print("All modules imported successfully")
+
+        # Check method existence
         methods_to_check = [
             (IMUStaticTester, 'run_static_stability_test'),
             (IMUDynamicTester, 'run_dynamic_response_test'),
@@ -39,73 +39,73 @@ def test_method_availability():
             (IMUVisualizer, 'save_current_plots'),
             (IMUVisualizer, 'stop_visualization'),
         ]
-        
+
         missing_methods = []
-        
+
         for cls, method_name in methods_to_check:
             if hasattr(cls, method_name):
-                print(f"✅ {cls.__name__}.{method_name} - 存在")
+                print(f"  {cls.__name__}.{method_name} - exists")
             else:
-                print(f"❌ {cls.__name__}.{method_name} - 缺失")
+                print(f"  {cls.__name__}.{method_name} - missing")
                 missing_methods.append(f"{cls.__name__}.{method_name}")
-        
+
         if missing_methods:
-            print(f"\n⚠️ 发现 {len(missing_methods)} 个缺失方法:")
+            print(f"\nFound {len(missing_methods)} missing method(s):")
             for method in missing_methods:
                 print(f"  - {method}")
             return False
         else:
-            print("\n🎉 所有必需方法都已实现!")
+            print("\nAll required methods have been implemented!")
             return True
-            
+
     except Exception as e:
-        print(f"❌ 导入测试失败: {e}")
+        print(f"Import test failed: {e}")
         return False
 
 def test_configuration_loading():
-    """测试配置加载"""
-    print("\n🔧 测试配置加载...")
-    
+    """Test configuration loading"""
+    print("\nTesting configuration loading...")
+
     try:
         from imu_validation.main_validation_script import IMUValidationSuite
-        
-        # 测试默认配置
+
+        # Test default configuration
         suite = IMUValidationSuite()
-        print("✅ 默认配置加载成功")
-        
-        # 检查重要配置项
+        print("Default configuration loaded successfully")
+
+        # Check important configuration items
         required_config_keys = [
             'test_parameters',
-            'quality_thresholds', 
+            'quality_thresholds',
             'imu_config',
             'visualization_config'
         ]
-        
+
         missing_configs = []
         for key in required_config_keys:
             if key in suite.config:
-                print(f"✅ 配置项 {key} - 存在")
+                print(f"  Configuration item {key} - exists")
             else:
-                print(f"❌ 配置项 {key} - 缺失")
+                print(f"  Configuration item {key} - missing")
                 missing_configs.append(key)
-        
+
         if missing_configs:
-            print(f"\n⚠️ 缺失配置项: {missing_configs}")
+            print(f"\nMissing configuration items: {missing_configs}")
             return False
         else:
-            print("\n🎉 所有配置项完整!")
+            print("\nAll configuration items are complete!")
             return True
-            
+
     except Exception as e:
-        print(f"❌ 配置加载测试失败: {e}")
+        print(f"Configuration loading test failed: {e}")
         return False
 
 def test_mock_validation():
-    """测试模拟验证流程"""
-    print("\n🧪 测试模拟验证流程...")
-    
+    """Test simulated validation process"""
+    print("\nTesting simulated validation process...")
+
     try:
-        # 创建模拟配置
+        # Create simulated configuration
         mock_config = {
             'test_parameters': {
                 'static_test': {'duration_seconds': 5},
@@ -124,111 +124,111 @@ def test_mock_validation():
                 'update_rate_hz': 10
             }
         }
-        
-        # 验证配置结构
+
+        # Validate configuration structure
         if all(key in mock_config for key in ['test_parameters', 'quality_thresholds', 'imu_config']):
-            print("✅ 模拟配置结构正确")
+            print("Simulated configuration structure is correct")
         else:
-            print("❌ 模拟配置结构不完整")
+            print("Simulated configuration structure is incomplete")
             return False
-        
-        # 测试类实例化（不连接硬件）
+
+        # Test class instantiation (without connecting to hardware)
         from imu_validation.data_collector import IMUDataCollector
-        
+
         collector = IMUDataCollector(mock_config)
-        print("✅ 数据采集器实例化成功")
-        
-        # 测试基本方法调用
+        print("Data collector instantiated successfully")
+
+        # Test basic method calls
         stats = collector.get_real_time_metrics()
         if isinstance(stats, dict):
-            print("✅ 实时指标获取成功")
+            print("Real-time metrics retrieval successful")
         else:
-            print("❌ 实时指标获取失败")
+            print("Real-time metrics retrieval failed")
             return False
-        
-        print("\n🎉 模拟验证流程测试通过!")
+
+        print("\nSimulated validation process test passed!")
         return True
-        
+
     except Exception as e:
-        print(f"❌ 模拟验证测试失败: {e}")
+        print(f"Simulated validation test failed: {e}")
         return False
 
 def print_usage_guide():
-    """打印使用指导"""
+    """Print usage guide"""
     print("\n" + "="*60)
-    print("📋 IMU验证操作指导")
+    print("IMU Validation Operation Guide")
     print("="*60)
-    
-    print("\n🔧 测试目的说明:")
-    print("1. 静态稳定性测试 (Static Stability):")
-    print("   • 用途: 验证IMU在静止时的精度和稳定性")
-    print("   • 操作: 保持机器人完全静止60秒 (不需要移动)")
-    print("   • 检测: 重力精度、传感器噪声、温度漂移")
-    
-    print("\n2. 动态响应测试 (Dynamic Response):")
-    print("   • 用途: 验证IMU对运动的响应速度和准确性")  
-    print("   • 操作: 轻柔地移动机器人进行俯仰、横滚、偏航运动")
-    print("   • 检测: 响应时间、跟踪精度、动态范围")
-    
-    print("\n3. 校准质量测试 (Calibration Quality):")
-    print("   • 用途: 验证工厂校准状态和多轴耦合")
-    print("   • 操作: 将机器人放置在6个标准姿态:")
-    print("     - 正常站立")
-    print("     - 左侧倾斜90度") 
-    print("     - 右侧倾斜90度")
-    print("     - 前倾90度") 
-    print("     - 后倾90度")
-    print("     - 倒置180度")
-    print("   • 检测: 比例因子、交叉轴耦合、校准质量")
-    
-    print("\n🚀 运行修复后的验证:")
+
+    print("\nTest purpose descriptions:")
+    print("1. Static Stability Test:")
+    print("   - Purpose: Verify IMU accuracy and stability at rest")
+    print("   - Operation: Keep the robot completely still for 60 seconds (no movement needed)")
+    print("   - Checks: Gravity accuracy, sensor noise, temperature drift")
+
+    print("\n2. Dynamic Response Test:")
+    print("   - Purpose: Verify IMU response speed and accuracy to motion")
+    print("   - Operation: Gently move the robot for pitch, roll, and yaw movements")
+    print("   - Checks: Response time, tracking accuracy, dynamic range")
+
+    print("\n3. Calibration Quality Test:")
+    print("   - Purpose: Verify factory calibration status and multi-axis coupling")
+    print("   - Operation: Place the robot in 6 standard orientations:")
+    print("     - Normal standing")
+    print("     - Tilted left 90 degrees")
+    print("     - Tilted right 90 degrees")
+    print("     - Tilted forward 90 degrees")
+    print("     - Tilted backward 90 degrees")
+    print("     - Inverted 180 degrees")
+    print("   - Checks: Scale factor, cross-axis coupling, calibration quality")
+
+    print("\nRunning the fixed validation:")
     print("cd scripts/validation/imu/imu_validation")
     print("python3 main_validation_script.py")
-    
-    print("\n⚠️ 注意事项:")
-    print("• 确保机器人已正确连接和初始化")
-    print("• 动态测试时请缓慢移动，避免剧烈振动")
-    print("• 校准测试需要足够的操作空间")
-    print("• 每个姿态保持10-15秒稳定")
+
+    print("\nNotes:")
+    print("- Make sure the robot is properly connected and initialized")
+    print("- Move slowly during dynamic tests, avoid violent vibrations")
+    print("- The calibration test requires sufficient operating space")
+    print("- Hold each orientation stable for 10-15 seconds")
 
 def main():
-    """主函数"""
-    print("🧰 IMU验证修复测试工具")
+    """Main function"""
+    print("IMU Validation Fix Test Tool")
     print("="*40)
-    
-    # 设置日志
+
+    # Set up logging
     logging.basicConfig(level=logging.WARNING)
-    
-    # 运行测试
+
+    # Run tests
     test_results = []
-    
-    test_results.append(("方法可用性", test_method_availability()))
-    test_results.append(("配置加载", test_configuration_loading()))
-    test_results.append(("模拟验证", test_mock_validation()))
-    
-    # 汇总结果
+
+    test_results.append(("Method availability", test_method_availability()))
+    test_results.append(("Configuration loading", test_configuration_loading()))
+    test_results.append(("Simulated validation", test_mock_validation()))
+
+    # Summarize results
     print("\n" + "="*60)
-    print("📊 测试结果汇总")
+    print("Test Results Summary")
     print("="*60)
-    
+
     passed = 0
     total = len(test_results)
-    
+
     for test_name, result in test_results:
-        status = "✅ 通过" if result else "❌ 失败"
+        status = "PASSED" if result else "FAILED"
         print(f"{test_name}: {status}")
         if result:
             passed += 1
-    
-    print(f"\n总体结果: {passed}/{total} 测试通过")
-    
+
+    print(f"\nOverall result: {passed}/{total} tests passed")
+
     if passed == total:
-        print("🎉 所有测试通过! IMU验证方法缺失问题已修复")
+        print("All tests passed! IMU validation missing method issues have been fixed")
         print_usage_guide()
         return 0
     else:
-        print("⚠️ 部分测试失败，请检查修复情况")
+        print("Some tests failed, please check the fix status")
         return 1
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

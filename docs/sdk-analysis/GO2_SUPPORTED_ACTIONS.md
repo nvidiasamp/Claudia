@@ -1,92 +1,92 @@
-# 🤖 Unitree Go2 动作兼容性报告
+# Unitree Go2 Action Compatibility Report
 
-## ✅ **确认支持的动作**
+## **Confirmed Supported Actions**
 
-根据实际测试，Go2确认支持以下动作：
+Based on actual testing, Go2 confirms support for the following actions:
 
-### 基础控制动作
-| API | 方法名 | 描述 | 状态 |
-|-----|--------|------|------|
-| 1001 | Damp | 阻尼 | ✅ 支持 |
-| 1003 | StopMove | 停止移动 | ✅ 支持 |
-| 1004 | StandUp | 站立 | ✅ 支持 |
-| 1005 | StandDown | 趴下 | ✅ 支持 |
-| 1009 | Sit | 坐下 | ✅ 支持 |
+### Basic Control Actions
+| API | Method Name | Description | Status |
+|-----|-------------|-------------|--------|
+| 1001 | Damp | Damping | Supported |
+| 1003 | StopMove | Stop movement | Supported |
+| 1004 | StandUp | Stand up | Supported |
+| 1005 | StandDown | Lie down | Supported |
+| 1009 | Sit | Sit down | Supported |
 
-### 表演动作
-| API | 方法名 | 描述 | 状态 |
-|-----|--------|------|------|
-| 1016 | Hello | 打招呼 | ✅ 支持 |
-| 1017 | Stretch | 伸懒腰 | ✅ 支持 |
-| 1021 | Wallow | 比心 | ❌ **不支持** (3203) |
+### Performance Actions
+| API | Method Name | Description | Status |
+|-----|-------------|-------------|--------|
+| 1016 | Hello | Greet/Wave | Supported |
+| 1017 | Stretch | Stretch | Supported |
+| 1021 | Wallow | Heart gesture | **Not Supported** (3203) |
 
-### 高级动作
-| API | 方法名 | 描述 | 状态 |
-|-----|--------|------|------|
-| 1010 | Rollover | 翻身 | ❓ 未测试 |
-| 1022 | Dance | 舞蹈1 | ❓ 未测试 |
-| 1023 | Dance2 | 舞蹈2 | ❓ 未测试 |
-| 1024 | FrontFlip | 前空翻 | ❓ 未测试 |
-| 1025 | ShakeHands | 握手 | ❌ 方法不存在 |
-| 1026 | Cheer | 拜年 | ❌ 方法不存在 |
-| 1028 | Jump | 跳跃 | ❌ 方法不存在 |
-| 1029 | Pounce | 扑击 | ❌ 方法不存在 |
-| 1030 | Bow | 鞠躬 | ❌ 方法不存在 |
-| 1031 | Handstand | 倒立 | ❌ 方法不存在 |
+### Advanced Actions
+| API | Method Name | Description | Status |
+|-----|-------------|-------------|--------|
+| 1010 | Rollover | Roll over | Not tested |
+| 1022 | Dance | Dance 1 | Not tested |
+| 1023 | Dance2 | Dance 2 | Not tested |
+| 1024 | FrontFlip | Front flip | Not tested |
+| 1025 | ShakeHands | Shake hands | Method does not exist |
+| 1026 | Cheer | Celebratory bow | Method does not exist |
+| 1028 | Jump | Jump | Method does not exist |
+| 1029 | Pounce | Pounce | Method does not exist |
+| 1030 | Bow | Bow | Method does not exist |
+| 1031 | Handstand | Handstand | Method does not exist |
 
-## ❌ **错误码解释**
+## **Error Code Explanation**
 
-### 3203错误 = 动作不被支持
-- **含义**：`RPC_ERR_SERVER_API_NOT_IMPL` - 服务端API未实现
-- **原因**：该动作在Go2硬件上不可用
-- **不是**：APP占用问题（那是3103）
+### 3203 Error = Action Not Supported
+- **Meaning**: `RPC_ERR_SERVER_API_NOT_IMPL` - Server-side API not implemented
+- **Cause**: The action is not available on Go2 hardware
+- **Not**: An app occupation issue (that would be 3103)
 
-### 为什么比心(Wallow)不支持？
-Go2可能硬件限制或固件版本限制，无法执行比心动作。
+### Why is Heart Gesture (Wallow) Not Supported?
+Go2 may have hardware limitations or firmware version restrictions that prevent executing the heart gesture action.
 
-## 🔧 **建议修改**
+## **Recommended Modifications**
 
-### 1. 过滤不支持的动作
+### 1. Filter Unsupported Actions
 ```python
-# Go2实际支持的动作列表
+# Actual list of Go2-supported actions
 GO2_SUPPORTED_ACTIONS = [
     1001,  # Damp
-    1003,  # StopMove  
+    1003,  # StopMove
     1004,  # StandUp
     1005,  # StandDown
     1009,  # Sit
     1016,  # Hello
     1017,  # Stretch
-    # 1021 比心不支持
+    # 1021 Heart gesture not supported
 ]
 ```
 
-### 2. 更新LLM提示词
-移除不支持的动作映射，避免返回无法执行的API。
+### 2. Update LLM Prompts
+Remove unsupported action mappings to avoid returning non-executable APIs.
 
-### 3. 错误提示优化
+### 3. Optimize Error Messages
 ```python
 if result == 3203:
-    print("⚠️ 该动作在Go2上不支持")
-    print("   Go2不支持比心、握手、鞠躬等高级动作")
+    print("This action is not supported on Go2")
+    print("   Go2 does not support heart gesture, handshake, bow, and other advanced actions")
 ```
 
-## 📋 **测试命令**
+## **Test Commands**
 
-### 可用命令（会成功）
+### Available Commands (Will Succeed)
 - こんにちは (Hello/1016)
 - 座って (Sit/1009)
 - 立って (StandUp/1004)
 - 伸びて (Stretch/1017)
 - 横になって (StandDown/1005)
 
-### 不可用命令（返回3203）
+### Unavailable Commands (Return 3203)
 - ハート/比心 (Wallow/1021)
 - お手/握手 (ShakeHands/1025)
 - お辞儀/鞠躬 (Bow/1030)
 
-## 🚀 **结论**
+## **Conclusion**
 
-1. **3203不是APP占用**，是硬件不支持
-2. **Go2功能有限**，只支持基础动作
-3. **需要更新模型**，移除不支持的动作
+1. **3203 is not app occupation** - it's hardware not supported
+2. **Go2 has limited functionality** - only supports basic actions
+3. **Model needs updating** - remove unsupported actions

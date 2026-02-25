@@ -1,69 +1,69 @@
-# CycloneDDS环境配置说明
+# CycloneDDS Environment Configuration Guide
 
-## 问题背景
+## Background
 
-Unitree机器人SDK使用CycloneDDS 0.10.x版本进行通信，而默认的pip安装版本存在符号兼容性问题，会出现以下错误：
+The Unitree robot SDK uses CycloneDDS 0.10.x for communication. The default pip-installed version has symbol compatibility issues, resulting in the following error:
 
 ```
 ImportError: undefined symbol: ddsi_sertype_v0
 ```
 
-## 解决方案
+## Solution
 
-本目录提供了完整的CycloneDDS环境配置脚本，解决了版本兼容性问题。
+This directory provides complete CycloneDDS environment configuration scripts that resolve the version compatibility issue.
 
-## 使用方法
+## Usage
 
-### 1. 基本配置（每次使用前执行）
+### 1. Basic Configuration (Run Before Each Use)
 
 ```bash
-# 在项目根目录执行
+# Run from the project root directory
 source scripts/setup/setup_cyclonedds.sh
 ```
 
-### 2. 配置并测试
+### 2. Configure and Test
 
 ```bash
-# 配置环境并测试unitree_sdk2py导入
+# Configure environment and test unitree_sdk2py import
 source scripts/setup/setup_cyclonedds.sh --test
 ```
 
-### 3. 将配置添加到shell启动脚本（可选）
+### 3. Add to Shell Startup Script (Optional)
 
-如果希望每次打开终端自动配置环境：
+To automatically configure the environment each time a terminal is opened:
 
 ```bash
 echo "source ~/claudia/scripts/setup/setup_cyclonedds.sh" >> ~/.bashrc
 ```
 
-**注意**: 仅在确认配置稳定后再添加到~/.bashrc
+**Note**: Only add to ~/.bashrc after confirming the configuration is stable.
 
-## 环境要求
+## Requirements
 
-- CycloneDDS 0.10.x已编译安装在 `~/cyclonedds/install`
-- unitree_sdk2py已正确安装
-- ROS2 Foxy环境
+- CycloneDDS 0.10.x compiled and installed at `~/cyclonedds/install`
+- unitree_sdk2py properly installed
+- ROS2 Foxy environment
 
-## 验证方法
+## Verification
 
-执行以下Python代码验证配置是否成功：
+Run the following Python code to verify the configuration:
 
 ```python
 import unitree_sdk2py
 from unitree_sdk2py.core.channel import ChannelSubscriber
-print("✅ CycloneDDS环境配置成功")
+print("CycloneDDS environment configuration successful")
 ```
 
-## 故障排除
+## Troubleshooting
 
-### 1. "CycloneDDS未找到"错误
+### 1. "CycloneDDS not found" Error
 
 ```bash
-# 检查CycloneDDS是否已编译
+# Check if CycloneDDS has been compiled
 ls ~/cyclonedds/install/lib/libddsc.so
 ```
 
-如果文件不存在，需要重新编译CycloneDDS：
+If the file does not exist, CycloneDDS needs to be recompiled:
 
 ```bash
 cd ~/cyclonedds
@@ -73,24 +73,24 @@ cmake .. -DCMAKE_INSTALL_PREFIX=../install
 cmake --build . --target install
 ```
 
-### 2. "导入失败"错误
+### 2. "Import failed" Error
 
 ```bash
-# 重新安装unitree_sdk2py
+# Reinstall unitree_sdk2py
 cd ~/unitree_sdk2_python
 pip3 uninstall unitree_sdk2py cyclonedx -y
 source ~/claudia/scripts/setup/setup_cyclonedds.sh
 pip3 install -e .
 ```
 
-## 相关文件
+## Related Files
 
-- `setup_cyclonedds.sh` - 主要配置脚本
-- `README_cyclonedds.md` - 本说明文档
-- `~/cyclonedds/install/` - CycloneDDS安装目录
-- `~/unitree_sdk2_python/` - Unitree SDK源码目录
+- `setup_cyclonedds.sh` - Main configuration script
+- `README_cyclonedds.md` - This documentation
+- `~/cyclonedds/install/` - CycloneDDS installation directory
+- `~/unitree_sdk2_python/` - Unitree SDK source directory
 
 ---
 
-**最后更新**: 2024年6月27日  
-**适用版本**: CycloneDDS 0.10.x, ROS2 Foxy, Ubuntu 20.04 
+**Last updated**: June 27, 2024
+**Applicable versions**: CycloneDDS 0.10.x, ROS2 Foxy, Ubuntu 20.04

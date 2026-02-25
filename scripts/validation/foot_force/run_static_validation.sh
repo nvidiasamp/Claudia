@@ -1,17 +1,17 @@
 #!/bin/bash
 # scripts/validation/foot_force/run_static_validation.sh
 # Generated: 2025-06-27 14:30:00 CST
-# Purpose: Unitree Go2 足端力传感器静态验证启动脚本
+# Purpose: Unitree Go2 foot force sensor static validation startup script
 
 set -e
 
-# 脚本常量
+# Script constants
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VALIDATION_DIR="${SCRIPT_DIR}/foot_force_validation"
 MAIN_SCRIPT="${VALIDATION_DIR}/static_validation.py"
 CONFIG_FILE="${VALIDATION_DIR}/validation_config.json"
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -20,7 +20,7 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# 日志函数
+# Log functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -41,134 +41,134 @@ log_header() {
     echo -e "${PURPLE}$1${NC}"
 }
 
-# 显示标题
+# Display header
 show_header() {
     clear
     echo -e "${CYAN}"
     echo "================================================================================"
-    echo "               🦾 Unitree Go2 足端力传感器静态验证系统"
+    echo "               Unitree Go2 Foot Force Sensor Static Validation System"
     echo "================================================================================"
-    echo "版本: 1.0.0"
-    echo "生成时间: $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "脚本位置: ${SCRIPT_DIR}"
+    echo "Version: 1.0.0"
+    echo "Generated: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "Script location: ${SCRIPT_DIR}"
     echo "================================================================================"
     echo -e "${NC}"
 }
 
-# 检查系统环境
+# Check system environment
 check_environment() {
-    log_header "🔍 系统环境检查"
-    
+    log_header "System Environment Check"
+
     local all_ok=true
-    
-    # 检查Python版本
+
+    # Check Python version
     if command -v python3 &> /dev/null; then
         local python_version=$(python3 --version | cut -d' ' -f2)
-        log_success "Python3 版本: ${python_version}"
+        log_success "Python3 version: ${python_version}"
     else
-        log_error "Python3 未安装"
+        log_error "Python3 not installed"
         all_ok=false
     fi
-    
-    # 检查必要的Python模块
+
+    # Check required Python modules
     local required_modules=("numpy" "matplotlib" "scipy" "pandas")
     for module in "${required_modules[@]}"; do
         if python3 -c "import ${module}" &> /dev/null; then
-            log_success "Python模块 ${module} 可用"
+            log_success "Python module ${module} available"
         else
-            log_error "Python模块 ${module} 未安装"
+            log_error "Python module ${module} not installed"
             all_ok=false
         fi
     done
-    
-    # 检查Unitree SDK
+
+    # Check Unitree SDK
     if python3 -c "from unitree_sdk2py.core.channel import ChannelSubscriber" &> /dev/null; then
-        log_success "Unitree SDK2 Python 可用"
+        log_success "Unitree SDK2 Python available"
     else
-        log_warning "Unitree SDK2 Python 不可用，将使用模拟模式"
+        log_warning "Unitree SDK2 Python not available, will use simulation mode"
     fi
-    
-    # 检查必要文件
+
+    # Check required files
     if [[ -f "${MAIN_SCRIPT}" ]]; then
-        log_success "主脚本文件存在: ${MAIN_SCRIPT}"
+        log_success "Main script file exists: ${MAIN_SCRIPT}"
     else
-        log_error "主脚本文件不存在: ${MAIN_SCRIPT}"
+        log_error "Main script file not found: ${MAIN_SCRIPT}"
         all_ok=false
     fi
-    
+
     if [[ -f "${CONFIG_FILE}" ]]; then
-        log_success "配置文件存在: ${CONFIG_FILE}"
+        log_success "Configuration file exists: ${CONFIG_FILE}"
     else
-        log_warning "配置文件不存在: ${CONFIG_FILE}"
+        log_warning "Configuration file not found: ${CONFIG_FILE}"
     fi
-    
-    # 检查目录权限
+
+    # Check directory permissions
     if [[ -w "${VALIDATION_DIR}" ]]; then
-        log_success "验证目录可写"
+        log_success "Validation directory is writable"
     else
-        log_error "验证目录不可写: ${VALIDATION_DIR}"
+        log_error "Validation directory is not writable: ${VALIDATION_DIR}"
         all_ok=false
     fi
-    
-    # 检查磁盘空间
+
+    # Check disk space
     local available_space=$(df "${VALIDATION_DIR}" | tail -1 | awk '{print $4}')
     local available_mb=$((available_space / 1024))
-    
+
     if [[ ${available_mb} -gt 1000 ]]; then
-        log_success "磁盘空间充足: ${available_mb}MB"
+        log_success "Sufficient disk space: ${available_mb}MB"
     else
-        log_warning "磁盘空间不足: ${available_mb}MB (建议至少1GB)"
+        log_warning "Low disk space: ${available_mb}MB (at least 1GB recommended)"
     fi
-    
+
     echo ""
-    
+
     if [[ "${all_ok}" == true ]]; then
-        log_success "✅ 环境检查通过！"
+        log_success "Environment check passed!"
         return 0
     else
-        log_error "❌ 环境检查失败！"
+        log_error "Environment check failed!"
         return 1
     fi
 }
 
-# 显示菜单
+# Display menu
 show_menu() {
     echo ""
-    log_header "📋 静态验证选项菜单"
+    log_header "Static Validation Options Menu"
     echo ""
-    echo "1. 🔧 完整静态验证 (推荐)"
-    echo "2. ⚡ 快速测试模式"
-    echo "3. 🎨 仅数据分析和可视化"
-    echo "4. ⚙️ 自定义参数验证"
-    echo "5. 📊 查看历史报告"
-    echo "6. 🧹 清理输出文件"
-    echo "7. ❓ 显示帮助信息"
-    echo "8. 🚪 退出"
+    echo "1. Full Static Validation (recommended)"
+    echo "2. Quick Test Mode"
+    echo "3. Data Analysis and Visualization Only"
+    echo "4. Custom Parameter Validation"
+    echo "5. View Historical Reports"
+    echo "6. Clean Up Output Files"
+    echo "7. Show Help Information"
+    echo "8. Exit"
     echo ""
 }
 
-# 获取用户选择
+# Get user selection
 get_user_choice() {
     local choice
     while true; do
-        read -p "请选择操作 [1-8]: " choice
+        read -p "Select an option [1-8]: " choice
         case $choice in
             [1-8])
                 echo $choice
                 return 0
                 ;;
             *)
-                log_warning "无效选择，请输入 1-8"
+                log_warning "Invalid selection, please enter 1-8"
                 ;;
         esac
     done
 }
 
-# 确认用户操作
+# Confirm user action
 confirm_action() {
     local prompt="$1"
     local response
-    
+
     while true; do
         read -p "${prompt} [y/N]: " response
         case $response in
@@ -179,172 +179,172 @@ confirm_action() {
                 return 1
                 ;;
             *)
-                log_warning "请输入 y(是) 或 n(否)"
+                log_warning "Please enter y (yes) or n (no)"
                 ;;
         esac
     done
 }
 
-# 运行完整静态验证
+# Run full static validation
 run_full_validation() {
-    log_header "🔧 运行完整静态验证"
-    
+    log_header "Running Full Static Validation"
+
     echo ""
-    echo "完整静态验证包括以下测试项目："
-    echo "  • 零负载测试 (机器人悬空状态)"
-    echo "  • 静态站立测试 (机器人正常站立)"
-    echo "  • 零点漂移分析 (长时间稳定性)"
-    echo "  • 综合数据分析"
-    echo "  • 可视化图表生成"
+    echo "Full static validation includes the following test items:"
+    echo "  - Zero-load test (robot suspended state)"
+    echo "  - Static standing test (robot standing normally)"
+    echo "  - Zero-point drift analysis (long-term stability)"
+    echo "  - Comprehensive data analysis"
+    echo "  - Visualization chart generation"
     echo ""
-    
+
     local estimated_time=15
-    log_info "预计总耗时: ${estimated_time} 分钟"
-    
-    if confirm_action "确认开始完整静态验证？"; then
-        log_info "启动完整静态验证..."
+    log_info "Estimated total time: ${estimated_time} minutes"
+
+    if confirm_action "Confirm starting full static validation?"; then
+        log_info "Starting full static validation..."
         cd "${VALIDATION_DIR}"
         python3 static_validation.py --config validation_config.json --log-level INFO
     else
-        log_info "操作已取消"
+        log_info "Operation cancelled"
     fi
 }
 
-# 运行快速测试
+# Run quick test
 run_quick_test() {
-    log_header "⚡ 运行快速测试模式"
-    
+    log_header "Running Quick Test Mode"
+
     echo ""
-    echo "快速测试模式特点："
-    echo "  • 缩短测试时间 (零负载: 10秒, 站立: 20秒, 漂移: 60秒)"
-    echo "  • 包含完整的测试流程"
-    echo "  • 适合系统调试和初步验证"
+    echo "Quick test mode features:"
+    echo "  - Shortened test times (zero-load: 10s, standing: 20s, drift: 60s)"
+    echo "  - Includes complete test workflow"
+    echo "  - Suitable for system debugging and preliminary validation"
     echo ""
-    
+
     local estimated_time=3
-    log_info "预计总耗时: ${estimated_time} 分钟"
-    
-    if confirm_action "确认开始快速测试？"; then
-        log_info "启动快速测试模式..."
+    log_info "Estimated total time: ${estimated_time} minutes"
+
+    if confirm_action "Confirm starting quick test?"; then
+        log_info "Starting quick test mode..."
         cd "${VALIDATION_DIR}"
         python3 static_validation.py --config validation_config.json --test-mode --log-level INFO
     else
-        log_info "操作已取消"
+        log_info "Operation cancelled"
     fi
 }
 
-# 仅运行分析和可视化
+# Run analysis and visualization only
 run_analysis_only() {
-    log_header "🎨 仅运行数据分析和可视化"
-    
+    log_header "Running Data Analysis and Visualization Only"
+
     echo ""
-    echo "此选项将："
-    echo "  • 跳过数据采集过程"
-    echo "  • 使用已有数据进行分析"
-    echo "  • 生成可视化图表"
-    echo "  • 生成分析报告"
+    echo "This option will:"
+    echo "  - Skip data collection process"
+    echo "  - Use existing data for analysis"
+    echo "  - Generate visualization charts"
+    echo "  - Generate analysis report"
     echo ""
-    
-    log_warning "注意: 需要有之前采集的数据文件"
-    
-    if confirm_action "确认仅运行分析和可视化？"; then
-        log_info "启动分析和可视化..."
+
+    log_warning "Note: Requires previously collected data files"
+
+    if confirm_action "Confirm running analysis and visualization only?"; then
+        log_info "Starting analysis and visualization..."
         cd "${VALIDATION_DIR}"
         python3 static_validation.py --config validation_config.json --skip-data-collection --log-level INFO
     else
-        log_info "操作已取消"
+        log_info "Operation cancelled"
     fi
 }
 
-# 自定义参数验证
+# Custom parameter validation
 run_custom_validation() {
-    log_header "⚙️ 自定义参数验证"
-    
+    log_header "Custom Parameter Validation"
+
     echo ""
-    echo "请配置测试参数："
-    
-    # 零负载测试时间
+    echo "Please configure test parameters:"
+
+    # Zero-load test duration
     local zero_load_duration
     while true; do
-        read -p "零负载测试时间 (秒) [默认: 30]: " zero_load_duration
+        read -p "Zero-load test duration (seconds) [default: 30]: " zero_load_duration
         zero_load_duration=${zero_load_duration:-30}
         if [[ "$zero_load_duration" =~ ^[0-9]+$ ]] && [[ "$zero_load_duration" -ge 5 ]] && [[ "$zero_load_duration" -le 300 ]]; then
             break
         else
-            log_warning "请输入5-300之间的整数"
+            log_warning "Please enter an integer between 5-300"
         fi
     done
-    
-    # 静态站立测试时间
+
+    # Static standing test duration
     local standing_duration
     while true; do
-        read -p "静态站立测试时间 (秒) [默认: 60]: " standing_duration
+        read -p "Static standing test duration (seconds) [default: 60]: " standing_duration
         standing_duration=${standing_duration:-60}
         if [[ "$standing_duration" =~ ^[0-9]+$ ]] && [[ "$standing_duration" -ge 10 ]] && [[ "$standing_duration" -le 600 ]]; then
             break
         else
-            log_warning "请输入10-600之间的整数"
+            log_warning "Please enter an integer between 10-600"
         fi
     done
-    
-    # 零点漂移分析时间
+
+    # Zero-point drift analysis duration
     local drift_duration
     while true; do
-        read -p "零点漂移分析时间 (秒) [默认: 300]: " drift_duration
+        read -p "Zero-point drift analysis duration (seconds) [default: 300]: " drift_duration
         drift_duration=${drift_duration:-300}
         if [[ "$drift_duration" =~ ^[0-9]+$ ]] && [[ "$drift_duration" -ge 60 ]] && [[ "$drift_duration" -le 1800 ]]; then
             break
         else
-            log_warning "请输入60-1800之间的整数"
+            log_warning "Please enter an integer between 60-1800"
         fi
     done
-    
-    # 日志级别
+
+    # Log level
     local log_level
     echo ""
-    echo "选择日志级别："
-    echo "1. DEBUG (详细调试信息)"
-    echo "2. INFO (标准信息)"
-    echo "3. WARNING (仅警告和错误)"
-    echo "4. ERROR (仅错误信息)"
-    
+    echo "Select log level:"
+    echo "1. DEBUG (detailed debug information)"
+    echo "2. INFO (standard information)"
+    echo "3. WARNING (warnings and errors only)"
+    echo "4. ERROR (errors only)"
+
     while true; do
-        read -p "日志级别 [1-4, 默认: 2]: " log_choice
+        read -p "Log level [1-4, default: 2]: " log_choice
         log_choice=${log_choice:-2}
         case $log_choice in
             1) log_level="DEBUG"; break ;;
             2) log_level="INFO"; break ;;
             3) log_level="WARNING"; break ;;
             4) log_level="ERROR"; break ;;
-            *) log_warning "请输入1-4" ;;
+            *) log_warning "Please enter 1-4" ;;
         esac
     done
-    
-    # 是否跳过可视化
+
+    # Whether to skip visualization
     local skip_viz=""
-    if confirm_action "跳过可视化生成以加快速度？"; then
+    if confirm_action "Skip visualization generation to speed up?"; then
         skip_viz="--skip-visualization"
     fi
-    
+
     echo ""
-    log_info "配置总结："
-    log_info "  零负载测试: ${zero_load_duration}秒"
-    log_info "  静态站立测试: ${standing_duration}秒"
-    log_info "  零点漂移分析: ${drift_duration}秒"
-    log_info "  日志级别: ${log_level}"
-    log_info "  跳过可视化: $([ -n "$skip_viz" ] && echo "是" || echo "否")"
-    
+    log_info "Configuration summary:"
+    log_info "  Zero-load test: ${zero_load_duration} seconds"
+    log_info "  Static standing test: ${standing_duration} seconds"
+    log_info "  Zero-point drift analysis: ${drift_duration} seconds"
+    log_info "  Log level: ${log_level}"
+    log_info "  Skip visualization: $([ -n "$skip_viz" ] && echo "yes" || echo "no")"
+
     local total_time=$((zero_load_duration + standing_duration + drift_duration / 60 + 2))
-    log_info "  预计总耗时: ${total_time} 分钟"
-    
-    if confirm_action "确认开始自定义验证？"; then
-        log_info "启动自定义验证..."
-        
-        # 创建临时配置文件
+    log_info "  Estimated total time: ${total_time} minutes"
+
+    if confirm_action "Confirm starting custom validation?"; then
+        log_info "Starting custom validation..."
+
+        # Create temporary configuration file
         local temp_config="/tmp/custom_validation_config.json"
         cp "${CONFIG_FILE}" "${temp_config}"
-        
-        # 修改配置参数
+
+        # Modify configuration parameters
         python3 -c "
 import json
 with open('${temp_config}', 'r') as f:
@@ -355,111 +355,111 @@ config['static_validation']['zero_drift_duration'] = ${drift_duration}
 with open('${temp_config}', 'w') as f:
     json.dump(config, f, indent=2)
 "
-        
+
         cd "${VALIDATION_DIR}"
         python3 static_validation.py --config "${temp_config}" --log-level "${log_level}" ${skip_viz}
-        
-        # 清理临时文件
+
+        # Clean up temporary files
         rm -f "${temp_config}"
     else
-        log_info "操作已取消"
+        log_info "Operation cancelled"
     fi
 }
 
-# 查看历史报告
+# View historical reports
 view_reports() {
-    log_header "📊 查看历史报告"
-    
+    log_header "View Historical Reports"
+
     local output_dir="${VALIDATION_DIR}/output"
-    
+
     if [[ ! -d "${output_dir}" ]]; then
-        log_warning "输出目录不存在: ${output_dir}"
+        log_warning "Output directory does not exist: ${output_dir}"
         return
     fi
-    
-    # 查找报告文件
+
+    # Find report files
     local reports=($(find "${output_dir}" -name "*final_report*.json" -type f | sort -r))
-    
+
     if [[ ${#reports[@]} -eq 0 ]]; then
-        log_warning "未找到历史报告文件"
+        log_warning "No historical report files found"
         return
     fi
-    
+
     echo ""
-    echo "找到 ${#reports[@]} 个历史报告："
+    echo "Found ${#reports[@]} historical reports:"
     echo ""
-    
+
     for i in "${!reports[@]}"; do
         local report="${reports[$i]}"
         local basename=$(basename "${report}")
         local timestamp=$(stat -c %y "${report}" | cut -d' ' -f1-2)
         local size=$(du -h "${report}" | cut -f1)
-        
+
         echo "$((i+1)). ${basename}"
-        echo "   时间: ${timestamp}"
-        echo "   大小: ${size}"
+        echo "   Time: ${timestamp}"
+        echo "   Size: ${size}"
         echo ""
     done
-    
+
     while true; do
-        read -p "选择报告编号 [1-${#reports[@]}, 0=返回]: " report_choice
-        
+        read -p "Select report number [1-${#reports[@]}, 0=back]: " report_choice
+
         if [[ "$report_choice" == "0" ]]; then
             return
         elif [[ "$report_choice" =~ ^[0-9]+$ ]] && [[ "$report_choice" -ge 1 ]] && [[ "$report_choice" -le ${#reports[@]} ]]; then
             local selected_report="${reports[$((report_choice-1))]}"
-            log_info "显示报告: $(basename "${selected_report}")"
-            
-            # 使用jq格式化显示（如果可用）
+            log_info "Displaying report: $(basename "${selected_report}")"
+
+            # Use jq for formatted display (if available)
             if command -v jq &> /dev/null; then
                 cat "${selected_report}" | jq '.'
             else
                 cat "${selected_report}"
             fi
-            
+
             echo ""
-            read -p "按Enter继续..."
+            read -p "Press Enter to continue..."
             break
         else
-            log_warning "无效选择"
+            log_warning "Invalid selection"
         fi
     done
 }
 
-# 清理输出文件
+# Clean up output files
 cleanup_outputs() {
-    log_header "🧹 清理输出文件"
-    
+    log_header "Clean Up Output Files"
+
     local output_dir="${VALIDATION_DIR}/output"
     local log_dir="${VALIDATION_DIR}/logs"
-    
+
     echo ""
-    echo "可清理的内容："
-    echo "1. 输出目录中的所有文件 (${output_dir})"
-    echo "2. 日志目录中的所有文件 (${log_dir})"
-    echo "3. 临时文件和缓存"
-    echo "4. 全部清理"
-    echo "5. 返回主菜单"
+    echo "Cleanable content:"
+    echo "1. All files in output directory (${output_dir})"
+    echo "2. All files in log directory (${log_dir})"
+    echo "3. Temporary files and cache"
+    echo "4. Clean up everything"
+    echo "5. Return to main menu"
     echo ""
-    
+
     while true; do
-        read -p "选择清理内容 [1-5]: " cleanup_choice
-        
+        read -p "Select content to clean [1-5]: " cleanup_choice
+
         case $cleanup_choice in
             1)
                 if [[ -d "${output_dir}" ]]; then
                     local file_count=$(find "${output_dir}" -type f | wc -l)
                     if [[ $file_count -gt 0 ]]; then
-                        log_info "输出目录包含 ${file_count} 个文件"
-                        if confirm_action "确认清理输出目录？"; then
+                        log_info "Output directory contains ${file_count} files"
+                        if confirm_action "Confirm cleaning output directory?"; then
                             rm -rf "${output_dir}"/*
-                            log_success "输出目录已清理"
+                            log_success "Output directory cleaned"
                         fi
                     else
-                        log_info "输出目录已经为空"
+                        log_info "Output directory is already empty"
                     fi
                 else
-                    log_info "输出目录不存在"
+                    log_info "Output directory does not exist"
                 fi
                 break
                 ;;
@@ -467,38 +467,38 @@ cleanup_outputs() {
                 if [[ -d "${log_dir}" ]]; then
                     local file_count=$(find "${log_dir}" -type f | wc -l)
                     if [[ $file_count -gt 0 ]]; then
-                        log_info "日志目录包含 ${file_count} 个文件"
-                        if confirm_action "确认清理日志目录？"; then
+                        log_info "Log directory contains ${file_count} files"
+                        if confirm_action "Confirm cleaning log directory?"; then
                             rm -rf "${log_dir}"/*
-                            log_success "日志目录已清理"
+                            log_success "Log directory cleaned"
                         fi
                     else
-                        log_info "日志目录已经为空"
+                        log_info "Log directory is already empty"
                     fi
                 else
-                    log_info "日志目录不存在"
+                    log_info "Log directory does not exist"
                 fi
                 break
                 ;;
             3)
-                log_info "清理临时文件和缓存..."
+                log_info "Cleaning temporary files and cache..."
                 find "${VALIDATION_DIR}" -name "*.pyc" -delete 2>/dev/null || true
                 find "${VALIDATION_DIR}" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
                 find "${VALIDATION_DIR}" -name "*.tmp" -delete 2>/dev/null || true
                 rm -f /tmp/custom_validation_config.json 2>/dev/null || true
-                log_success "临时文件已清理"
+                log_success "Temporary files cleaned"
                 break
                 ;;
             4)
-                log_warning "这将删除所有输出文件、日志和临时文件"
-                if confirm_action "确认全部清理？"; then
+                log_warning "This will delete all output files, logs, and temporary files"
+                if confirm_action "Confirm cleaning everything?"; then
                     [[ -d "${output_dir}" ]] && rm -rf "${output_dir}"/*
                     [[ -d "${log_dir}" ]] && rm -rf "${log_dir}"/*
                     find "${VALIDATION_DIR}" -name "*.pyc" -delete 2>/dev/null || true
                     find "${VALIDATION_DIR}" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
                     find "${VALIDATION_DIR}" -name "*.tmp" -delete 2>/dev/null || true
                     rm -f /tmp/custom_validation_config.json 2>/dev/null || true
-                    log_success "全部文件已清理"
+                    log_success "All files cleaned"
                 fi
                 break
                 ;;
@@ -506,68 +506,69 @@ cleanup_outputs() {
                 return
                 ;;
             *)
-                log_warning "无效选择，请输入1-5"
+                log_warning "Invalid selection, please enter 1-5"
                 ;;
         esac
     done
 }
 
-# 显示帮助信息
+# Show help information
 show_help() {
-    log_header "❓ 帮助信息"
-    
+    log_header "Help Information"
+
     echo ""
-    echo "🦾 Unitree Go2 足端力传感器静态验证系统帮助"
+    echo "Unitree Go2 Foot Force Sensor Static Validation System Help"
     echo ""
-    echo "📖 系统概述："
-    echo "  本系统用于验证Unitree Go2机器人足端力传感器的准确性、稳定性和一致性。"
-    echo "  通过多种测试确保传感器在静态条件下的可靠性。"
+    echo "System Overview:"
+    echo "  This system validates the accuracy, stability, and consistency of the"
+    echo "  Unitree Go2 robot's foot force sensors. It uses multiple tests to ensure"
+    echo "  sensor reliability under static conditions."
     echo ""
-    echo "🔧 测试项目："
-    echo "  1. 零负载测试   - 机器人悬空时的零点验证"
-    echo "  2. 静态站立测试 - 正常站立时的力分布验证"
-    echo "  3. 零点漂移分析 - 长时间稳定性监控"
-    echo "  4. 综合数据分析 - 统计分析、频域分析、异常检测"
-    echo "  5. 可视化报告   - 图表和仪表板生成"
+    echo "Test Items:"
+    echo "  1. Zero-load test     - Zero-point verification with robot suspended"
+    echo "  2. Static standing    - Force distribution verification while standing normally"
+    echo "  3. Zero-point drift   - Long-term stability monitoring"
+    echo "  4. Comprehensive analysis - Statistical analysis, frequency domain analysis, anomaly detection"
+    echo "  5. Visualization report   - Chart and dashboard generation"
     echo ""
-    echo "⚙️ 系统要求："
-    echo "  • Python 3.6+"
-    echo "  • NumPy, SciPy, Matplotlib, Pandas"
-    echo "  • Unitree SDK2 Python (可选，有模拟模式)"
-    echo "  • 至少1GB磁盘空间"
+    echo "System Requirements:"
+    echo "  - Python 3.6+"
+    echo "  - NumPy, SciPy, Matplotlib, Pandas"
+    echo "  - Unitree SDK2 Python (optional, simulation mode available)"
+    echo "  - At least 1GB disk space"
     echo ""
-    echo "🤖 机器人准备："
-    echo "  • 零负载测试: 机器人完全悬空，足端不接触任何表面"
-    echo "  • 静态站立测试: 机器人正常站立，四足平稳接触地面"
-    echo "  • 保持测试环境安静，避免振动干扰"
+    echo "Robot Preparation:"
+    echo "  - Zero-load test: Robot fully suspended, feet not touching any surface"
+    echo "  - Static standing test: Robot standing normally, all four feet in stable contact with ground"
+    echo "  - Keep test environment quiet, avoid vibration interference"
     echo ""
-    echo "📊 输出文件："
-    echo "  • 验证报告 (JSON格式)"
-    echo "  • 原始数据 (CSV格式)"
-    echo "  • 可视化图表 (PNG格式)"
-    echo "  • 日志文件"
+    echo "Output Files:"
+    echo "  - Validation report (JSON format)"
+    echo "  - Raw data (CSV format)"
+    echo "  - Visualization charts (PNG format)"
+    echo "  - Log files"
     echo ""
-    echo "🔍 故障排除："
-    echo "  • 检查Python模块安装: pip3 install numpy scipy matplotlib pandas"
-    echo "  • 确认Unitree SDK连接正常"
-    echo "  • 检查磁盘空间是否充足"
-    echo "  • 查看日志文件获取详细错误信息"
+    echo "Troubleshooting:"
+    echo "  - Check Python module installation: pip3 install numpy scipy matplotlib pandas"
+    echo "  - Verify Unitree SDK connection is working"
+    echo "  - Check that disk space is sufficient"
+    echo "  - Review log files for detailed error information"
     echo ""
-    echo "📞 技术支持："
-    echo "  • 查看README.md获取详细文档"
-    echo "  • 检查logs/目录获取诊断信息"
-    echo "  • 运行环境检查确认系统状态"
+    echo "Technical Support:"
+    echo "  - See README.md for detailed documentation"
+    echo "  - Check logs/ directory for diagnostic information"
+    echo "  - Run environment check to verify system status"
     echo ""
-    
-    read -p "按Enter返回主菜单..."
+
+    read -p "Press Enter to return to main menu..."
 }
 
-# 主循环
+# Main loop
 main_loop() {
     while true; do
         show_menu
         local choice=$(get_user_choice)
-        
+
         echo ""
         case $choice in
             1)
@@ -592,41 +593,41 @@ main_loop() {
                 show_help
                 ;;
             8)
-                log_info "感谢使用！再见！"
+                log_info "Thank you for using this tool! Goodbye!"
                 exit 0
                 ;;
         esac
-        
+
         echo ""
-        read -p "按Enter继续..."
+        read -p "Press Enter to continue..."
     done
 }
 
-# 主函数
+# Main function
 main() {
-    # 设置信号处理
-    trap 'echo ""; log_warning "操作被中断"; exit 130' INT TERM
-    
-    # 显示标题
+    # Set signal handling
+    trap 'echo ""; log_warning "Operation interrupted"; exit 130' INT TERM
+
+    # Display header
     show_header
-    
-    # 检查环境
+
+    # Check environment
     if ! check_environment; then
         echo ""
-        log_error "环境检查失败，请解决上述问题后重试"
-        
-        if confirm_action "是否查看故障排除帮助？"; then
+        log_error "Environment check failed. Please resolve the issues above and try again"
+
+        if confirm_action "Would you like to view troubleshooting help?"; then
             show_help
         fi
-        
+
         exit 1
     fi
-    
-    # 进入主循环
+
+    # Enter main loop
     main_loop
 }
 
-# 检查是否直接运行
+# Check if running directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
-fi 
+fi

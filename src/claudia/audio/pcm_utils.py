@@ -1,30 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PCM 音频重采样工具
+PCM Audio Resampling Utility
 
-Tegra ALSA plughw 在 AT2020USB-XP 等 USB 麦克风上重采样会产出全零，
-必须在 Python 层做。此模块提供共享的重采样函数，供 asr_server 和
-audio_capture 共用。
+Tegra ALSA plughw produces all-zero output when resampling USB microphones
+like the AT2020USB-XP, so resampling must be done in the Python layer.
+This module provides a shared resampling function used by both asr_server
+and audio_capture.
 """
 
 
 def resample_pcm_int16(samples_int16, src_rate: int, dst_rate: int):
-    """PCM int16 重采样 (numpy 线性索引)
+    """PCM int16 resampling (numpy linear indexing)
 
     Parameters
     ----------
     samples_int16 : np.ndarray (int16)
-        源采样率的 int16 PCM 样本
+        int16 PCM samples at the source sample rate
     src_rate : int
-        源采样率 (如 44100)
+        Source sample rate (e.g., 44100)
     dst_rate : int
-        目标采样率 (如 16000)
+        Target sample rate (e.g., 16000)
 
     Returns
     -------
     np.ndarray (int16)
-        重采样后的 int16 PCM
+        Resampled int16 PCM
     """
     if src_rate == dst_rate:
         return samples_int16

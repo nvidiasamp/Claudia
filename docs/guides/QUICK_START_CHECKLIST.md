@@ -1,254 +1,254 @@
-# ⚡ Claudia LLM大脑升级 - 快速启动清单
+# Claudia LLM Brain Upgrade - Quick Start Checklist
 
-## 📋 实施状态
+## Implementation Status
 
-### ✅ 已完成（Track A + Track B）
+### Completed (Track A + Track B)
 
-- [x] **异步调用修复**：`production_brain.py` 使用 `asyncio.to_thread`
-- [x] **状态监控集成**：实时读取IMU/电量/姿态
-- [x] **安全验证器**：`safety_validator.py` 代码层强制规则
-- [x] **增强启动脚本**：`start_production_brain_v2.sh` 全面环境检查
-- [x] **新Modelfile**：`ClaudiaIntelligent_Qwen7B` 去词表化设计
-- [x] **部署脚本**：`deploy_track_b.sh` 自动化创建新模型
-- [x] **A/B测试脚本**：`test_ab_quick.py` 20个核心场景对比
+- [x] **Async call fix**: `production_brain.py` uses `asyncio.to_thread`
+- [x] **State monitoring integration**: Real-time IMU/battery/posture reading
+- [x] **Safety validator**: `safety_validator.py` code-level enforcement rules
+- [x] **Enhanced startup script**: `start_production_brain_v2.sh` comprehensive environment checks
+- [x] **New Modelfile**: `ClaudiaIntelligent_Qwen7B` vocabulary-free design
+- [x] **Deployment script**: `deploy_track_b.sh` automated new model creation
+- [x] **A/B test script**: `test_ab_quick.py` 20 core scenario comparisons
 
 ---
 
-## 🚀 10分钟验证流程
+## 10-Minute Verification Flow
 
-### Step 1: 环境准备（2分钟）
+### Step 1: Environment Preparation (2 minutes)
 ```bash
 cd ~/claudia
 
-# 安装ollama Python库
+# Install ollama Python library
 pip3 install ollama
 
-# 验证Ollama服务
+# Verify Ollama service
 curl http://localhost:11434/api/tags
-# 如果失败则启动: nohup ollama serve > /tmp/ollama.log 2>&1 &
+# If fails, start: nohup ollama serve > /tmp/ollama.log 2>&1 &
 
-# 检查现有模型
+# Check existing models
 ollama list | grep claudia
-# 应该看到: claudia-go2-3b:v11.2, claudia-go2-7b:v7
+# Should see: claudia-go2-3b:v11.2, claudia-go2-7b:v7
 ```
 
-### Step 2: Track A验证 - 模拟模式（3分钟）
+### Step 2: Track A Verification - Simulation Mode (3 minutes)
 ```bash
-# 启动增强版脚本
+# Start enhanced script
 ./start_production_brain_v2.sh
-# 选择: 1
+# Select: 1
 
-# 测试基础命令
-输入: 座って
-预期: ✅ 返回JSON，api_code=1009
+# Test basic commands
+Input: 座って
+Expected: Returns JSON, api_code=1009
 
-输入: 緊急停止
-预期: ✅ 快速响应（<100ms），直接执行Stop
+Input: 緊急停止
+Expected: Fast response (<100ms), direct Stop execution
 
-输入: quit
-# 退出测试
+Input: quit
+# Exit test
 ```
 
-**验证点**：
-- [ ] 脚本能正确加载ROS2和Ollama环境
-- [ ] 模拟模式能正常响应命令
-- [ ] 紧急停止走旁路通道（无LLM调用）
-- [ ] 无异步阻塞报错
+**Verification Points**:
+- [ ] Script correctly loads ROS2 and Ollama environment
+- [ ] Simulation mode responds to commands normally
+- [ ] Emergency stop uses bypass channel (no LLM call)
+- [ ] No async blocking errors
 
-### Step 3: Track B部署（3分钟）
+### Step 3: Track B Deployment (3 minutes)
 ```bash
-# 自动部署新模型
+# Automated deployment of new model
 ./deploy_track_b.sh
 
-# 预期输出:
-# ✅ qwen2.5:7b已存在（或自动拉取）
-# ✅ 创建claudia-intelligent-7b:v1成功
-# ✅ 测试: "座って" → 1009
-# ✅ 测试: "立って" → 1004
+# Expected output:
+# qwen2.5:7b exists (or auto-pulled)
+# Created claudia-intelligent-7b:v1 successfully
+# Test: "座って" -> 1009
+# Test: "立って" -> 1004
 
-# 验证模型已创建
+# Verify model was created
 ollama list | grep claudia-intelligent
-# 应该看到: claudia-intelligent-7b:v1
+# Should see: claudia-intelligent-7b:v1
 ```
 
-### Step 4: A/B对比测试（2分钟）
+### Step 4: A/B Comparison Test (2 minutes)
 ```bash
-# 运行快速对比
+# Run quick comparison
 python3 test_ab_quick.py
 
-# 查看输出关键指标:
-# 【Baseline】claudia-go2-3b:v11.2
-#   准确率: X%
-#   延迟: Yms
+# Check key output metrics:
+# [Baseline] claudia-go2-3b:v11.2
+#   Accuracy: X%
+#   Latency: Yms
 #
-# 【新模型】claudia-intelligent-7b:v1
-#   准确率: X%
-#   延迟: Yms
+# [New Model] claudia-intelligent-7b:v1
+#   Accuracy: X%
+#   Latency: Yms
 #
-# 📈 对比结果:
-#   准确率变化: +/- Z%
-#   延迟变化: +/- Wms
+# Comparison Results:
+#   Accuracy change: +/- Z%
+#   Latency change: +/- Wms
 ```
 
-**决策标准**：
-- ✅ 通过：准确率 ≥ 基线-5%，延迟 ≤ 2000ms
-- ⚠️  待优化：准确率下降>5% 或 延迟>2000ms
-- ❌ 失败：JSON合规率<100% 或 大量错误
+**Decision Criteria**:
+- Pass: Accuracy >= baseline -5%, Latency <= 2000ms
+- Needs optimization: Accuracy drop >5% or Latency >2000ms
+- Fail: JSON compliance rate <100% or many errors
 
 ---
 
-## 🎯 关键测试用例
+## Key Test Cases
 
-### 基础命令（必须100%）
+### Basic Commands (Must be 100%)
 ```
 座って → 1009 (Sit)
 立って → 1004 (Stand)
 止まって → 1003 (Stop)
 ```
 
-### 语义理解（Track B核心优势）
+### Semantic Understanding (Track B Core Advantage)
 ```
-疲れた → 1009 (Sit)     # "累了"应理解为休息→坐下
-可愛い → 1036 (Heart)    # "可爱"应理解为心形手势
-元気 → 1023 (Dance)      # "有活力"应理解为跳舞
-挨拶して → 1016 (Hello)  # "打招呼"应理解为Hello动作
+疲れた → 1009 (Sit)     # "Tired" should be understood as rest -> sit down
+可愛い → 1036 (Heart)    # "Cute" should be understood as heart gesture
+元気 → 1023 (Dance)      # "Energetic" should be understood as dance
+挨拶して → 1016 (Hello)  # "Greet" should be understood as Hello action
 ```
 
-### 异常处理
+### Exception Handling
 ```
-空输入 → api_code=None或0
-无意义输入 → api_code=None或0
+Empty input → api_code=None or 0
+Nonsense input → api_code=None or 0
 ```
 
 ---
 
-## 📊 预期结果对比
+## Expected Results Comparison
 
-### Track A（保守改进）
-| 指标 | 改进前 | 改进后 | 说明 |
-|------|-------|-------|------|
-| 准确率 | 85% | 85% | 模型未变，准确率不变 |
-| 首次延迟 | ~3000ms | ~500ms | LLM预热 |
-| 紧急停止延迟 | ~800ms | <100ms | 旁路通道 |
-| 低电量保护 | ❌ | ✅ | 代码层验证 |
-| 姿态自适应 | ❌ | ✅ | 自动补全前置动作 |
+### Track A (Conservative Improvement)
+| Metric | Before Improvement | After Improvement | Notes |
+|--------|-------------------|-------------------|-------|
+| Accuracy | 85% | 85% | Model unchanged, accuracy unchanged |
+| First-call latency | ~3000ms | ~500ms | LLM warmup |
+| Emergency stop latency | ~800ms | <100ms | Bypass channel |
+| Low battery protection | No | Yes | Code-level validation |
+| Posture auto-adaptation | No | Yes | Auto-complete prerequisite actions |
 
-### Track B（激进重构）
-| 指标 | v11.2基线 | v1目标 | 期望 |
-|------|----------|-------|------|
-| 基础命令 | 100% | ≥95% | 轻微容差 |
-| 语义理解 | ~40% | ≥70% | **核心提升** |
-| 多语言 | 66% | ≥80% | 支持英文/中文 |
-| 平均延迟 | 800ms | ≤2000ms | 7B模型略慢 |
+### Track B (Aggressive Refactoring)
+| Metric | v11.2 Baseline | v1 Target | Expectation |
+|--------|---------------|-----------|-------------|
+| Basic commands | 100% | >=95% | Slight tolerance |
+| Semantic understanding | ~40% | >=70% | **Core improvement** |
+| Multilingual | 66% | >=80% | Support for English/Chinese |
+| Average latency | 800ms | <=2000ms | 7B model slightly slower |
 
 ---
 
-## 🔧 常见问题速查
+## Common Issues Quick Reference
 
-### Q1: pip3 install ollama失败
+### Q1: pip3 install ollama fails
 ```bash
-# 使用国内镜像
+# Use domestic mirror
 pip3 install ollama -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-### Q2: Ollama服务无响应
+### Q2: Ollama service not responding
 ```bash
-# 检查进程
+# Check process
 ps aux | grep ollama
-# 重启服务
+# Restart service
 killall ollama
 nohup ollama serve > /tmp/ollama.log 2>&1 &
 sleep 5
 curl http://localhost:11434/api/tags
 ```
 
-### Q3: ROS2 Topic不可见
+### Q3: ROS2 Topics not visible
 ```bash
-# 确认环境变量
-echo $RMW_IMPLEMENTATION  # 应为rmw_cyclonedds_cpp
+# Confirm environment variables
+echo $RMW_IMPLEMENTATION  # Should be rmw_cyclonedds_cpp
 source /opt/ros/foxy/setup.bash
 source .env.ros2
 ros2 topic list
 ```
 
-### Q4: 模型加载超时
+### Q4: Model loading timeout
 ```bash
-# 首次加载7B模型较慢（~5秒），属正常
-# 可选：预加载
+# First load of 7B model is slow (~5 seconds), this is normal
+# Optional: Preload
 ollama run claudia-intelligent-7b:v1 "test" >/dev/null 2>&1 &
 ```
 
-### Q5: A/B测试报错
+### Q5: A/B test errors
 ```bash
-# 确认两个模型都存在
+# Confirm both models exist
 ollama list | grep -E "(claudia-go2-3b:v11.2|claudia-intelligent-7b:v1)"
 
-# 如果v11.2缺失
+# If v11.2 is missing
 ollama pull claudia-go2-3b:v11.2
 
-# 如果v1缺失，重新部署
+# If v1 is missing, redeploy
 ./deploy_track_b.sh
 ```
 
 ---
 
-## 📁 文件索引
+## File Index
 
-### 核心代码
-- [src/claudia/brain/production_brain.py](src/claudia/brain/production_brain.py) - 主大脑逻辑
-- [src/claudia/brain/safety_validator.py](src/claudia/brain/safety_validator.py) - 安全验证器
+### Core Code
+- [src/claudia/brain/production_brain.py](src/claudia/brain/production_brain.py) - Main brain logic
+- [src/claudia/brain/safety_validator.py](src/claudia/brain/safety_validator.py) - Safety validator
 
-### 启动脚本
-- [start_production_brain_v2.sh](start_production_brain_v2.sh) - 增强启动脚本（推荐）
-- [start_production_brain.sh](start_production_brain.sh) - 旧版启动脚本
+### Startup Scripts
+- [start_production_brain_v2.sh](start_production_brain_v2.sh) - Enhanced startup script (recommended)
+- [start_production_brain.sh](start_production_brain.sh) - Legacy startup script
 
-### Track B文件
-- [ClaudiaIntelligent_Qwen7B](ClaudiaIntelligent_Qwen7B) - 新Modelfile定义
-- [deploy_track_b.sh](deploy_track_b.sh) - 自动部署脚本
-- [test_ab_quick.py](test_ab_quick.py) - A/B快速测试
+### Track B Files
+- [ClaudiaIntelligent_Qwen7B](ClaudiaIntelligent_Qwen7B) - New Modelfile definition
+- [deploy_track_b.sh](deploy_track_b.sh) - Automated deployment script
+- [test_ab_quick.py](test_ab_quick.py) - A/B quick test
 
-### 文档
-- [LLM_BRAIN_UPGRADE_GUIDE.md](LLM_BRAIN_UPGRADE_GUIDE.md) - 完整技术方案
-- [QUICK_START_CHECKLIST.md](QUICK_START_CHECKLIST.md) - 本文档
-- [README_FINAL_SOLUTION.md](README_FINAL_SOLUTION.md) - SDK互斥问题方案
-
----
-
-## 🚦 下一步行动
-
-### 立即执行（今天）
-1. ⏳ 执行Step 1-4完整验证（10分钟）
-2. ⏳ 查看A/B测试结果，决策是否上线Track B
-3. ⏳ 如果Track B通过：考虑30%灰度测试
-
-### 短期（1-2天）
-- 如果语义理解提升明显（>20%）→ 扩大灰度到70%
-- 如果延迟过高（>2000ms）→ 考虑优化或回退到3B
-- 如果语义理解提升有限（<10%）→ 考虑Few-shot扩充或LoRA微调
-
-### 中期（1周）
-- 真实硬件验证（⚠️ 谨慎，确保周围安全）
-- 收集实际使用数据
-- 持续监控错误率和性能
+### Documentation
+- [LLM_BRAIN_UPGRADE_GUIDE.md](LLM_BRAIN_UPGRADE_GUIDE.md) - Complete technical guide
+- [QUICK_START_CHECKLIST.md](QUICK_START_CHECKLIST.md) - This document
+- [README_FINAL_SOLUTION.md](README_FINAL_SOLUTION.md) - SDK mutual exclusion solution
 
 ---
 
-## ✅ 验证通过标志
+## Next Steps
+
+### Execute Immediately (Today)
+1. Execute Step 1-4 complete verification (10 minutes)
+2. Review A/B test results, decide whether to launch Track B
+3. If Track B passes: Consider 30% gradual rollout test
+
+### Short-term (1-2 days)
+- If semantic understanding improvement is significant (>20%) -> Expand gradual rollout to 70%
+- If latency is too high (>2000ms) -> Consider optimization or rollback to 3B
+- If semantic understanding improvement is limited (<10%) -> Consider few-shot expansion or LoRA fine-tuning
+
+### Medium-term (1 week)
+- Real hardware verification (caution: ensure surrounding safety)
+- Collect actual usage data
+- Continuously monitor error rate and performance
+
+---
+
+## Verification Pass Criteria
 
 ```
-[✅] ollama Python库已安装
-[✅] Ollama服务运行中
-[✅] Track A模拟模式测试通过
-[✅] Track B模型创建成功
-[✅] A/B测试完成，准确率≥目标
-[✅] 延迟符合预期（≤2000ms）
-[✅] 无阻塞/崩溃报错
+[Pass] ollama Python library installed
+[Pass] Ollama service running
+[Pass] Track A simulation mode test passed
+[Pass] Track B model created successfully
+[Pass] A/B test completed, accuracy >= target
+[Pass] Latency meets expectations (<=2000ms)
+[Pass] No blocking/crash errors
 
-→ 可以进入真实硬件测试阶段
+-> Ready to enter real hardware test phase
 ```
 
 ---
 
-**创建时间**: 2025-11-13
-**预计执行时间**: 10分钟
-**前置条件**: Jetson Orin NX + ROS2 Foxy + Ollama 0.9.5+
+**Created**: 2025-11-13
+**Estimated Execution Time**: 10 minutes
+**Prerequisites**: Jetson Orin NX + ROS2 Foxy + Ollama 0.9.5+

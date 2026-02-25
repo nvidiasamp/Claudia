@@ -1,137 +1,137 @@
-# 📊 Claudia提示词优化报告
+# Claudia Prompt Optimization Report
 
-## 📅 优化日期：2025-09-19
+## Optimization Date: 2025-09-19
 
-## 🔍 **优化前状态分析**
+## **Pre-Optimization State Analysis**
 
-### **原始问题**
-1. **动作数量错误**：认为只有15个动作，实际支持22个
-2. **API映射错误**：比心使用1021（应为1036）
-3. **输出格式不稳定**：JSON解析失败率高
-4. **响应质量问题**：返回通用"返答"而非具体动作描述
+### **Original Problems**
+1. **Incorrect action count**: Believed only 15 actions existed, actually supports 22
+2. **API mapping error**: Heart gesture used 1021 (should be 1036)
+3. **Unstable output format**: High JSON parsing failure rate
+4. **Response quality issues**: Returned generic responses instead of specific action descriptions
 
-## 🧪 **完整SDK测试发现**
+## **Complete SDK Test Findings**
 
-### **Go2实际支持22个动作**
+### **Go2 Actually Supports 22 Actions**
 
-#### **无参数动作（16个）**
-- 基础控制：1001,1002,1003,1004,1005,1006,1009,1010
-- 表演动作：1016,1017,1023,1029,1030,1031,1032,1036
+#### **Parameterless Actions (16)**
+- Basic control: 1001, 1002, 1003, 1004, 1005, 1006, 1009, 1010
+- Performance actions: 1016, 1017, 1023, 1029, 1030, 1031, 1032, 1036
 
-#### **参数动作（6个）**
-- 1007 Euler(roll,pitch,yaw) - 姿态控制
-- 1008 Move(vx,vy,vyaw) - 移动控制  
-- 1015 SpeedLevel(level) - 速度等级
-- 1019 ContinuousGait(flag) - 连续步态
-- 1027 SwitchJoystick(on) - 摇杆控制
-- 1028 Pose(flag) - 姿势模式
+#### **Parameterized Actions (6)**
+- 1007 Euler(roll, pitch, yaw) - Attitude control
+- 1008 Move(vx, vy, vyaw) - Movement control
+- 1015 SpeedLevel(level) - Speed level
+- 1019 ContinuousGait(flag) - Continuous gait
+- 1027 SwitchJoystick(on) - Joystick control
+- 1028 Pose(flag) - Pose mode
 
-#### **不支持的动作（16个）**
-返回3203错误：1011,1012,1013,1014,1021,1033,1035,1042,1044,1045-1051
+#### **Unsupported Actions (16)**
+Return error 3203: 1011, 1012, 1013, 1014, 1021, 1033, 1035, 1042, 1044, 1045-1051
 
-## 🛠️ **优化实施**
+## **Optimization Implementation**
 
-### **3B模型优化（v10.1）**
+### **3B Model Optimization (v10.1)**
 
-#### **关键改进**
+#### **Key Improvements**
 ```
-✅ 移除16个不支持的动作
-✅ 修正比心映射（1021→1036）
-✅ 缩短JSON键名（r/a/s）
-✅ 添加具体日语响应示例
-✅ temperature=0.0（确定性最大）
-✅ 扩展热缓存至50+命令
-```
-
-#### **提示词特点**
-- 长度：<200 tokens
-- 格式：单行SYSTEM
-- 输出：纯JSON无解释
-
-### **7B模型优化（v6.0）**
-
-#### **关键改进**
-```
-✅ 包含完整22个动作
-✅ 支持参数动作处理
-✅ 修正序列示例
-✅ top_p=0.7（平衡准确性）
-✅ 添加状态感知说明
+- Removed 16 unsupported actions
+- Corrected heart gesture mapping (1021 -> 1036)
+- Shortened JSON key names (r/a/s)
+- Added specific Japanese response examples
+- temperature=0.0 (maximum determinism)
+- Expanded hot cache to 50+ commands
 ```
 
-### **缓存层扩展**
-- 从13个扩展到50+个命令
-- 覆盖日语/中文/英文
-- 包含所有高频命令
+#### **Prompt Characteristics**
+- Length: <200 tokens
+- Format: Single-line SYSTEM
+- Output: Pure JSON without explanations
 
-## 📊 **优化效果测试**
+### **7B Model Optimization (v6.0)**
 
-### **测试结果统计**
+#### **Key Improvements**
 ```
-总测试命令：14个
-缓存命中：8个（57.1%）
-成功响应：14个（100%）
-平均响应时间：1.93秒
+- Includes complete 22 actions
+- Supports parameterized action handling
+- Corrected sequence examples
+- top_p=0.7 (balanced accuracy)
+- Added state awareness description
 ```
 
-### **性能提升**
-| 指标 | 优化前 | 优化后 | 提升 |
+### **Cache Layer Expansion**
+- Expanded from 13 to 50+ commands
+- Covers Japanese/Chinese/English
+- Includes all high-frequency commands
+
+## **Optimization Results Testing**
+
+### **Test Result Statistics**
+```
+Total test commands: 14
+Cache hits: 8 (57.1%)
+Successful responses: 14 (100%)
+Average response time: 1.93s
+```
+
+### **Performance Improvements**
+| Metric | Before Optimization | After Optimization | Improvement |
 |------|--------|--------|------|
-| 动作准确性 | 15个 | 22个 | +47% |
-| 缓存命中率 | 30% | 57% | +90% |
-| 平均响应 | 3.5秒 | 1.9秒 | -46% |
-| 解析成功率 | 70% | 85% | +21% |
+| Action accuracy | 15 actions | 22 actions | +47% |
+| Cache hit rate | 30% | 57% | +90% |
+| Average response | 3.5s | 1.9s | -46% |
+| Parse success rate | 70% | 85% | +21% |
 
-## ⚠️ **发现的问题**
+## **Issues Discovered**
 
-### **JSON截断问题**
-部分响应出现JSON不完整：
+### **JSON Truncation Problem**
+Some responses had incomplete JSON:
 ```json
-{"r":"前転します","a":1030  // 缺少}
+{"r":"前転します","a":1030  // missing }
 ```
-**原因**：num_predict参数过小（30）
-**解决**：需要增加到40-50
+**Cause**: num_predict parameter too small (30)
+**Solution**: Need to increase to 40-50
 
-### **语义理解失败**
-"可愛い"、"疲れた"等未正确映射
-**原因**：模型输出被截断
-**解决**：调整stop参数和num_predict
+### **Semantic Understanding Failure**
+"可愛い" and "疲れた" were not correctly mapped
+**Cause**: Model output was truncated
+**Solution**: Adjust stop parameter and num_predict
 
-## 💡 **优化建议**
+## **Optimization Recommendations**
 
-### **立即改进**
-1. 增加num_predict至50
-2. 调整stop参数避免过早截断
-3. 添加JSON完整性验证
+### **Immediate Improvements**
+1. Increase num_predict to 50
+2. Adjust stop parameter to avoid premature truncation
+3. Add JSON completeness validation
 
-### **后续优化**
-1. 实现参数动作支持
-2. 优化7B模型响应速度
-3. 扩展语义理解映射
+### **Follow-up Optimization**
+1. Implement parameterized action support
+2. Optimize 7B model response speed
+3. Expand semantic understanding mappings
 
-## 🎯 **最终评估**
+## **Final Assessment**
 
-### **成功之处**
-- ✅ 动作覆盖完整（22个）
-- ✅ API映射准确
-- ✅ 缓存效果优秀
-- ✅ 响应速度提升
+### **Successes**
+- Action coverage complete (22 actions)
+- API mappings accurate
+- Excellent cache performance
+- Response speed improved
 
-### **需要改进**
-- ⚠️ JSON完整性问题
-- ⚠️ 语义理解准确率
-- ⚠️ 7B模型超时
+### **Needs Improvement**
+- JSON completeness issues
+- Semantic understanding accuracy
+- 7B model timeout
 
-### **总体评分**
-**85/100** - 基本达到生产要求，需要解决JSON问题
+### **Overall Score**
+**85/100** - Basically meets production requirements, need to resolve JSON issues
 
-## 📝 **关键经验**
+## **Key Takeaways**
 
-1. **完整测试的重要性**：通过SDK完整测试发现了7个额外支持的动作
-2. **缓存优先策略**：扩展缓存大幅提升用户体验
-3. **提示词精简**：短提示词+具体示例效果最佳
-4. **参数调优关键**：num_predict和stop参数直接影响输出质量
+1. **Importance of complete testing**: Complete SDK testing revealed 7 additional supported actions
+2. **Cache-first strategy**: Expanding the cache significantly improved user experience
+3. **Prompt conciseness**: Short prompts + specific examples produce the best results
+4. **Parameter tuning is critical**: num_predict and stop parameters directly affect output quality
 
 ---
 
-**结论**：优化取得显著效果，但仍需解决JSON完整性问题以达到100%生产就绪。
+**Conclusion**: Optimization achieved significant results, but JSON completeness issues still need to be resolved to reach 100% production readiness.

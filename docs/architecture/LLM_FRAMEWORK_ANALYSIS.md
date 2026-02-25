@@ -1,63 +1,63 @@
-# LLM在Claudia框架中的作用分析
+# Analysis of LLM's Role in the Claudia Framework
 
-## 🔍 当前流程分析
+## Current Flow Analysis
 
-### **实际执行流程**
+### **Actual Execution Flow**
 ```
-用户输入: "お手"
-    ↓
-1. LLM处理: "お手" → LLM返回: "こんにちは" 
-    ↓  
-2. 创建LLMOutput对象: {intent: "お手", action: "こんにちは", confidence: 0.8}
-    ↓
-3. 动作映射: 使用**原始命令"お手"**进行映射 (不是LLM响应)
-    ↓
-4. 映射结果: "お手" → API 1016 (Hello)
-    ↓  
-5. 执行动作: client.Hello()
+User Input: "お手"
+    |
+1. LLM Processing: "お手" -> LLM returns: "こんにちは"
+    |
+2. Create LLMOutput object: {intent: "お手", action: "こんにちは", confidence: 0.8}
+    |
+3. Action Mapping: Uses **original command "お手"** for mapping (not LLM response)
+    |
+4. Mapping Result: "お手" -> API 1016 (Hello)
+    |
+5. Execute Action: client.Hello()
 ```
 
-## ⚠️ **发现的关键问题**
+## Key Issues Discovered
 
-### **1. LLM作用不明确**
-- **实际情况**: 系统主要使用**原始命令**进行动作映射，不是LLM响应
-- **LLM作用**: 仅提供用户友好的日语回应，类似"聊天机器人"
-- **问题**: LLM响应质量不影响动作执行，但消耗计算资源
+### **1. LLM Role is Unclear**
+- **Reality**: The system primarily uses the **original command** for action mapping, not the LLM response
+- **LLM's role**: Only provides user-friendly Japanese responses, essentially a "chatbot"
+- **Problem**: LLM response quality does not affect action execution, yet consumes computational resources
 
-### **2. 设计架构混乱**
-当前是**双重处理**:
-- Path A: 原始命令 → 关键词映射 → API执行 (实际生效)
-- Path B: 原始命令 → LLM → 日语回应 (仅UI展示)
+### **2. Architecture Design is Confused**
+The current system has **dual processing**:
+- Path A: Original command -> Keyword mapping -> API execution (actually effective)
+- Path B: Original command -> LLM -> Japanese response (only for UI display)
 
-这导致了：
-- LLM响应不佳不影响动作执行
-- 用户看到LLM回应不准确会误以为系统有问题
-- 资源浪费（LLM计算但不影响结果）
+This leads to:
+- Poor LLM responses not affecting action execution
+- Users seeing inaccurate LLM responses and thinking the system is broken
+- Resource waste (LLM computation with no impact on results)
 
-## 🎯 **LLM的真实作用**
+## True Role of the LLM
 
-从代码确认，LLM在当前架构中的作用是：
+Based on code analysis, the LLM's role in the current architecture is:
 
-### ✅ **实际作用**
-1. **用户界面反馈**: 提供自然的日语响应
-2. **置信度评估**: 为动作映射提供confidence参考
-3. **调试信息**: 帮助用户理解系统是否"理解"了指令
+### Actual Functions
+1. **User interface feedback**: Provides natural Japanese responses
+2. **Confidence assessment**: Provides confidence reference for action mapping
+3. **Debug information**: Helps users understand whether the system "understood" the command
 
-### ❌ **不是做什么**
-1. **不做动作识别**: 最终动作映射基于原始命令关键词
-2. **不做意图分析**: 不影响实际API调用决策
-3. **不做序列规划**: 状态转换由ActionSequencer处理
+### What It Does NOT Do
+1. **Not action recognition**: Final action mapping is based on original command keywords
+2. **Not intent analysis**: Does not affect actual API call decisions
+3. **Not sequence planning**: State transitions are handled by ActionSequencer
 
-## 💡 **优化建议**
+## Optimization Suggestions
 
-基于这个分析，我建议两个方案：
+Based on this analysis, two approaches are suggested:
 
-### **方案A: 简化LLM作用** ⭐ 推荐
-- LLM只做**用户体验反馈**
-- 提示词设计简单明确：输入 → 确认输出
-- 专注提供准确的动作确认信息
+### **Approach A: Simplify LLM Role** (Recommended)
+- LLM only handles **user experience feedback**
+- Prompt design is simple and clear: input -> confirmation output
+- Focus on providing accurate action confirmation information
 
-### **方案B: 强化LLM作用**
-- LLM做**真正的意图识别**
-- 输出标准化的action_type
-- 完全基于LLM输出进行映射
+### **Approach B: Strengthen LLM Role**
+- LLM performs **true intent recognition**
+- Outputs standardized action_type
+- Mapping is entirely based on LLM output

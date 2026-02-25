@@ -1,62 +1,62 @@
 #!/usr/bin/env python3
 """
-验证Dance返回码修复效果
-测试3104等返回码现在是否被正确识别为成功
+Verify Dance Return Code Fix
+Test whether return codes like 3104 are now correctly recognized as success
 """
 
 import sys
 from pathlib import Path
 
-# 添加项目路径
+# Add project path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 def test_return_code_logic():
-    """测试新的返回码判断逻辑"""
-    
-    print("🔧 测试返回码判断逻辑修复")
+    """Test the new return code judgment logic"""
+
+    print("Testing return code judgment logic fix")
     print("=" * 40)
-    
-    # 导入修复后的类
+
+    # Import the fixed class
     from src.claudia.robot_controller.action_mapping_engine_real import RealRobotController
-    
-    # 创建控制器实例（不需要真实连接）
+
+    # Create controller instance (no real connection needed)
     controller = RealRobotController()
-    
-    # 测试案例
+
+    # Test cases
     test_cases = [
-        # (返回码, 方法名, 预期结果, 描述)
-        (0, "Sit", True, "传统成功码"),
-        (3104, "Dance1", True, "Dance1完成码（修复前会失败）"),
-        (3105, "Dance2", True, "Dance2完成码"),
-        (3106, "Hello", True, "其他完成码"),
-        (1, "Sit", False, "真正的错误码"),
-        (999, "Dance1", False, "未知错误码"),
+        # (return_code, method_name, expected_result, description)
+        (0, "Sit", True, "Traditional success code"),
+        (3104, "Dance1", True, "Dance1 completion code (would fail before fix)"),
+        (3105, "Dance2", True, "Dance2 completion code"),
+        (3106, "Hello", True, "Other completion code"),
+        (1, "Sit", False, "Actual error code"),
+        (999, "Dance1", False, "Unknown error code"),
     ]
-    
-    print(f"{'返回码':<8} {'方法':<10} {'预期':<6} {'实际':<6} {'状态':<8} {'描述'}")
+
+    print(f"{'Code':<8} {'Method':<10} {'Expected':<10} {'Actual':<10} {'Status':<8} {'Description'}")
     print("-" * 60)
-    
+
     all_passed = True
-    
+
     for return_code, method_name, expected, description in test_cases:
         actual = controller._is_command_successful(return_code, method_name)
-        
-        status = "✅ PASS" if actual == expected else "❌ FAIL"
+
+        status = "PASS" if actual == expected else "FAIL"
         if actual != expected:
             all_passed = False
-        
-        print(f"{return_code:<8} {method_name:<10} {expected!s:<6} {actual!s:<6} {status:<8} {description}")
-    
+
+        print(f"{return_code:<8} {method_name:<10} {expected!s:<10} {actual!s:<10} {status:<8} {description}")
+
     print("-" * 60)
-    print(f"总体结果: {'✅ 全部通过' if all_passed else '❌ 存在失败'}")
-    
+    print(f"Overall result: {'All passed' if all_passed else 'Some failures detected'}")
+
     if all_passed:
-        print("\n🎉 修复成功！现在Dance命令的返回码3104会被正确识别为成功")
-        print("💡 这意味着跳舞动作不再会被误报为错误")
+        print("\nFix successful! Dance command return code 3104 is now correctly recognized as success")
+        print("This means dance actions will no longer be falsely reported as errors")
     else:
-        print("\n⚠️ 修复可能存在问题，请检查代码")
-    
+        print("\nFix may have issues, please check the code")
+
     return all_passed
 
 if __name__ == "__main__":
-    test_return_code_logic() 
+    test_return_code_logic()

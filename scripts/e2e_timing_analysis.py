@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-E2E タイミング分析スクリプト — ポスター掲載用統計値の算出
+E2E Timing Analysis Script -- Compute statistics for poster presentation
 
-logs/e2e_timing.jsonl を読み取り、ルート別の P50/Mean/P95 を算出する。
-voice_commander.py 実行中に自動生成される E2E ログを分析対象とする。
+Reads logs/e2e_timing.jsonl and computes P50/Mean/P95 by route.
+Analyzes the E2E logs automatically generated during voice_commander.py execution.
 
-使い方:
+Usage:
     python3 scripts/e2e_timing_analysis.py
     python3 scripts/e2e_timing_analysis.py --file logs/e2e_timing.jsonl
 """
@@ -23,7 +23,7 @@ DEFAULT_LOG = os.path.join(_PROJECT_ROOT, "logs", "e2e_timing.jsonl")
 
 def load_entries(path):
     # type: (str) -> List[Dict]
-    """JSONL ファイルから全エントリを読み込む"""
+    """Load all entries from a JSONL file"""
     entries = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
@@ -39,7 +39,7 @@ def load_entries(path):
 
 def percentile(values, p):
     # type: (List[float], float) -> float
-    """簡易パーセンタイル計算 (numpy 不要)"""
+    """Simple percentile calculation (no numpy required)"""
     if not values:
         return 0.0
     sorted_v = sorted(values)
@@ -54,22 +54,22 @@ def percentile(values, p):
 
 def analyze(entries):
     # type: (List[Dict]) -> None
-    """ルート別に E2E 統計を算出して表示"""
-    # 全体統計
+    """Compute and display E2E statistics by route"""
+    # Overall statistics
     all_e2e = [e["e2e_ms"] for e in entries if "e2e_ms" in e]
     all_asr = [e["asr_ms"] for e in entries if e.get("asr_ms", 0) > 0]
     all_brain = [e["brain_ms"] for e in entries if "brain_ms" in e]
 
     print("=" * 65)
-    print("E2E タイミング分析 — ポスター掲載用")
+    print("E2E Timing Analysis -- For Poster Presentation")
     print("=" * 65)
-    print("データ数: {} エントリ".format(len(entries)))
+    print("Data count: {} entries".format(len(entries)))
     print()
 
-    # 全体
+    # Overall
     if all_e2e:
         mean_e2e = sum(all_e2e) / len(all_e2e)
-        print("--- 全体 E2E (speech_end -> action_complete) ---")
+        print("--- Overall E2E (speech_end -> action_complete) ---")
         print("  N      = {}".format(len(all_e2e)))
         print("  Mean   = {:.0f} ms".format(mean_e2e))
         print("  P50    = {:.0f} ms".format(percentile(all_e2e, 50)))
@@ -78,29 +78,29 @@ def analyze(entries):
         print("  Max    = {:.0f} ms".format(max(all_e2e)))
         print()
 
-    # ASR のみ (emergency 除外: asr_ms > 0)
+    # ASR only (excluding emergency: asr_ms > 0)
     if all_asr:
-        print("--- ASR 推論時間 ---")
+        print("--- ASR Inference Time ---")
         print("  N      = {}".format(len(all_asr)))
         print("  Mean   = {:.0f} ms".format(sum(all_asr) / len(all_asr)))
         print("  P50    = {:.0f} ms".format(percentile(all_asr, 50)))
         print("  P95    = {:.0f} ms".format(percentile(all_asr, 95)))
         print()
 
-    # Brain のみ
+    # Brain only
     if all_brain:
-        print("--- Brain 処理+実行時間 ---")
+        print("--- Brain Processing + Execution Time ---")
         print("  N      = {}".format(len(all_brain)))
         print("  Mean   = {:.0f} ms".format(sum(all_brain) / len(all_brain)))
         print("  P50    = {:.0f} ms".format(percentile(all_brain, 50)))
         print("  P95    = {:.0f} ms".format(percentile(all_brain, 95)))
         print()
 
-    # ルート別
+    # By route
     routes = {}  # type: Dict[str, List[Dict]]
     for e in entries:
         r = e.get("route", "unknown")
-        # route から主要カテゴリを抽出
+        # Extract main category from route
         if "emergency" in r:
             cat = "emergency"
         elif "hotpath" in r or "hot_cache" in r:
@@ -113,7 +113,7 @@ def analyze(entries):
             cat = r or "other"
         routes.setdefault(cat, []).append(e)
 
-    print("--- ルート別 E2E ---")
+    print("--- E2E by Route ---")
     print("{:<16} {:>5} {:>8} {:>8} {:>8}".format(
         "Route", "N", "Mean", "P50", "P95"))
     print("-" * 50)
@@ -133,10 +133,10 @@ def analyze(entries):
         ))
 
     print()
-    print("--- ポスター掲載用 (推奨フォーマット) ---")
+    print("--- Poster Presentation Format (Recommended) ---")
     print()
 
-    # ポスター掲載用サマリー
+    # Poster presentation summary
     hotpath_e2e = [e["e2e_ms"] for e in entries
                    if "e2e_ms" in e and ("hotpath" in e.get("route", "") or "hot_cache" in e.get("route", ""))]
     llm_e2e = [e["e2e_ms"] for e in entries
@@ -145,18 +145,18 @@ def analyze(entries):
                if "e2e_ms" in e and "emergency" in e.get("route", "")]
 
     if hotpath_e2e:
-        print("  ホットパス E2E: 中央値 {:.1f}s (N={})".format(
+        print("  Hot path E2E: median {:.1f}s (N={})".format(
             percentile(hotpath_e2e, 50) / 1000, len(hotpath_e2e)))
     if llm_e2e:
-        print("  LLM経路 E2E: 中央値 {:.1f}s (N={})".format(
+        print("  LLM route E2E: median {:.1f}s (N={})".format(
             percentile(llm_e2e, 50) / 1000, len(llm_e2e)))
     if emg_e2e:
-        print("  緊急停止 E2E: 中央値 {:.1f}ms (N={})".format(
+        print("  Emergency stop E2E: median {:.1f}ms (N={})".format(
             percentile(emg_e2e, 50), len(emg_e2e)))
 
-    # コマンド別詳細
+    # Per-command details
     print()
-    print("--- コマンド別 E2E (全エントリ) ---")
+    print("--- E2E by Command (All Entries) ---")
     print("{:<20} {:>8} {:>10} {:>8}".format(
         "Command", "E2E(ms)", "Route", "Status"))
     print("-" * 50)
@@ -183,15 +183,15 @@ def main():
     args = parser.parse_args()
 
     if not os.path.exists(args.file):
-        print("E2E ログファイルが見つかりません: {}".format(args.file))
+        print("E2E log file not found: {}".format(args.file))
         print()
-        print("voice_commander.py を実行してコマンドを入力すると自動生成されます:")
+        print("Run voice_commander.py and enter commands to auto-generate:")
         print("  python3 voice_commander.py --asr-mock")
         sys.exit(1)
 
     entries = load_entries(args.file)
     if not entries:
-        print("E2E ログが空です: {}".format(args.file))
+        print("E2E log is empty: {}".format(args.file))
         sys.exit(1)
 
     analyze(entries)

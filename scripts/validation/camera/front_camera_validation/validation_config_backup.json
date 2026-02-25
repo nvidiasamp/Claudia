@@ -24,49 +24,49 @@
     },
     "lighting_conditions": {
         "indoor_low": {
-            "description": "室内低光照",
+            "description": "Indoor low light",
             "expected_brightness_range": [20, 80],
             "test_duration_seconds": 30
         },
         "indoor_normal": {
-            "description": "室内正常光照",
+            "description": "Indoor normal light",
             "expected_brightness_range": [80, 180],
             "test_duration_seconds": 30
         },
         "indoor_bright": {
-            "description": "室内强光照",
+            "description": "Indoor bright light",
             "expected_brightness_range": [180, 255],
             "test_duration_seconds": 30
         },
         "outdoor_shade": {
-            "description": "室外阴影",
+            "description": "Outdoor shade",
             "expected_brightness_range": [100, 200],
             "test_duration_seconds": 30
         },
         "outdoor_bright": {
-            "description": "室外强光",
+            "description": "Outdoor bright light",
             "expected_brightness_range": [200, 255],
             "test_duration_seconds": 30
         }
     },
     "motion_blur_tests": {
         "static": {
-            "description": "静态测试",
+            "description": "Static test",
             "motion_speed": 0,
             "test_duration_seconds": 10
         },
         "slow_motion": {
-            "description": "慢速运动",
+            "description": "Slow motion",
             "motion_speed": 1,
             "test_duration_seconds": 15
         },
         "normal_motion": {
-            "description": "正常运动",
+            "description": "Normal motion",
             "motion_speed": 2,
             "test_duration_seconds": 15
         },
         "fast_motion": {
-            "description": "快速运动",
+            "description": "Fast motion",
             "motion_speed": 3,
             "test_duration_seconds": 20
         }
@@ -88,4 +88,4 @@
         "stress_test",
         "report_generation"
     ]
-} 
+}

@@ -1,29 +1,29 @@
-# 复杂动作序列处理研究
+# Complex Action Sequence Processing Research
 
-## 🎯 核心挑战
+## Core Challenges
 
-### 场景1: 状态依赖动作
-**用户指令**: "坐下，然后打个招呼"
-**问题**: Hello(1016)需要站立状态，但机器人刚坐下
+### Scenario 1: State-Dependent Actions
+**User Command**: "Sit down, then say hello"
+**Problem**: Hello(1016) requires standing state, but the robot just sat down
 
-**解决方案**:
+**Solution**:
 ```json
 {
   "response": "座って、それから挨拶します",
   "api_code": null,
   "sequence": [
-    {"api": 1009, "wait": 2},     // Sit - 坐下
-    {"api": 1004, "wait": 2},     // StandUp - 站起
-    {"api": 1016, "wait": 3}      // Hello - 打招呼
+    {"api": 1009, "wait": 2},     // Sit - sit down
+    {"api": 1004, "wait": 2},     // StandUp - stand up
+    {"api": 1016, "wait": 3}      // Hello - greet
   ]
 }
 ```
 
-### 场景2: 连续表演
-**用户指令**: "表演一套动作"
-**问题**: 需要组合多个动作形成流畅表演
+### Scenario 2: Continuous Performance
+**User Command**: "Perform a set of actions"
+**Problem**: Need to combine multiple actions into a smooth performance
 
-**解决方案**:
+**Solution**:
 ```json
 {
   "response": "パフォーマンスを始めます",
@@ -31,17 +31,17 @@
   "sequence": [
     {"api": 1016, "wait": 2},     // Hello
     {"api": 1022, "wait": 5},     // Dance1
-    {"api": 1021, "wait": 2},     // Wallow(比心)
-    {"api": 1030, "wait": 2}      // Bow(鞠躬)
+    {"api": 1021, "wait": 2},     // Wallow (heart gesture)
+    {"api": 1030, "wait": 2}      // Bow
   ]
 }
 ```
 
-### 场景3: 条件分支动作
-**用户指令**: "如果累了就坐下，否则跳舞"
-**问题**: 需要根据状态决策
+### Scenario 3: Conditional Branch Actions
+**User Command**: "If tired, sit down; otherwise dance"
+**Problem**: Need to make decisions based on state
 
-**LLM输出方案**:
+**LLM Output Approach**:
 ```json
 {
   "response": "状態を確認します",
@@ -54,81 +54,81 @@
 }
 ```
 
-## 🔧 LLM提示词设计策略
+## LLM Prompt Design Strategies
 
-### 策略1: 最小化Token使用
+### Strategy 1: Minimize Token Usage
 ```
-你是Claudia犬。输出JSON。
-格式:{"response":"日语","api_code":数字}
-映射:
-坐→1009,站→1004,招手→1016,比心→1021...
-```
-
-### 策略2: 序列感知
-```
-复杂指令输出sequence数组。
-每步包含api和wait时间。
+You are Claudia the dog. Output JSON.
+Format: {"response":"Japanese","api_code":number}
+Mapping:
+sit->1009, stand->1004, wave->1016, heart->1021...
 ```
 
-### 策略3: 状态智能
+### Strategy 2: Sequence Awareness
 ```
-记住当前状态。
-需站立动作先执行1004。
+Output sequence array for complex commands.
+Each step includes api and wait time.
 ```
 
-## 💡 3B vs 7B模型权衡
+### Strategy 3: State Intelligence
+```
+Remember current state.
+Actions requiring standing execute 1004 first.
+```
 
-### 3B模型优势
-- ✅ 响应速度快 (1-2秒)
-- ✅ 资源占用少
-- ✅ 适合边缘设备
-- ❌ 复杂理解能力有限
+## 3B vs 7B Model Trade-offs
 
-### 7B模型优势
-- ✅ 理解复杂指令
-- ✅ 更好的上下文感知
-- ❌ 响应慢 (5-8秒)
-- ❌ 资源消耗大
+### 3B Model Advantages
+- Fast response time (1-2 seconds)
+- Low resource consumption
+- Suitable for edge devices
+- Limited complex understanding capability
 
-### 建议：混合策略
-1. **3B为主**: 处理95%的常规指令
-2. **7B备用**: 复杂对话和特殊场景
-3. **缓存优化**: 常用指令预计算
+### 7B Model Advantages
+- Understands complex commands
+- Better context awareness
+- Slow response (5-8 seconds)
+- High resource consumption
 
-## 📊 性能基准测试
+### Recommendation: Hybrid Strategy
+1. **3B as primary**: Handles 95% of regular commands
+2. **7B as backup**: Complex conversations and special scenarios
+3. **Cache optimization**: Pre-compute common commands
 
-| 模型 | 简单指令 | 复杂指令 | 序列规划 | 平均延迟 |
-|------|---------|---------|---------|----------|
-| 3B优化版 | 95% | 60% | 40% | 1.5s |
-| 7B标准版 | 98% | 85% | 70% | 5.2s |
-| 7B优化版 | 97% | 82% | 68% | 3.8s |
+## Performance Benchmarks
 
-## 🎯 推荐架构
+| Model | Simple Commands | Complex Commands | Sequence Planning | Average Latency |
+|-------|----------------|-----------------|-------------------|-----------------|
+| 3B Optimized | 95% | 60% | 40% | 1.5s |
+| 7B Standard | 98% | 85% | 70% | 5.2s |
+| 7B Optimized | 97% | 82% | 68% | 3.8s |
 
-### Layer 1: 快速决策层 (3B)
+## Recommended Architecture
+
+### Layer 1: Fast Decision Layer (3B)
 ```python
 class FastBrain3B:
-    """快速反应大脑 - 处理常规指令"""
+    """Fast reaction brain - handles regular commands"""
     def process(self, command):
-        # 直接输出API代码
-        # 1-2秒响应
+        # Directly output API code
+        # 1-2 second response
         return {"api_code": 1009}
 ```
 
-### Layer 2: 深度理解层 (7B)
+### Layer 2: Deep Understanding Layer (7B)
 ```python
 class DeepBrain7B:
-    """深度理解大脑 - 处理复杂场景"""
+    """Deep understanding brain - handles complex scenarios"""
     def process(self, command):
-        # 复杂序列规划
-        # 3-5秒响应
+        # Complex sequence planning
+        # 3-5 second response
         return {"sequence": [...]}
 ```
 
-### Layer 3: 缓存层
+### Layer 3: Cache Layer
 ```python
 class BrainCache:
-    """智能缓存 - 加速常用指令"""
+    """Intelligent cache - accelerates common commands"""
     cache = {
         "お手": {"api_code": 1016},
         "座って": {"api_code": 1009}

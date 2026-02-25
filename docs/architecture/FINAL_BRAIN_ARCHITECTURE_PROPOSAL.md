@@ -1,124 +1,124 @@
-# Claudia大脑架构最终方案
+# Claudia Brain Architecture: Final Proposal
 
-## 🎯 核心设计决策
+## Core Design Decisions
 
-### 1. **直接API输出** ✅
-**决策**: LLM直接输出API代码，避免二次映射
+### 1. **Direct API Output**
+**Decision**: LLM directly outputs API codes, avoiding secondary mapping
 ```json
-// 输入: "比心"
-// 输出: {"response": "ハートします", "api_code": 1021}
-// 直接执行: SportClient.Wallow()
+// Input: "比心" (heart gesture)
+// Output: {"response": "ハートします", "api_code": 1021}
+// Direct execution: SportClient.Wallow()
 ```
 
-### 2. **3B为主，7B为辅** ✅
-**决策**: 95%用3B快速响应，5%用7B深度理解
-- 3B: 1-2秒，处理常规指令
-- 7B: 3-5秒，处理复杂序列
+### 2. **3B Primary, 7B Secondary**
+**Decision**: 95% handled by 3B for fast response, 5% by 7B for deep understanding
+- 3B: 1-2 seconds, handles routine commands
+- 7B: 3-5 seconds, handles complex sequences
 
-### 3. **极简输出格式** ✅
-**决策**: 最小化JSON结构
+### 3. **Minimal Output Format**
+**Decision**: Minimized JSON structure
 ```json
 {
-  "response": "日语TTS回复",
-  "api_code": 单个API代码,
-  "sequence": [API序列]  // 可选
+  "response": "Japanese TTS reply",
+  "api_code": single API code,
+  "sequence": [API sequence]  // optional
 }
 ```
 
-### 4. **三层优化策略** ✅
-1. **缓存层**: 0延迟，常用指令直接返回
-2. **映射层**: <50ms，关键词直接映射
-3. **LLM层**: 1-2秒，智能理解
+### 4. **Three-Layer Optimization Strategy**
+1. **Cache layer**: 0 latency, direct return for common commands
+2. **Mapping layer**: <50ms, direct keyword mapping
+3. **LLM layer**: 1-2 seconds, intelligent understanding
 
-## 🏗️ 推荐架构实现
+## Recommended Architecture Implementation
 
 ```python
-# 优先级处理流程
+# Priority processing flow
 async def process(command):
-    # 1. 缓存检查 (0ms)
+    # 1. Cache check (0ms)
     if command in cache:
         return cache[command]
-    
-    # 2. 直接映射 (<50ms)
+
+    # 2. Direct mapping (<50ms)
     if has_keyword(command):
         return direct_map(command)
-    
-    # 3. 3B模型 (1-2s)
+
+    # 3. 3B model (1-2s)
     if is_simple(command):
         return call_3b(command)
-    
-    # 4. 7B模型 (3-5s)
+
+    # 4. 7B model (3-5s)
     if is_complex(command):
         return call_7b(command)
 ```
 
-## 📊 性能预期
+## Performance Expectations
 
-| 指令类型 | 处理方式 | 响应时间 | 成功率 |
+| Command Type | Processing Method | Response Time | Success Rate |
 |---------|---------|---------|--------|
-| 常用指令 | 缓存 | 0ms | 100% |
-| 简单指令 | 3B模型 | 1-2s | 95% |
-| 复杂序列 | 7B模型 | 3-5s | 85% |
-| 模糊指令 | 3B+映射 | 1-2s | 80% |
+| Common commands | Cache | 0ms | 100% |
+| Simple commands | 3B model | 1-2s | 95% |
+| Complex sequences | 7B model | 3-5s | 85% |
+| Ambiguous commands | 3B + mapping | 1-2s | 80% |
 
-## 🚀 立即行动计划
+## Immediate Action Plan
 
-### Phase 1: 3B模型优化 (立即)
-1. 创建极简提示词 ✅
-2. 直接API映射表 ✅
-3. 测试常用指令 ⏳
+### Phase 1: 3B Model Optimization (Immediate)
+1. Create minimal prompt
+2. Direct API mapping table
+3. Test common commands
 
-### Phase 2: 混合架构实现 (今天)
-1. 实现HybridBrain类 ✅
-2. 集成缓存机制 ✅
-3. 测试复杂序列 ⏳
+### Phase 2: Hybrid Architecture Implementation (Today)
+1. Implement HybridBrain class
+2. Integrate caching mechanism
+3. Test complex sequences
 
-### Phase 3: 真机集成 (明天)
-1. 连接SportClient
-2. 测试所有26个动作
-3. 优化响应时间
+### Phase 3: Real Hardware Integration (Tomorrow)
+1. Connect SportClient
+2. Test all 26 actions
+3. Optimize response time
 
-## 💡 关键创新点
+## Key Innovations
 
-### 1. **状态感知序列**
+### 1. **State-Aware Sequences**
 ```json
-// "坐下后打招呼"
+// "Sit down then greet"
 {
   "response": "座って挨拶します",
-  "sequence": [1009, 1004, 1016]  // 坐→站→招手
+  "sequence": [1009, 1004, 1016]  // Sit -> Stand -> Wave
 }
 ```
 
-### 2. **智能降级机制**
-- 7B超时 → 降级到3B
-- 3B失败 → 降级到映射
-- 映射失败 → 返回错误
+### 2. **Intelligent Degradation Mechanism**
+- 7B timeout -> Degrade to 3B
+- 3B failure -> Degrade to mapping
+- Mapping failure -> Return error
 
-### 3. **渐进式优化**
-- 收集用户常用指令
-- 动态更新缓存
-- 持续优化提示词
+### 3. **Progressive Optimization**
+- Collect frequently used user commands
+- Dynamically update cache
+- Continuously optimize prompts
 
-## ✅ 您的关键问题解答
+## Answers to Key Questions
 
-### Q: reasoning字段是否必要？
-**A: 不必要**。生产环境应该去掉，只保留必要字段。
+### Q: Is the reasoning field necessary?
+**A: Not necessary**. Production should remove it and only keep essential fields.
 
-### Q: 如何映射到API？
-**A: 直接输出API代码**，无需二次映射。
+### Q: How to map to API?
+**A: Directly output API codes**, no secondary mapping needed.
 
-### Q: 3B还是7B？
-**A: 3B为主**，7B仅用于复杂场景。
+### Q: 3B or 7B?
+**A: 3B primary**, 7B only for complex scenarios.
 
-### Q: 复杂序列如何处理？
-**A: 使用sequence数组**，支持多步骤和延时。
+### Q: How to handle complex sequences?
+**A: Use sequence arrays**, supporting multi-step and delayed execution.
 
-## 🎉 结论
+## Conclusion
 
-这个架构完美平衡了：
-- **响应速度** (3B快速)
-- **智能程度** (7B备援)
-- **实用性** (直接API)
-- **扩展性** (序列支持)
+This architecture perfectly balances:
+- **Response speed** (3B fast path)
+- **Intelligence level** (7B backup)
+- **Practicality** (Direct API)
+- **Extensibility** (Sequence support)
 
-**这才是真正的AI机器人大脑！**
+**This is what a true AI robot brain looks like!**

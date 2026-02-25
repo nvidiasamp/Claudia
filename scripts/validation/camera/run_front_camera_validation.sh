@@ -1,23 +1,23 @@
 #!/bin/bash
 # scripts/validation/camera/run_front_camera_validation.sh
 # Generated: 2024-12-26 16:30:00
-# Purpose: Unitree Go2前置摄像头验证快速启动脚本
+# Purpose: Unitree Go2 front camera validation quick start script
 
 set -e
 
-# 脚本信息
+# Script information
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VALIDATION_DIR="${SCRIPT_DIR}/front_camera_validation"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 日志函数
+# Logging functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -34,78 +34,78 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 显示帮助信息
+# Display help information
 show_help() {
     cat << EOF
-Unitree Go2前置摄像头验证快速启动脚本
+Unitree Go2 Front Camera Validation Quick Start Script
 
-用法:
-    $0 [选项]
+Usage:
+    $0 [options]
 
-选项:
-    -h, --help          显示此帮助信息
-    -q, --quick         快速验证模式（仅基础测试）
-    -f, --full          完整验证模式（包含压力测试）
-    -c, --config FILE   指定配置文件
-    -o, --output DIR    指定输出目录
-    -v, --verbose       详细输出模式
-    --dry-run          预运行模式（不执行实际测试）
+Options:
+    -h, --help          Show this help information
+    -q, --quick         Quick validation mode (basic tests only)
+    -f, --full          Full validation mode (includes stress test)
+    -c, --config FILE   Specify configuration file
+    -o, --output DIR    Specify output directory
+    -v, --verbose       Verbose output mode
+    --dry-run          Dry-run mode (does not execute actual tests)
 
-示例:
-    $0                  # 默认完整验证
-    $0 -q               # 快速验证
-    $0 -c my_config.json -o ./my_results -v  # 自定义配置和输出
+Examples:
+    $0                  # Default full validation
+    $0 -q               # Quick validation
+    $0 -c my_config.json -o ./my_results -v  # Custom config and output
 
 EOF
 }
 
-# 检查环境
+# Check environment
 check_environment() {
-    log_info "检查运行环境..."
-    
-    # 检查Python
+    log_info "Checking runtime environment..."
+
+    # Check Python
     if ! command -v python3 &> /dev/null; then
-        log_error "Python3未找到，请安装Python 3.7+"
+        log_error "Python3 not found, please install Python 3.7+"
         exit 1
     fi
-    
+
     local python_version=$(python3 --version | cut -d' ' -f2)
-    log_info "Python版本: $python_version"
-    
-    # 检查必要的Python包
+    log_info "Python version: $python_version"
+
+    # Check required Python packages
     local required_packages=("cv2" "numpy" "skimage")
     for package in "${required_packages[@]}"; do
         if ! python3 -c "import $package" &> /dev/null; then
-            log_warning "Python包 $package 未找到，可能影响功能"
+            log_warning "Python package $package not found, may affect functionality"
         fi
     done
-    
-    # 检查摄像头设备
+
+    # Check camera devices
     if ls /dev/video* &> /dev/null; then
-        log_info "找到摄像头设备: $(ls /dev/video*)"
+        log_info "Camera devices found: $(ls /dev/video*)"
     else
-        log_warning "未找到摄像头设备，验证可能失败"
+        log_warning "No camera devices found, validation may fail"
     fi
-    
-    # 检查权限
+
+    # Check permissions
     if groups | grep -q video; then
-        log_info "用户已在video组中"
+        log_info "User is already in the video group"
     else
-        log_warning "用户不在video组中，可能需要摄像头权限"
+        log_warning "User is not in the video group, camera permissions may be required"
     fi
-    
-    log_success "环境检查完成"
+
+    log_success "Environment check complete"
 }
 
-# 验证脚本存在
+# Verify scripts exist
 check_scripts() {
-    log_info "检查验证脚本..."
-    
+    log_info "Checking validation scripts..."
+
     if [ ! -d "$VALIDATION_DIR" ]; then
-        log_error "验证目录不存在: $VALIDATION_DIR"
+        log_error "Validation directory does not exist: $VALIDATION_DIR"
         exit 1
     fi
-    
+
     local required_files=(
         "main_validation_script.py"
         "camera_config.py"
@@ -113,85 +113,85 @@ check_scripts() {
         "image_quality_analyzer.py"
         "validation_config.json"
     )
-    
+
     for file in "${required_files[@]}"; do
         if [ ! -f "$VALIDATION_DIR/$file" ]; then
-            log_error "缺少必要文件: $file"
+            log_error "Missing required file: $file"
             exit 1
         fi
     done
-    
-    log_success "验证脚本检查完成"
+
+    log_success "Validation script check complete"
 }
 
-# 创建输出目录
+# Create output directory
 setup_output_dir() {
     local output_dir="$1"
     if [ -z "$output_dir" ]; then
         output_dir="logs/camera_validation"
     fi
-    
+
     mkdir -p "$output_dir"
-    log_info "输出目录: $output_dir"
+    log_info "Output directory: $output_dir"
 }
 
-# 运行验证
+# Run validation
 run_validation() {
     local mode="$1"
     local config_file="$2"
     local output_dir="$3"
     local verbose="$4"
     local dry_run="$5"
-    
-    log_info "开始前置摄像头验证..."
-    log_info "模式: $mode"
-    log_info "时间: $TIMESTAMP"
-    
-    # 构建命令
+
+    log_info "Starting front camera validation..."
+    log_info "Mode: $mode"
+    log_info "Time: $TIMESTAMP"
+
+    # Build command
     local cmd="python3 $VALIDATION_DIR/main_validation_script.py"
-    
+
     if [ -n "$config_file" ]; then
         cmd="$cmd --config $config_file"
     fi
-    
+
     if [ -n "$output_dir" ]; then
         cmd="$cmd --output $output_dir"
     fi
-    
+
     if [ "$verbose" = "true" ]; then
         cmd="$cmd --verbose"
     fi
-    
-    log_info "执行命令: $cmd"
-    
+
+    log_info "Executing command: $cmd"
+
     if [ "$dry_run" = "true" ]; then
-        log_warning "预运行模式 - 不执行实际测试"
+        log_warning "Dry-run mode - not executing actual tests"
         return 0
     fi
-    
-    # 切换到验证目录
+
+    # Switch to validation directory
     cd "$VALIDATION_DIR"
-    
-    # 执行验证
+
+    # Execute validation
     if eval "$cmd"; then
-        log_success "验证完成！"
+        log_success "Validation complete!"
         return 0
     else
-        log_error "验证失败！"
+        log_error "Validation failed!"
         return 1
     fi
 }
 
-# 主函数
+# Main function
 main() {
-    # 默认参数
+    # Default parameters
     local mode="full"
     local config_file=""
     local output_dir=""
     local verbose="false"
     local dry_run="false"
-    
-    # 解析参数
+
+    # Parse arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
             -h|--help)
@@ -223,40 +223,40 @@ main() {
                 shift
                 ;;
             *)
-                log_error "未知参数: $1"
+                log_error "Unknown argument: $1"
                 show_help
                 exit 1
                 ;;
         esac
     done
-    
-    # 显示欢迎信息
+
+    # Display welcome message
     echo -e "${BLUE}================================${NC}"
-    echo -e "${BLUE}Unitree Go2前置摄像头验证系统${NC}"
+    echo -e "${BLUE}Unitree Go2 Front Camera Validation System${NC}"
     echo -e "${BLUE}================================${NC}"
     echo ""
-    
-    # 执行预检查
+
+    # Execute pre-checks
     check_environment
     check_scripts
     setup_output_dir "$output_dir"
-    
+
     echo ""
-    log_info "准备开始验证..."
-    
-    # 运行验证
+    log_info "Preparing to start validation..."
+
+    # Run validation
     if run_validation "$mode" "$config_file" "$output_dir" "$verbose" "$dry_run"; then
         echo ""
-        log_success "前置摄像头验证成功完成！"
-        echo -e "${GREEN}查看结果: ${output_dir:-logs/camera_validation}${NC}"
+        log_success "Front camera validation completed successfully!"
+        echo -e "${GREEN}View results: ${output_dir:-logs/camera_validation}${NC}"
         exit 0
     else
         echo ""
-        log_error "前置摄像头验证失败！"
-        log_info "请检查日志文件获取详细信息"
+        log_error "Front camera validation failed!"
+        log_info "Please check the log files for detailed information"
         exit 1
     fi
 }
 
-# 执行主函数
-main "$@" 
+# Execute main function
+main "$@"

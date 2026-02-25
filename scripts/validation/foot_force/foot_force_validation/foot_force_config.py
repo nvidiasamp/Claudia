@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # scripts/validation/foot_force/foot_force_validation/foot_force_config.py
 # Generated: 2025-06-27 14:08:30 CST
-# Purpose: Unitree Go2 足端力传感器配置管理
+# Purpose: Unitree Go2 foot force sensor configuration management
 
 import time
 import logging
@@ -16,182 +16,182 @@ from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowState_
 
 @dataclass
 class FootForceReading:
-    """足端力传感器单次读数"""
+    """Single reading from foot force sensor"""
     timestamp: float
-    # 四个足端的力传感器数据 [前左，前右，后左，后右]
+    # Force sensor data for four feet [front-left, front-right, rear-left, rear-right]
     foot_forces: Tuple[Tuple[float, float, float], ...]  # [(Fx, Fy, Fz), ...]
-    contact_states: Tuple[bool, bool, bool, bool]  # 接触状态
-    total_force: float  # 总合力
-    center_of_pressure: Tuple[float, float]  # 压力中心 (x, y)
-    
+    contact_states: Tuple[bool, bool, bool, bool]  # Contact states
+    total_force: float  # Total combined force
+    center_of_pressure: Tuple[float, float]  # Center of pressure (x, y)
+
     def __post_init__(self):
-        """验证数据完整性"""
+        """Validate data integrity"""
         if len(self.foot_forces) != 4:
-            raise ValueError("足端力数据必须包含4个足端的数据")
+            raise ValueError("Foot force data must contain data for 4 feet")
         if len(self.contact_states) != 4:
-            raise ValueError("接触状态必须包含4个足端的状态")
+            raise ValueError("Contact states must contain states for 4 feet")
 
 class FootForceConfig:
-    """足端力传感器配置管理类"""
-    
-    # 足端标识常量
-    FOOT_FL = 0  # 前左
-    FOOT_FR = 1  # 前右
-    FOOT_RL = 2  # 后左
-    FOOT_RR = 3  # 后右
-    
+    """Foot force sensor configuration management class"""
+
+    # Foot identifier constants
+    FOOT_FL = 0  # Front Left
+    FOOT_FR = 1  # Front Right
+    FOOT_RL = 2  # Rear Left
+    FOOT_RR = 3  # Rear Right
+
     FOOT_NAMES = ["Front Left", "Front Right", "Rear Left", "Rear Right"]
     FOOT_LABELS = ["FL", "FR", "RL", "RR"]
-    
-    def __init__(self, network_interface: str = "eth0", 
+
+    def __init__(self, network_interface: str = "eth0",
                  sampling_rate: Optional[float] = None,
                  force_threshold: Optional[float] = None,
                  max_force_per_foot: Optional[float] = None):
         """
-        初始化足端力传感器配置
-        
+        Initialize foot force sensor configuration
+
         Args:
-            network_interface: 网络接口名称
-            sampling_rate: 采样率 (Hz)，默认500Hz
-            force_threshold: 接触检测阈值 (N)，默认5.0N
-            max_force_per_foot: 单足最大力 (N)，默认200.0N
+            network_interface: Network interface name
+            sampling_rate: Sampling rate (Hz), default 500Hz
+            force_threshold: Contact detection threshold (N), default 5.0N
+            max_force_per_foot: Maximum force per foot (N), default 200.0N
         """
         self.network_interface = network_interface
         self.logger = logging.getLogger(__name__)
-        
-        # 连接状态
+
+        # Connection state
         self.is_initialized = False
         self.subscriber: Optional[ChannelSubscriber] = None
-        
-        # 数据缓存
+
+        # Data cache
         self._latest_reading: Optional[FootForceReading] = None
         self._data_lock = threading.Lock()
-        
-        # 校准参数
+
+        # Calibration parameters
         self.calibration_offset = {
             'FL': (0.0, 0.0, 0.0),
             'FR': (0.0, 0.0, 0.0),
             'RL': (0.0, 0.0, 0.0),
             'RR': (0.0, 0.0, 0.0)
         }
-        
-        # 配置参数（支持构造函数传入）
-        self.force_threshold = force_threshold if force_threshold is not None else 5.0  # N，接触检测阈值
-        self.max_force_per_foot = max_force_per_foot if max_force_per_foot is not None else 200.0  # N，单足最大力
-        self.sampling_rate_hz = sampling_rate if sampling_rate is not None else 500  # Hz，采样率
-        
-        self.logger.info("足端力传感器配置初始化完成")
-    
+
+        # Configuration parameters (supports constructor arguments)
+        self.force_threshold = force_threshold if force_threshold is not None else 5.0  # N, contact detection threshold
+        self.max_force_per_foot = max_force_per_foot if max_force_per_foot is not None else 200.0  # N, max force per foot
+        self.sampling_rate_hz = sampling_rate if sampling_rate is not None else 500  # Hz, sampling rate
+
+        self.logger.info("Foot force sensor configuration initialized")
+
     def initialize_connection(self, domain_id: int = 0) -> bool:
         """
-        初始化与机器人的连接
-        
+        Initialize connection to the robot
+
         Args:
-            domain_id: DDS域ID
-            
+            domain_id: DDS domain ID
+
         Returns:
-            bool: 初始化是否成功
+            bool: Whether initialization was successful
         """
         try:
-            self.logger.info(f"初始化足端力传感器连接 - 网络接口: {self.network_interface}")
-            
-            # 初始化DDS通道工厂
+            self.logger.info(f"Initializing foot force sensor connection - network interface: {self.network_interface}")
+
+            # Initialize DDS channel factory
             ChannelFactoryInitialize(domain_id, self.network_interface)
-            
-            # 创建LowState订阅者
+
+            # Create LowState subscriber
             self.subscriber = ChannelSubscriber("rt/lowstate", LowState_)
-            
-            # 验证连接
+
+            # Verify connection
             if self._test_connection():
                 self.is_initialized = True
-                self.logger.info("足端力传感器连接初始化成功")
+                self.logger.info("Foot force sensor connection initialized successfully")
                 return True
             else:
-                self.logger.error("足端力传感器连接测试失败")
+                self.logger.error("Foot force sensor connection test failed")
                 return False
-                
+
         except Exception as e:
-            self.logger.error(f"足端力传感器连接初始化失败: {e}")
+            self.logger.error(f"Foot force sensor connection initialization failed: {e}")
             return False
-    
+
     def _test_connection(self) -> bool:
-        """测试连接是否正常"""
+        """Test whether connection is working"""
         try:
             if self.subscriber is None:
-                self.logger.error("订阅者未初始化")
+                self.logger.error("Subscriber not initialized")
                 return False
-            
-            # 测试订阅者是否可用，而不是尝试读取具体数据
-            # 在没有机器人连接的情况下，我们只验证订阅者创建成功
-            self.logger.info("足端力传感器连接测试成功 - 订阅者已创建")
+
+            # Test whether subscriber is available, without trying to read specific data
+            # Without a robot connection, we only verify that the subscriber was created successfully
+            self.logger.info("Foot force sensor connection test successful - subscriber created")
             return True
-                
+
         except Exception as e:
-            self.logger.error(f"足端力传感器连接测试异常: {e}")
+            self.logger.error(f"Foot force sensor connection test error: {e}")
             return False
-    
+
     def _extract_foot_force_data(self, msg: LowState_) -> FootForceReading:
         """
-        从LowState消息中提取足端力数据
-        
+        Extract foot force data from LowState message
+
         Args:
-            msg: LowState消息
-            
+            msg: LowState message
+
         Returns:
-            FootForceReading: 足端力读数
+            FootForceReading: Foot force reading
         """
         timestamp = time.time()
-        
-        # 提取足端力数据 (根据实际SDK结构调整)
-        # 注意：实际的数据结构可能需要根据unitree_sdk2py的具体实现进行调整
+
+        # Extract foot force data (adjust based on actual SDK structure)
+        # Note: Actual data structure may need adjustment based on unitree_sdk2py implementation
         foot_forces = []
         contact_states = []
-        
-        # 假设LowState中有foot_force字段 - 需要根据实际API调整
+
+        # Assumes LowState has foot_force field - needs adjustment based on actual API
         for i in range(4):
             if hasattr(msg, 'foot_force') and len(msg.foot_force) > i:
-                # 如果有三维力数据
+                # If 3D force data available
                 if hasattr(msg.foot_force[i], 'x'):
                     fx = msg.foot_force[i].x
                     fy = msg.foot_force[i].y
                     fz = msg.foot_force[i].z
                 else:
-                    # 如果只有垂直力
+                    # If only vertical force available
                     fx, fy, fz = 0.0, 0.0, float(msg.foot_force[i])
             else:
-                # 临时使用其他可用数据或默认值
+                # Temporarily use other available data or default values
                 fx, fy, fz = 0.0, 0.0, 0.0
-            
-            # 应用校准偏移
+
+            # Apply calibration offset
             offset = self.calibration_offset[self.FOOT_LABELS[i]]
             fx -= offset[0]
             fy -= offset[1]
             fz -= offset[2]
-            
+
             foot_forces.append((fx, fy, fz))
-            
-            # 接触检测（基于垂直力）
+
+            # Contact detection (based on vertical force)
             contact_states.append(abs(fz) > self.force_threshold)
-        
-        # 计算总合力
+
+        # Calculate total combined force
         total_force = sum(abs(force[2]) for force in foot_forces)
-        
-        # 计算压力中心 (简化计算)
+
+        # Calculate center of pressure (simplified calculation)
         if total_force > 0:
-            # 假设足端位置 (相对于机器人质心)
+            # Assumed foot positions (relative to robot center of mass)
             foot_positions = [
-                (-0.2, 0.15),   # FL: 前左
-                (-0.2, -0.15),  # FR: 前右
-                (0.2, 0.15),    # RL: 后左  
-                (0.2, -0.15)    # RR: 后右
+                (-0.2, 0.15),   # FL: Front Left
+                (-0.2, -0.15),  # FR: Front Right
+                (0.2, 0.15),    # RL: Rear Left
+                (0.2, -0.15)    # RR: Rear Right
             ]
-            
+
             cop_x = sum(abs(force[2]) * pos[0] for force, pos in zip(foot_forces, foot_positions)) / total_force
             cop_y = sum(abs(force[2]) * pos[1] for force, pos in zip(foot_forces, foot_positions)) / total_force
             center_of_pressure = (cop_x, cop_y)
         else:
             center_of_pressure = (0.0, 0.0)
-        
+
         return FootForceReading(
             timestamp=timestamp,
             foot_forces=tuple(foot_forces),
@@ -199,18 +199,18 @@ class FootForceConfig:
             total_force=total_force,
             center_of_pressure=center_of_pressure
         )
-    
+
     def get_latest_reading(self) -> Optional[FootForceReading]:
         """
         Get latest foot force reading
-        
+
         Returns:
             FootForceReading: Latest reading, None if no data available
         """
         if not self.is_initialized:
             self.logger.warning("Foot force sensor not initialized")
             return None
-        
+
         try:
             # Try to read real data first
             if self.subscriber is not None:
@@ -220,94 +220,94 @@ class FootForceConfig:
                     with self._data_lock:
                         self._latest_reading = real_reading
                     return real_reading
-            
+
             # Fall back to mock data if real data reading fails
             self.logger.warning("Failed to read real data, using mock data for testing")
             reading = self._generate_mock_reading()
-            
+
             # Update cache
             with self._data_lock:
                 self._latest_reading = reading
-            
+
             return reading
-                
+
         except Exception as e:
             self.logger.error(f"Failed to read foot force data: {e}")
             return None
-    
+
     def get_cached_reading(self) -> Optional[FootForceReading]:
         """Get cached latest reading"""
         with self._data_lock:
             return self._latest_reading
-    
+
 
 
     def _read_real_data(self) -> Optional[FootForceReading]:
         """
         Read real data from Unitree robot using correct SDK pattern
-        
+
         Returns:
             FootForceReading: Real reading from robot, None if failed
         """
         try:
             if self.subscriber is None:
                 return None
-            
+
             # Official SDK pattern: Read() returns the data directly
             # No need to create LowState_ message manually
             lowstate_msg = self.subscriber.Read(timeout=100)  # 100ms timeout
-            
+
             if lowstate_msg is not None:
                 # Successfully received data from robot!
                 reading = self._extract_foot_force_data(lowstate_msg)
-                self.logger.info("✅ Successfully read REAL data from Unitree robot!")
+                self.logger.info("Successfully read REAL data from Unitree robot!")
                 return reading
             else:
                 # No data available - this is normal if robot is not publishing
                 self.logger.debug("No data available from robot (robot may not be active)")
                 return None
-                
+
         except Exception as e:
             self.logger.debug(f"Real data read attempt failed: {e}")
             return None
-    
+
     def _generate_mock_reading(self) -> FootForceReading:
-        """生成模拟的足端力读数（用于测试）"""
+        """Generate mock foot force reading (for testing)"""
         import random
-        
+
         timestamp = time.time()
-        
-        # 生成模拟的足端力数据
+
+        # Generate mock foot force data
         foot_forces = []
         contact_states = []
-        
+
         for i in range(4):
-            # 模拟足端接触状态（随机）
+            # Mock foot contact state (random)
             is_contact = random.choice([True, False])
-            
+
             if is_contact:
-                # 接触时有垂直力
-                fx = random.uniform(-5, 5)  # 小的水平力
-                fy = random.uniform(-5, 5)  # 小的水平力 
-                fz = random.uniform(10, 50)  # 垂直力
+                # Vertical force when in contact
+                fx = random.uniform(-5, 5)  # Small horizontal force
+                fy = random.uniform(-5, 5)  # Small horizontal force
+                fz = random.uniform(10, 50)  # Vertical force
             else:
-                # 悬空时力很小
+                # Very small force when airborne
                 fx = random.uniform(-1, 1)
                 fy = random.uniform(-1, 1)
                 fz = random.uniform(0, 2)
-            
+
             foot_forces.append((fx, fy, fz))
             contact_states.append(is_contact)
-        
-        # 计算总合力
+
+        # Calculate total combined force
         total_force = sum(abs(force[2]) for force in foot_forces)
-        
-        # 简单的压力中心计算
+
+        # Simple center of pressure calculation
         if total_force > 0:
-            center_of_pressure = (0.0, 0.0)  # 简化为原点
+            center_of_pressure = (0.0, 0.0)  # Simplified to origin
         else:
             center_of_pressure = (0.0, 0.0)
-        
+
         return FootForceReading(
             timestamp=timestamp,
             foot_forces=tuple(foot_forces),
@@ -315,74 +315,74 @@ class FootForceConfig:
             total_force=total_force,
             center_of_pressure=center_of_pressure
         )
-    
+
     def set_calibration_offset(self, foot_index: int, offset: Tuple[float, float, float]):
         """
-        设置足端力传感器校准偏移
-        
+        Set foot force sensor calibration offset
+
         Args:
-            foot_index: 足端索引 (0-3)
-            offset: 偏移值 (fx, fy, fz)
+            foot_index: Foot index (0-3)
+            offset: Offset values (fx, fy, fz)
         """
         if 0 <= foot_index < 4:
             foot_label = self.FOOT_LABELS[foot_index]
             self.calibration_offset[foot_label] = offset
-            self.logger.info(f"设置{self.FOOT_NAMES[foot_index]}足端校准偏移: {offset}")
+            self.logger.info(f"Set {self.FOOT_NAMES[foot_index]} calibration offset: {offset}")
         else:
-            raise ValueError("足端索引必须在0-3之间")
-    
+            raise ValueError("Foot index must be between 0-3")
+
     def zero_calibration(self, duration_seconds: float = 5.0) -> bool:
         """
-        执行零点校准
-        
+        Perform zero-point calibration
+
         Args:
-            duration_seconds: 校准数据收集持续时间
-            
+            duration_seconds: Calibration data collection duration
+
         Returns:
-            bool: 校准是否成功
+            bool: Whether calibration was successful
         """
         if not self.is_initialized:
-            self.logger.error("足端力传感器未初始化，无法执行校准")
+            self.logger.error("Foot force sensor not initialized, cannot perform calibration")
             return False
-        
-        self.logger.info(f"开始零点校准，持续时间: {duration_seconds}秒")
-        
-        # 收集校准数据
+
+        self.logger.info(f"Starting zero-point calibration, duration: {duration_seconds} seconds")
+
+        # Collect calibration data
         calibration_data = {i: [] for i in range(4)}
         start_time = time.time()
         sample_count = 0
-        
+
         while time.time() - start_time < duration_seconds:
             reading = self.get_latest_reading()
             if reading:
                 for i, force in enumerate(reading.foot_forces):
                     calibration_data[i].append(force)
                 sample_count += 1
-            time.sleep(0.01)  # 100Hz采样
-        
+            time.sleep(0.01)  # 100Hz sampling
+
         if sample_count < 10:
-            self.logger.error("校准数据不足，无法完成校准")
+            self.logger.error("Insufficient calibration data, cannot complete calibration")
             return False
-        
-        # 计算校准偏移
+
+        # Calculate calibration offsets
         for i in range(4):
             if calibration_data[i]:
                 forces_array = np.array(calibration_data[i])
                 mean_force = forces_array.mean(axis=0)
                 self.set_calibration_offset(i, tuple(mean_force))
-        
-        self.logger.info(f"零点校准完成，收集了{sample_count}个样本")
+
+        self.logger.info(f"Zero-point calibration complete, collected {sample_count} samples")
         return True
-    
+
     def validate_force_data(self, reading: FootForceReading) -> Dict[str, bool]:
         """
-        验证足端力数据的有效性
-        
+        Validate foot force data validity
+
         Args:
-            reading: 足端力读数
-            
+            reading: Foot force reading
+
         Returns:
-            Dict[str, bool]: 验证结果
+            Dict[str, bool]: Validation results
         """
         validation_results = {
             'data_complete': True,
@@ -390,33 +390,33 @@ class FootForceConfig:
             'contact_consistent': True,
             'total_force_reasonable': True
         }
-        
-        # 检查数据完整性
+
+        # Check data completeness
         if len(reading.foot_forces) != 4:
             validation_results['data_complete'] = False
-        
-        # 检查力值范围
+
+        # Check force value ranges
         for force in reading.foot_forces:
             if any(abs(f) > self.max_force_per_foot for f in force):
                 validation_results['forces_in_range'] = False
                 break
-        
-        # 检查接触状态一致性
+
+        # Check contact state consistency
         for i, (force, contact) in enumerate(zip(reading.foot_forces, reading.contact_states)):
-            force_magnitude = abs(force[2])  # 垂直力
+            force_magnitude = abs(force[2])  # Vertical force
             expected_contact = force_magnitude > self.force_threshold
             if contact != expected_contact:
                 validation_results['contact_consistent'] = False
                 break
-        
-        # 检查总力合理性
+
+        # Check total force reasonableness
         if reading.total_force > 4 * self.max_force_per_foot:
             validation_results['total_force_reasonable'] = False
-        
+
         return validation_results
-    
+
     def get_foot_info(self) -> Dict[str, any]:
-        """获取足端信息"""
+        """Get foot information"""
         return {
             'foot_count': 4,
             'foot_names': self.FOOT_NAMES,
@@ -426,23 +426,23 @@ class FootForceConfig:
             'sampling_rate_hz': self.sampling_rate_hz,
             'calibration_offset': self.calibration_offset
         }
-    
+
     def cleanup(self):
-        """清理资源"""
+        """Clean up resources"""
         try:
             if self.subscriber:
-                # 注意：根据实际SDK API进行清理
+                # Note: Clean up according to actual SDK API
                 self.subscriber = None
-            
-            self.is_initialized = False
-            self.logger.info("足端力传感器配置清理完成")
-            
-        except Exception as e:
-            self.logger.error(f"清理足端力传感器配置时出错: {e}")
 
-# 工具函数
+            self.is_initialized = False
+            self.logger.info("Foot force sensor configuration cleanup complete")
+
+        except Exception as e:
+            self.logger.error(f"Error cleaning up foot force sensor configuration: {e}")
+
+# Utility functions
 def create_default_config(network_interface: str = "eth0") -> FootForceConfig:
-    """创建默认配置"""
+    """Create default configuration"""
     return FootForceConfig(network_interface=network_interface)
 
 def format_force_reading(reading: FootForceReading) -> str:
@@ -453,10 +453,10 @@ def format_force_reading(reading: FootForceReading) -> str:
         f"Center of Pressure: ({reading.center_of_pressure[0]:.3f}, {reading.center_of_pressure[1]:.3f})",
         "Foot Force Data:"
     ]
-    
+
     for i, (force, contact) in enumerate(zip(reading.foot_forces, reading.contact_states)):
         foot_name = FootForceConfig.FOOT_NAMES[i]
         contact_str = "Contact" if contact else "Airborne"
         lines.append(f"  {foot_name}: Fx={force[0]:.2f}, Fy={force[1]:.2f}, Fz={force[2]:.2f} N [{contact_str}]")
-    
-    return "\n".join(lines) 
+
+    return "\n".join(lines)

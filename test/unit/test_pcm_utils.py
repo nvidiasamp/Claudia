@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""pcm_utils.py 重采样函数のユニットテスト"""
+"""Unit tests for pcm_utils.py resampling functions"""
 
 import sys
 import os
@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 
-# プロジェクトパス追加
+# Add project path
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "src"))
 
@@ -16,17 +16,17 @@ from claudia.audio.pcm_utils import resample_pcm_int16
 
 
 class TestResamplePcmInt16(unittest.TestCase):
-    """resample_pcm_int16 テスト"""
+    """resample_pcm_int16 tests"""
 
     def test_same_rate_noop(self):
-        """同一レート時は入力をそのまま返す"""
+        """Same rate returns input as-is"""
         samples = np.array([1, 2, 3, 4], dtype=np.int16)
         result = resample_pcm_int16(samples, 16000, 16000)
         np.testing.assert_array_equal(result, samples)
 
     def test_downsample_44100_to_16000(self):
-        """44100→16000 ダウンサンプリング: 出力長が正しい"""
-        n_in = 44100  # 1秒分
+        """44100->16000 downsampling: output length is correct"""
+        n_in = 44100  # 1 second worth
         samples = np.arange(n_in, dtype=np.int16)
         result = resample_pcm_int16(samples, 44100, 16000)
         expected_len = int(n_in * 16000 / 44100)
@@ -34,28 +34,28 @@ class TestResamplePcmInt16(unittest.TestCase):
         self.assertEqual(result.dtype, np.int16)
 
     def test_upsample_16000_to_44100(self):
-        """16000→44100 アップサンプリング: 出力長が正しい"""
-        n_in = 16000  # 1秒分
+        """16000->44100 upsampling: output length is correct"""
+        n_in = 16000  # 1 second worth
         samples = np.arange(n_in, dtype=np.int16)
         result = resample_pcm_int16(samples, 16000, 44100)
         expected_len = int(n_in * 44100 / 16000)
         self.assertEqual(len(result), expected_len)
 
     def test_output_within_input_range(self):
-        """出力値が入力値の範囲内に収まる (近傍補間)"""
+        """Output values are within input value range (nearest neighbor interpolation)"""
         samples = np.array([0, 100, 200, 300, 32767], dtype=np.int16)
         result = resample_pcm_int16(samples, 44100, 16000)
         self.assertTrue(np.all(result >= 0))
         self.assertTrue(np.all(result <= 32767))
 
     def test_empty_input(self):
-        """空配列は空を返す"""
+        """Empty array returns empty"""
         samples = np.array([], dtype=np.int16)
         result = resample_pcm_int16(samples, 44100, 16000)
         self.assertEqual(len(result), 0)
 
     def test_backward_compat_asr_service_import(self):
-        """asr_service パッケージからの re-export が機能する"""
+        """Re-export from asr_service package works"""
         from claudia.audio.asr_service import resample_pcm_int16 as fn
         self.assertIs(fn, resample_pcm_int16)
 

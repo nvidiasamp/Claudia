@@ -1,43 +1,43 @@
-# Claudia机器人真实遥控器动作分析
+# Claudia Robot Real Remote Controller Action Analysis
 
-## 🎮 真实遥控器支持的动作列表
+## Real Remote Controller Supported Action List
 
-基于用户实际遥控器测试，以下是机器人真正支持的动作：
+Based on actual user remote controller testing, the following are the actions truly supported by the robot:
 
-### **🎭 核心表演动作 (9个)**
+### **Core Performance Actions (9)**
 
-| 中文名称 | 日语指令 | 罗马音 | 动作描述 | 状态需求 |
-|----------|----------|---------|----------|----------|
-| 翻身 | ゴロン | goron | 侧翻动作 | 躺下状态 |
-| 伸懒腰 | ノビ | nobi | 伸展身体 | 站立状态 |
-| 握手 | お手 | ote | 抬前爪握手 | 站立状态 |
-| 比心 | ハート | haato | 双手比心形 | 站立状态 |
-| 扑人 | トンデ/アタック | tonde/atakku | 前扑动作 | 站立状态 |
-| 前跳 | ジャンプ | janpu | 向前跳跃 | 站立状态 |
-| 拜年 | おじぎ/ちんちん | ojigi/chinchin | 作揖鞠躬 | 站立状态 |
-| 舞蹈1 | ダンス | kururin | 原地旋转 | 站立状态 |
-| 舞蹈2 | ダンス | dansu | 左右摇摆 | 站立状态 |
+| Chinese Name | Japanese Command | Romanization | Action Description | State Requirement |
+|-------------|-----------------|--------------|-------------------|-------------------|
+| Roll over | ゴロン | goron | Side roll action | Lying down state |
+| Stretch | ノビ | nobi | Body stretching | Standing state |
+| Shake hands | お手 | ote | Raise front paw to shake | Standing state |
+| Heart gesture | ハート | haato | Both hands form heart shape | Standing state |
+| Pounce | トンデ/アタック | tonde/atakku | Forward pounce action | Standing state |
+| Front jump | ジャンプ | janpu | Forward jump | Standing state |
+| Celebratory bow | おじぎ/ちんちん | ojigi/chinchin | Ceremonial bow | Standing state |
+| Dance 1 | ダンス | kururin | In-place spinning | Standing state |
+| Dance 2 | ダンス | dansu | Side-to-side swaying | Standing state |
 
-### **🏃 运动控制模式 (17个)**
+### **Movement Control Modes (17)**
 
-| 中文名称 | 日语指令 | 罗马音 | 功能描述 | 特点 |
-|----------|----------|---------|----------|------|
-| 阻尼 | スロー | surō | 缓慢动作控制 | 安全模式 |
-| 灵动 | リズム/スマート | rizumu/sumāto | 轻巧灵活 | 敏捷模式 |
-| 坐下 | おすわり | osuwari | 坐姿 | 基础姿态 |
-| 摆姿势 | ポーズ | pōzu | 展示姿态 | 静态模式 |
-| 站立 | タッテ | tatte | 站立姿态 | 基础姿态 |
-| 跑步 | ハシレ | hashire | 跑步移动 | 运动模式 |
-| 经典 | クラシック | kurashikku | 标准动作 | 默认模式 |
-| 锁定 | ロック/マテ | rokku/mate | 目标锁定 | 专注模式 |
-| 常规 | ノーマル | nōmaru | 平常状态 | 默认状态 |
-| 续航 | キープ | kīpu | 持续动作 | 耐久模式 |
-| 牵引 | ツイテ | tsuite | 跟随模式 | 移动模式 |
-| 倒立 | サカダチ | sakadachi | 倒立动作 | 高难动作 |
-| 闪避 | カワセ | kawase | 闪避动作 | 反应模式 |
-| 并腿跑 | ナカヨクハシレ | nakayoku hashire | 并腿跑步 | 特殊步态 |
-| 跳跃跑 | ジャンプラン | janpu ran | 跳跃式跑步 | 动感步态 |
-| 直立 | タッチ | tacchi | 双腿直立 | 展示姿态 |
-| 交叉步 | クロス | kurosu | 交叉步行 | 特殊步态 |
+| Chinese Name | Japanese Command | Romanization | Function Description | Characteristics |
+|-------------|-----------------|--------------|---------------------|-----------------|
+| Damping | スロー | suro | Slow motion control | Safety mode |
+| Agile | リズム/スマート | rizumu/sumato | Light and nimble | Agile mode |
+| Sit down | おすわり | osuwari | Sitting posture | Basic posture |
+| Pose | ポーズ | pozu | Display posture | Static mode |
+| Stand up | タッテ | tatte | Standing posture | Basic posture |
+| Run | ハシレ | hashire | Running movement | Movement mode |
+| Classic | クラシック | kurashikku | Standard actions | Default mode |
+| Lock | ロック/マテ | rokku/mate | Target lock | Focus mode |
+| Normal | ノーマル | nomaru | Normal state | Default state |
+| Endurance | キープ | kipu | Sustained action | Endurance mode |
+| Follow | ツイテ | tsuite | Follow mode | Movement mode |
+| Handstand | サカダチ | sakadachi | Handstand action | Advanced action |
+| Dodge | カワセ | kawase | Dodge action | Reaction mode |
+| Parallel legs run | ナカヨクハシレ | nakayoku hashire | Parallel legs running | Special gait |
+| Jump run | ジャンプラン | janpu ran | Jumping-style running | Dynamic gait |
+| Upright | タッチ | tacchi | Bipedal upright | Display posture |
+| Cross step | クロス | kurosu | Cross stepping | Special gait |
 
-**总计：26个真实动作/模式**
+**Total: 26 real actions/modes**

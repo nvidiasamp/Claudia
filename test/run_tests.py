@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Claudia机器人项目测试运行器
+Claudia Robot Project Test Runner
 
-提供统一的测试运行接口，支持不同类型的测试和配置选项。
+Provides a unified test runner interface with support for different test types and configuration options.
 """
 
 import sys
@@ -13,178 +13,178 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
-# 添加项目根目录到Python路径
+# Add project root directory to Python path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 class TestRunner:
-    """测试运行器"""
-    
+    """Test runner"""
+
     def __init__(self):
         self.test_dir = Path(__file__).parent
         self.project_root = self.test_dir.parent
         self.results = {}
-    
+
     def run_hardware_tests(self, verbose: bool = False) -> bool:
-        """运行硬件测试（自动发现所有 test_*.py 文件）"""
-        print("🤖 运行硬件测试...")
+        """Run hardware tests (auto-discovers all test_*.py files)"""
+        print("Running hardware tests...")
 
         hardware_test_files = sorted((self.test_dir / "hardware").glob("test_*.py"))
         if not hardware_test_files:
-            print("  ℹ️ 暂无硬件测试文件")
+            print("  No hardware test files found")
             return True
 
         success = True
         for test_path in hardware_test_files:
-            print(f"  🔧 运行 {test_path.name}...")
+            print(f"  Running {test_path.name}...")
             result = self._run_single_test(test_path, verbose)
             self.results[f"hardware/{test_path.name}"] = result
             if not result:
                 success = False
-                print(f"    ❌ {test_path.name} 失败")
+                print(f"    FAILED: {test_path.name}")
             else:
-                print(f"    ✅ {test_path.name} 通过")
+                print(f"    PASSED: {test_path.name}")
 
         return success
-    
+
     def run_unit_tests(self, verbose: bool = False) -> bool:
-        """运行单元测试"""
-        print("⚡ 运行单元测试...")
-        
+        """Run unit tests"""
+        print("Running unit tests...")
+
         unit_test_files = list((self.test_dir / "unit").glob("test_*.py"))
         if not unit_test_files:
-            print("  ℹ️ 暂无单元测试文件")
+            print("  No unit test files found")
             return True
-        
+
         success = True
         for test_file in unit_test_files:
-            print(f"  🔍 运行 {test_file.name}...")
+            print(f"  Running {test_file.name}...")
             result = self._run_single_test(test_file, verbose)
             self.results[f"unit/{test_file.name}"] = result
             if not result:
                 success = False
-                print(f"    ❌ {test_file.name} 失败")
+                print(f"    FAILED: {test_file.name}")
             else:
-                print(f"    ✅ {test_file.name} 通过")
-        
+                print(f"    PASSED: {test_file.name}")
+
         return success
-    
+
     def run_integration_tests(self, verbose: bool = False) -> bool:
-        """运行集成测试"""
-        print("🔗 运行集成测试...")
-        
+        """Run integration tests"""
+        print("Running integration tests...")
+
         integration_test_files = list((self.test_dir / "integration").glob("test_*.py"))
         if not integration_test_files:
-            print("  ℹ️ 暂无集成测试文件")
+            print("  No integration test files found")
             return True
-        
+
         success = True
         for test_file in integration_test_files:
-            print(f"  🌐 运行 {test_file.name}...")
+            print(f"  Running {test_file.name}...")
             result = self._run_single_test(test_file, verbose)
             self.results[f"integration/{test_file.name}"] = result
             if not result:
                 success = False
-                print(f"    ❌ {test_file.name} 失败")
+                print(f"    FAILED: {test_file.name}")
             else:
-                print(f"    ✅ {test_file.name} 通过")
-        
+                print(f"    PASSED: {test_file.name}")
+
         return success
-    
+
     def _run_single_test(self, test_path: Path, verbose: bool = False) -> bool:
-        """运行单个测试文件"""
+        """Run a single test file"""
         try:
             cmd = [sys.executable, str(test_path)]
             if verbose:
-                result = subprocess.run(cmd, cwd=self.project_root, 
+                result = subprocess.run(cmd, cwd=self.project_root,
                                       capture_output=False, text=True)
             else:
                 result = subprocess.run(cmd, cwd=self.project_root,
                                       capture_output=True, text=True)
-            
+
             return result.returncode == 0
-            
+
         except Exception as e:
-            print(f"    🚫 运行 {test_path.name} 时出错: {e}")
+            print(f"    Error running {test_path.name}: {e}")
             return False
-    
+
     def print_summary(self):
-        """打印测试结果摘要"""
+        """Print test results summary"""
         print("\n" + "="*60)
-        print("📊 测试结果摘要")
+        print("Test Results Summary")
         print("="*60)
-        
+
         total_tests = len(self.results)
         passed_tests = sum(1 for result in self.results.values() if result)
         failed_tests = total_tests - passed_tests
-        
-        print(f"总测试数: {total_tests}")
-        print(f"通过: {passed_tests} ✅")
-        print(f"失败: {failed_tests} ❌")
-        
+
+        print(f"Total tests: {total_tests}")
+        print(f"Passed: {passed_tests}")
+        print(f"Failed: {failed_tests}")
+
         if failed_tests > 0:
-            print("\n失败的测试:")
+            print("\nFailed tests:")
             for test_name, result in self.results.items():
                 if not result:
-                    print(f"  ❌ {test_name}")
-        
+                    print(f"  - {test_name}")
+
         print("="*60)
         return failed_tests == 0
 
 def main():
-    """主函数"""
-    parser = argparse.ArgumentParser(description="Claudia机器人项目测试运行器")
+    """Main function"""
+    parser = argparse.ArgumentParser(description="Claudia Robot Project Test Runner")
     parser.add_argument("--type", choices=["all", "unit", "integration", "hardware"],
-                       default="all", help="运行特定类型的测试")
+                       default="all", help="Run a specific type of tests")
     parser.add_argument("-v", "--verbose", action="store_true",
-                       help="显示详细输出")
+                       help="Show detailed output")
     parser.add_argument("--debug", action="store_true",
-                       help="调试模式")
-    
+                       help="Debug mode")
+
     args = parser.parse_args()
-    
-    print("🚀 Claudia机器人项目测试运行器")
-    print(f"⏰ 开始时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"🎯 测试类型: {args.type}")
+
+    print("Claudia Robot Project Test Runner")
+    print(f"Start time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Test type: {args.type}")
     print("-" * 60)
-    
+
     runner = TestRunner()
     overall_success = True
-    
+
     try:
         if args.type in ["all", "unit"]:
             success = runner.run_unit_tests(args.verbose)
             overall_success = overall_success and success
-        
+
         if args.type in ["all", "integration"]:
             success = runner.run_integration_tests(args.verbose)
             overall_success = overall_success and success
-        
+
         if args.type in ["all", "hardware"]:
-            print("\n⚠️ 硬件测试需要机器人连接，确保:")
-            print("   1. Go2机器人已开机并连接")
-            print("   2. 网络配置正确")
-            print("   3. CycloneDDS环境已设置")
-            
-            if args.debug or input("\n继续运行硬件测试? (y/N): ").lower() == 'y':
+            print("\nWARNING: Hardware tests require a robot connection. Ensure:")
+            print("   1. Go2 robot is powered on and connected")
+            print("   2. Network configuration is correct")
+            print("   3. CycloneDDS environment is set up")
+
+            if args.debug or input("\nContinue running hardware tests? (y/N): ").lower() == 'y':
                 success = runner.run_hardware_tests(args.verbose)
                 overall_success = overall_success and success
             else:
-                print("⏭️ 跳过硬件测试")
-        
+                print("Skipping hardware tests")
+
     except KeyboardInterrupt:
-        print("\n\n⏹️ 测试被用户中断")
+        print("\n\nTests interrupted by user")
         return 1
     except Exception as e:
-        print(f"\n❌ 测试运行出错: {e}")
+        print(f"\nTest run error: {e}")
         return 1
-    
-    # 打印摘要
+
+    # Print summary
     final_success = runner.print_summary()
-    
-    print(f"⏰ 结束时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    
+
+    print(f"End time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+
     return 0 if final_success else 1
 
 if __name__ == "__main__":
-    exit(main()) 
+    exit(main())

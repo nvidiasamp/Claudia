@@ -1,84 +1,84 @@
-# Claudia专属Ollama模型使用指南 (V2 - 自然对话优化版)
+# Claudia Ollama Model Usage Guide (V2 - Natural Conversation Optimized)
 
-## 📋 模型概述
+## Model Overview
 
-**模型名称**: `claudia-optimized:latest` (V2)  
-**基础模型**: Qwen2.5-7B  
-**优化策略**: 自然日语对话 + 简洁响应  
-**更新时间**: $(date '+%Y-%m-%d %H:%M:%S')
+**Model Name**: `claudia-optimized:latest` (V2)
+**Base Model**: Qwen2.5-7B
+**Optimization Strategy**: Natural Japanese conversation + concise responses
+**Last Updated**: $(date '+%Y-%m-%d %H:%M:%S')
 
-## 🆕 V2版本重大改进
+## V2 Major Improvements
 
-### ✅ 解决的问题
-- ❌ **过度学术化** → ✅ 自然对话风格
-- ❌ **名字错误**(クラウディア) → ✅ 正确名字(くら)
-- ❌ **回答冗长** → ✅ 简洁明了
-- ❌ **格式符号**(【】、- 等) → ✅ 纯文本回答
+### Issues Resolved
+- **Overly academic** -> Natural conversational style
+- **Wrong name** (クラウディア) -> Correct name (くら)
+- **Verbose answers** -> Concise and clear
+- **Format symbols** (【】, - etc.) -> Plain text responses
 
-### 🔧 优化参数 (V2)
+### Optimized Parameters (V2)
 ```
-Temperature: 0.2 (更自然的回答)
-Top-P: 0.8 (增加多样性)
-Top-K: 25 (平衡精确性)
-Context: 2048 tokens (ARM64优化)
+Temperature: 0.2 (more natural responses)
+Top-P: 0.8 (increased diversity)
+Top-K: 25 (balanced precision)
+Context: 2048 tokens (ARM64 optimized)
 ```
 
-## 🎯 核心特性
+## Core Features
 
-### ✅ 已验证功能
-- ✅ **身份确认**: くら(Kura) - 简洁友好的机器人助手
-- ✅ **简洁响应**: 各类命令都有适当长度限制
-- ✅ **自然日语**: 去除学术性，使用日常对话风格
-- ✅ **纯文本输出**: 无markdown格式符号干扰
-- ✅ **响应分级**: 紧急/控制/状态/对话四种模式
+### Verified Functionality
+- **Identity confirmation**: くら (Kura) - friendly and concise robot assistant
+- **Concise responses**: Appropriate length limits for all command types
+- **Natural Japanese**: Removed academic tone, uses everyday conversational style
+- **Plain text output**: No markdown formatting interference
+- **Response grading**: Emergency/control/status/dialog four modes
 
-## 🚀 使用方法
+## Usage
 
-### 基本启动
+### Basic Startup
 ```bash
-# 启动优化版Claudia模型
+# Start the optimized Claudia model
 ollama run claudia-optimized
 
-# 或者通过管道输入
+# Or pipe input
 echo "前に進む" | ollama run claudia-optimized
 ```
 
-### 便捷启动脚本
+### Convenience Startup Script
 ```bash
-# 使用便捷脚本
-./scripts/start_claudia.sh -i     # 交互模式
-./scripts/start_claudia.sh -t     # 快速测试
-./scripts/start_claudia.sh -s     # 系统状态
+# Use convenience script
+./scripts/start_claudia.sh -i     # Interactive mode
+./scripts/start_claudia.sh -t     # Quick test
+./scripts/start_claudia.sh -s     # System status
 ```
 
-## 📊 V2版本响应效果对比
+## V2 Response Comparison
 
-| 场景 | V1回答(问题版) | V2回答(优化版) | 改进效果 |
+| Scenario | V1 Response (Problematic) | V2 Response (Optimized) | Improvement |
 |------|---------------|---------------|----------|
-| **身份介绍** | "私はクラウディアと申します。ジェットソン・オリンNX搭載の..." (91字) | "私はくらです、あなたのロボットのお手伝いAIです。" (26字) | ✅ 65%压缩 |
-| **控制命令** | "【制御】前進コマンドを確認しました - ロボットが前方に移動します" (33字) | "前に進みます。" (6字) | ✅ 82%压缩 |
-| **LED控制** | "【制御】LEDを点灯します - LEDが明るくなります。" (26字) | "LEDを点けました。" (9字) | ✅ 65%压缩 |
-| **紧急停止** | "【緊急】全モーター停止 - 安全モードに移行しました" (25字) | "緊急停止しました。安全モードになりました。" (20字) | ✅ 20%压缩 |
-| **状态查询** | "【状態】ROS2ノード正常動作中 - CPU使用率30%, メモリ4.5GB..." (50+字) | "ROS2は正常に動いています。メモリ使用量は70%です。" (28字) | ✅ 44%压缩 |
-| **技术解释** | 冗长学术解释 + 格式符号 + 示例列表 (200+字) | "ROS2のノードは、それぞれ独立したプログラムで、特定の機能を担当します。" (37字) | ✅ 80%+压缩 |
+| **Self-introduction** | "私はクラウディアと申します。ジェットソン・オリンNX搭載の..." (91 chars) | "私はくらです、あなたのロボットのお手伝いAIです。" (26 chars) | 65% reduction |
+| **Control command** | "【制御】前進コマンドを確認しました - ロボットが前方に移動します" (33 chars) | "前に進みます。" (6 chars) | 82% reduction |
+| **LED control** | "【制御】LEDを点灯します - LEDが明るくなります。" (26 chars) | "LEDを点けました。" (9 chars) | 65% reduction |
+| **Emergency stop** | "【緊急】全モーター停止 - 安全モードに移行しました" (25 chars) | "緊急停止しました。安全モードになりました。" (20 chars) | 20% reduction |
+| **Status query** | "【状態】ROS2ノード正常動作中 - CPU使用率30%, メモリ4.5GB..." (50+ chars) | "ROS2は正常に動いています。メモリ使用量は70%です。" (28 chars) | 44% reduction |
+| **Technical explanation** | Verbose academic explanation + format symbols + example lists (200+ chars) | "ROS2のノードは、それぞれ独立したプログラムで、特定の機能を担当します。" (37 chars) | 80%+ reduction |
 
-## 🎌 日语输出验证
+## Japanese Output Verification
 
-### 英语输入测试
+### English Input Test
 ```bash
 Input: "What is your name?"
-V1 Output: "私の名前はクラウディアです。私はジェットソン・オリンNX搭載の..." (冗长)
-V2 Output: "私はくらです。" (简洁)
-Result: ✅ 大幅改进
+V1 Output: "私の名前はクラウディアです。私はジェットソン・オリンNX搭載の..." (verbose)
+V2 Output: "私はくらです。" (concise)
+Result: Major improvement
 ```
 
-## 🔄 与现有系统集成
+## Integration with Existing System
 
-### Python接口更新
+### Python Interface Update
 ```python
 def call_kura_optimized(command):
-    """调用优化后的くら模型"""
-    response = requests.post('http://localhost:11434/api/generate', 
+    """Call the optimized Kura model"""
+    response = requests.post('http://localhost:11434/api/generate',
         json={
             'model': 'claudia-optimized',
             'prompt': command,
@@ -87,100 +87,100 @@ def call_kura_optimized(command):
     )
     return response.json()['response']
 
-# 使用示例
+# Usage example
 result = call_kura_optimized("LED点灯してください")
-print(result)  # 输出: "LEDを点けました。"
+print(result)  # Output: "LEDを点けました。"
 ```
 
-### 响应长度监控
+### Response Length Monitoring
 ```python
 def monitor_response_length(command):
-    """监控响应长度确保简洁性"""
+    """Monitor response length to ensure conciseness"""
     response = call_kura_optimized(command)
     length = len(response)
-    
-    # 设定理想长度限制
+
+    # Set ideal length limits
     if "緊急" in command and length > 30:
-        print(f"⚠️ 紧急响应过长: {length}字符")
+        print(f"Warning: Emergency response too long: {length} characters")
     elif any(word in command for word in ["前進", "LED", "座る"]) and length > 50:
-        print(f"⚠️ 控制响应过长: {length}字符")
-    
+        print(f"Warning: Control response too long: {length} characters")
+
     return response
 ```
 
-## 🔍 性能监控
+## Performance Monitoring
 
-### 响应时间基准 (V2优化后)
-- 紧急命令: <30ms 目标 (响应更快)
-- 控制命令: <50ms 目标 (显著提升)
-- 状态查询: <100ms 目标 (大幅改善)
-- 技术对话: <200ms 目标 (显著优化)
+### Response Time Baselines (After V2 Optimization)
+- Emergency commands: <30ms target (faster response)
+- Control commands: <50ms target (significant improvement)
+- Status queries: <100ms target (major improvement)
+- Technical dialog: <200ms target (significant optimization)
 
-### 质量检查命令
+### Quality Check Commands
 ```bash
-# 检查模型版本
+# Check model version
 ollama show claudia-optimized | grep -A5 "Parameters"
 
-# 测试响应简洁性
+# Test response conciseness
 echo "システム状態は？" | ollama run claudia-optimized | wc -c
 
-# 验证无格式符号
+# Verify no format symbols
 echo "ROS2について教えて" | ollama run claudia-optimized | grep -c "【\|■\|●\|-"
 ```
 
-## 🛠️ 故障排除
+## Troubleshooting
 
-### V2版本特定问题
-1. **回答太简短**: 调整temperature到0.3
+### V2 Specific Issues
+1. **Responses too brief**: Adjust temperature to 0.3
    ```bash
-   # 重新创建时调整参数
-   # 在ClaudiaOptimizedModelfile中修改: PARAMETER temperature 0.3
+   # Adjust parameter when recreating
+   # In ClaudiaOptimizedModelfile modify: PARAMETER temperature 0.3
    ```
 
-2. **格式符号重现**: 重新确认SYSTEM指令
+2. **Format symbols reappearing**: Verify SYSTEM directive
    ```bash
    ollama show claudia-optimized | grep -A10 "System"
    ```
 
-3. **名字错误**: 验证模型创建正确性
+3. **Wrong name**: Verify model creation correctness
    ```bash
    echo "貴方は誰？" | ollama run claudia-optimized
-   # 应该回答: "私はくらです..."
+   # Should answer: "私はくらです..."
    ```
 
-## 📈 V2版本成果总结
+## V2 Results Summary
 
-### 数量化改进
-- **响应长度**: 平均压缩60-80%
-- **处理速度**: 提升约30-50%
-- **用户满意度**: 显著提升（去除学术性）
-- **格式清洁度**: 100%（无markdown符号）
+### Quantified Improvements
+- **Response length**: Average 60-80% reduction
+- **Processing speed**: ~30-50% improvement
+- **User satisfaction**: Significantly improved (removed academic tone)
+- **Format cleanliness**: 100% (no markdown symbols)
 
-### 质量改进
-- **对话自然度**: 从教科书式 → 友好对话式
-- **信息密度**: 从冗余 → 精准核心信息
-- **身份一致性**: 正确的日语名字和角色定位
-- **响应适配性**: 不同场景的适当长度控制
+### Quality Improvements
+- **Conversation naturalness**: From textbook style -> friendly conversational style
+- **Information density**: From redundant -> precise core information
+- **Identity consistency**: Correct Japanese name and role positioning
+- **Response adaptation**: Appropriate length control for different scenarios
 
-## 🔗 相关文档
+## Related Documentation
 
-- [V1版本对比记录](./claudia_model_v1_issues.md)
-- [Ollama Qwen2.5部署总结](./ollama_qwen25_deployment_summary.md)
-- [LLM接口文档](../../scripts/llm/README.md)
-- [便捷启动脚本](../../scripts/start_claudia.sh)
+- [V1 Version Comparison Record](./claudia_model_v1_issues.md)
+- [Ollama Qwen2.5 Deployment Summary](./ollama_qwen25_deployment_summary.md)
+- [LLM Interface Documentation](../../scripts/llm/README.md)
+- [Convenience Startup Script](../../scripts/start_claudia.sh)
 
 ---
-**创建时间**: $(date '+%Y-%m-%d %H:%M:%S')  
-**版本**: V2 - 自然对话优化版  
-**状态**: ✅ 已验证并投产  
-**下次审查**: $(date -d '+1 week' '+%Y-%m-%d')
+**Created**: $(date '+%Y-%m-%d %H:%M:%S')
+**Version**: V2 - Natural Conversation Optimized
+**Status**: Verified and in production
+**Next Review**: $(date -d '+1 week' '+%Y-%m-%d')
 
-## 🏆 结论
+## Conclusion
 
-V2版本成功解决了所有用户反馈的问题：
-1. ✅ 名字修正为'くら'
-2. ✅ 去除学术性，采用自然对话风格  
-3. ✅ 大幅压缩响应长度
-4. ✅ 完全消除格式符号干扰
+V2 successfully resolved all user-reported issues:
+1. Name corrected to 'くら'
+2. Removed academic tone, adopted natural conversational style
+3. Significantly reduced response length
+4. Completely eliminated format symbol interference
 
-现在の**くら**是一个真正适合日常使用的友好机器人助手！ 
+**くら** is now a truly user-friendly robot assistant suitable for everyday use!

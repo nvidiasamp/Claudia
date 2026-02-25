@@ -1,89 +1,89 @@
-# 真实动作与API映射完整分析
+# Real Action to API Mapping Complete Analysis
 
-## 🎯 用户提供的真实遥控器动作 (26个)
+## User-Provided Real Remote Controller Actions (26)
 
-### 🎭 表演动作 (9个)
-| 中文 | 日语罗马音 | 对应API | API名称 | 状态需求 |
-|------|-----------|---------|---------|----------|
-| 翻身 | ゴロン(goron) | **1029** | Pounce/Rollover | 需站立 |
-| 伸懒腰 | ノビ(nobi) | **1017** | Stretch | 需站立 |
-| 握手 | お手(ote) | **1025** | ShakeHands | 需站立 |
-| 比心 | ハート(haato) | **1021** | Wallow | 需站立 |
-| 扑人 | トンデ(tonde) | **1029** | Pounce | 需站立 |
-| 前跳 | ジャンプ(janpu) | **1028** | Jump | 需站立 |
-| 拜年 | おじぎ(ojigi)/ちんちん | **1026/1030** | Cheer/Bow | 需站立 |
-| 舞蹈1 | ダンス(kururin) | **1022** | Dance1 | 需站立 |
-| 舞蹈2 | ダンス(dansu) | **1023** | Dance2 | 需站立 |
+### Performance Actions (9)
+| Chinese | Japanese Romanization | Corresponding API | API Name | State Requirement |
+|---------|----------------------|-------------------|----------|-------------------|
+| Roll over | ゴロン(goron) | **1029** | Pounce/Rollover | Requires standing |
+| Stretch | ノビ(nobi) | **1017** | Stretch | Requires standing |
+| Shake hands | お手(ote) | **1025** | ShakeHands | Requires standing |
+| Heart gesture | ハート(haato) | **1021** | Wallow | Requires standing |
+| Pounce | トンデ(tonde) | **1029** | Pounce | Requires standing |
+| Front jump | ジャンプ(janpu) | **1028** | Jump | Requires standing |
+| Celebratory bow | おじぎ(ojigi)/ちんちん | **1026/1030** | Cheer/Bow | Requires standing |
+| Dance 1 | ダンス(kururin) | **1022** | Dance1 | Requires standing |
+| Dance 2 | ダンス(dansu) | **1023** | Dance2 | Requires standing |
 
-### 🏃 姿态控制 (5个)
-| 中文 | 日语罗马音 | 对应API | API名称 | 状态需求 |
-|------|-----------|---------|---------|----------|
-| 阻尼 | スロー(surō) | **1001** | Damp | 任何状态 |
-| 坐下 | おすわり(osuwari) | **1009** | Sit | 任何状态 |
-| 摆姿势 | ポーズ(pōzu) | **1002** | BalanceStand | 需站立 |
-| 站立 | タッテ(tatte) | **1004** | StandUp | 任何状态 |
-| 常规 | ノーマル(nōmaru) | **1002** | BalanceStand | 任何状态 |
+### Posture Control (5)
+| Chinese | Japanese Romanization | Corresponding API | API Name | State Requirement |
+|---------|----------------------|-------------------|----------|-------------------|
+| Damping | スロー(suro) | **1001** | Damp | Any state |
+| Sit down | おすわり(osuwari) | **1009** | Sit | Any state |
+| Pose | ポーズ(pozu) | **1002** | BalanceStand | Requires standing |
+| Stand up | タッテ(tatte) | **1004** | StandUp | Any state |
+| Normal | ノーマル(nomaru) | **1002** | BalanceStand | Any state |
 
-### 🏃 运动模式 (12个) 
-| 中文 | 日语罗马音 | 对应API | API名称 | 参数需求 |
-|------|-----------|---------|---------|----------|
-| 灵动 | リズム(rizumu) | **1011** | SwitchGait | gait参数 |
-| 跑步 | ハシレ(hashire) | **1008** | Move | speed参数 |
-| 经典 | クラシック(kurashikku) | **1011** | SwitchGait | gait=0 |
-| 锁定 | ロック(rokku) | **1003** | StopMove | - |
-| 续航 | キープ(kīpu) | **1008** | Move | 持续参数 |
-| 牵引 | ツイテ(tsuite) | **1008** | Move | follow模式 |
-| 倒立 | サカダチ(sakadachi) | **特殊序列** | 多步骤 | 需权限 |
-| 闪避 | カワセ(kawase) | **1008** | Move | 快速侧移 |
-| 并腿跑 | ナカヨク(nakayoku) | **1011** | SwitchGait | gait=1 |
-| 跳跃跑 | ジャンプラン(janpu ran) | **1011** | SwitchGait | gait=2 |
-| 直立 | タッチ(tacchi) | **特殊序列** | 多步骤 | 需权限 |
-| 交叉步 | クロス(kurosu) | **1011** | SwitchGait | gait=3 |
+### Movement Modes (12)
+| Chinese | Japanese Romanization | Corresponding API | API Name | Parameter Requirement |
+|---------|----------------------|-------------------|----------|-----------------------|
+| Agile | リズム(rizumu) | **1011** | SwitchGait | gait parameter |
+| Run | ハシレ(hashire) | **1008** | Move | speed parameter |
+| Classic | クラシック(kurashikku) | **1011** | SwitchGait | gait=0 |
+| Lock | ロック(rokku) | **1003** | StopMove | - |
+| Endurance | キープ(kipu) | **1008** | Move | sustained parameter |
+| Follow | ツイテ(tsuite) | **1008** | Move | follow mode |
+| Handstand | サカダチ(sakadachi) | **Special sequence** | Multi-step | Requires permission |
+| Dodge | カワセ(kawase) | **1008** | Move | Quick lateral movement |
+| Parallel legs run | ナカヨク(nakayoku) | **1011** | SwitchGait | gait=1 |
+| Jump run | ジャンプラン(janpu ran) | **1011** | SwitchGait | gait=2 |
+| Upright | タッチ(tacchi) | **Special sequence** | Multi-step | Requires permission |
+| Cross step | クロス(kurosu) | **1011** | SwitchGait | gait=3 |
 
-## 🔧 关键发现
+## Key Findings
 
-### 1. **API映射必须明确**
-LLM必须输出具体的API代码，而不是抽象的action_type！
+### 1. **API Mapping Must Be Explicit**
+The LLM must output specific API codes, not abstract action_types!
 
-### 2. **复杂动作需要序列化**
-某些动作需要多个API调用序列：
-- 倒立: StandUp(1004) → BalanceStand(1002) → 特殊序列
-- 直立行走: StandUp(1004) → SwitchGait(1011, mode=bipedal)
+### 2. **Complex Actions Require Sequencing**
+Certain actions require multi-API call sequences:
+- Handstand: StandUp(1004) -> BalanceStand(1002) -> Special sequence
+- Upright walking: StandUp(1004) -> SwitchGait(1011, mode=bipedal)
 
-### 3. **参数化动作处理**
-许多动作需要参数：
-- Move(1008): 需要速度、方向参数
-- SwitchGait(1011): 需要步态参数
-- BodyHeight(1013): 需要高度参数
+### 3. **Parameterized Action Handling**
+Many actions require parameters:
+- Move(1008): Requires speed, direction parameters
+- SwitchGait(1011): Requires gait parameters
+- BodyHeight(1013): Requires height parameters
 
-## 💡 解决方案设计
+## Solution Design
 
-### LLM输出格式建议
+### Recommended LLM Output Format
 ```json
 {
-  "response": "はい、座ります",     // TTS用简短回复
-  "api_code": 1009,                  // 直接API代码！
-  "params": {},                      // API参数（如需要）
-  "sequence": [1004, 1009]          // 动作序列（如需要）
+  "response": "はい、座ります",     // Short Japanese reply for TTS
+  "api_code": 1009,                  // Direct API code!
+  "params": {},                      // API parameters (if needed)
+  "sequence": [1004, 1009]          // Action sequence (if needed)
 }
 ```
 
-### 为什么这样设计？
-1. **response**: 简短日语回复，直接用于TTS
-2. **api_code**: 直接映射到SportClient方法，无需二次查找
-3. **params**: 支持参数化动作
-4. **sequence**: 支持复杂动作序列
+### Why This Design?
+1. **response**: Short Japanese reply, directly used for TTS
+2. **api_code**: Directly maps to SportClient methods, no secondary lookup needed
+3. **params**: Supports parameterized actions
+4. **sequence**: Supports complex action sequences
 
-## 🎯 3B模型优化方向
+## 3B Model Optimization Direction
 
-### 提示词设计原则
-1. **极简**: 减少token使用，提高响应速度
-2. **直接**: 输出API代码而非抽象类型
-3. **结构化**: 严格JSON格式
-4. **覆盖全面**: 包含所有26个真实动作
+### Prompt Design Principles
+1. **Minimal**: Reduce token usage, improve response speed
+2. **Direct**: Output API codes rather than abstract types
+3. **Structured**: Strict JSON format
+4. **Comprehensive coverage**: Include all 26 real actions
 
-### 性能优化建议
-- temperature: 0.0 (确定性输出)
-- top_p: 0.5 (减少随机性)
-- num_predict: 30 (足够输出JSON)
-- num_ctx: 256 (包含必要上下文)
+### Performance Optimization Suggestions
+- temperature: 0.0 (deterministic output)
+- top_p: 0.5 (reduce randomness)
+- num_predict: 30 (sufficient for JSON output)
+- num_ctx: 256 (include necessary context)

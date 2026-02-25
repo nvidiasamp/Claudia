@@ -1,30 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-环形音频缓冲区 — 保存最近 30 秒 16kHz/16bit/mono PCM 数据。
+Ring Audio Buffer -- stores the most recent 30 seconds of 16kHz/16bit/mono PCM data.
 
-线程安全: 使用 threading.Lock 保护所有读写操作，
-可在 asyncio 上下文中通过 run_in_executor 安全调用。
+Thread-safe: uses threading.Lock to protect all read/write operations.
+Can be safely called from asyncio contexts via run_in_executor.
 """
 
 import threading
 from typing import Optional
 
-# 16kHz, 16-bit mono: 每毫秒 32 字节
+# 16kHz, 16-bit mono: 32 bytes per millisecond
 BYTES_PER_MS = 16000 * 2 // 1000  # = 32
 DEFAULT_DURATION_S = 30
 DEFAULT_BUFFER_SIZE = DEFAULT_DURATION_S * 16000 * 2  # 960,000 bytes
 
 
 class RingBuffer:
-    """固定大小环形缓冲区，用于连续 PCM 音频流。
+    """Fixed-size ring buffer for continuous PCM audio streams.
 
     Parameters
     ----------
     capacity : int
-        缓冲区容量（字节）。默认 960,000（30 秒 @16kHz/16bit/mono）。
+        Buffer capacity in bytes. Default 960,000 (30 seconds @16kHz/16bit/mono).
     pre_speech_buffer_ms : int
-        预语音缓冲毫秒数。read_last / read_range 始终保证此区间可用。
+        Pre-speech buffer in milliseconds. read_last / read_range always guarantee
+        this interval is available.
     """
 
     def __init__(
@@ -34,24 +35,24 @@ class RingBuffer:
     ) -> None:
         self._capacity = capacity
         self._buf = bytearray(capacity)
-        self._write_pos = 0       # 下一个写入位置（循环）
-        self._total_written = 0   # 累计写入字节数（不回绕）
+        self._write_pos = 0       # Next write position (circular)
+        self._total_written = 0   # Cumulative bytes written (non-wrapping)
         self._lock = threading.Lock()
         self._pre_speech_bytes = pre_speech_buffer_ms * BYTES_PER_MS
 
     # ------------------------------------------------------------------
-    # 写入
+    # Write
     # ------------------------------------------------------------------
 
     def write(self, data: bytes) -> None:
-        """追加 PCM 数据到缓冲区。超出容量时覆盖最老数据。"""
+        """Append PCM data to the buffer. Overwrites oldest data when capacity is exceeded."""
         if not data:
             return
 
         n = len(data)
         with self._lock:
             if n >= self._capacity:
-                # 数据量 >= 整个缓冲区：只保留最后 capacity 字节
+                # Data size >= entire buffer: keep only the last capacity bytes
                 tail = data[-self._capacity:]
                 self._buf[:] = tail
                 self._write_pos = 0
@@ -62,7 +63,7 @@ class RingBuffer:
             if end <= self._capacity:
                 self._buf[self._write_pos:end] = data
             else:
-                # 需要回绕
+                # Wrap-around needed
                 first_part = self._capacity - self._write_pos
                 self._buf[self._write_pos:] = data[:first_part]
                 self._buf[:n - first_part] = data[first_part:]
@@ -71,13 +72,13 @@ class RingBuffer:
             self._total_written += n
 
     # ------------------------------------------------------------------
-    # 读取
+    # Read
     # ------------------------------------------------------------------
 
     def read_last(self, ms: int) -> bytes:
-        """读取最近 *ms* 毫秒的音频数据。
+        """Read the most recent *ms* milliseconds of audio data.
 
-        如果缓冲区中可用数据不足，返回实际可用部分。
+        Returns the actually available portion if the buffer has insufficient data.
         """
         request_bytes = ms * BYTES_PER_MS
         with self._lock:
@@ -88,12 +89,12 @@ class RingBuffer:
             return self._read_tail(nbytes)
 
     def read_range(self, start_ms: int, end_ms: int) -> bytes:
-        """读取从当前写入位置往回 [start_ms, end_ms) 毫秒区间的音频。
+        """Read audio from the [start_ms, end_ms) interval measured back from the current write position.
 
-        start_ms / end_ms 都是"距离当前时刻的毫秒偏移"，即 0 = 现在。
-        例: read_range(500, 200) 读取 500ms 前到 200ms 前的数据。
+        start_ms / end_ms are both "millisecond offsets from the current moment", i.e., 0 = now.
+        Example: read_range(500, 200) reads data from 500ms ago to 200ms ago.
 
-        如果请求范围超出可用数据，自动截断。
+        Automatically truncates if the requested range exceeds available data.
         """
         if start_ms <= end_ms:
             return b""
@@ -104,51 +105,51 @@ class RingBuffer:
 
         with self._lock:
             available = min(self._total_written, self._capacity)
-            # 截断到可用范围
+            # Truncate to available range
             actual_start = min(start_bytes, available)
             actual_end = min(end_bytes, available)
             if actual_start <= actual_end:
                 return b""
 
             nbytes = actual_start - actual_end
-            # 从 write_pos 往回 actual_start 字节处开始，读 nbytes 字节
+            # Read nbytes starting from actual_start bytes before write_pos
             read_start = (self._write_pos - actual_start) % self._capacity
             return self._read_from(read_start, nbytes)
 
     # ------------------------------------------------------------------
-    # 工具方法
+    # Utility methods
     # ------------------------------------------------------------------
 
     def clear(self) -> None:
-        """清空缓冲区。"""
+        """Clear the buffer."""
         with self._lock:
             self._write_pos = 0
             self._total_written = 0
-            # 不需要清零 bytearray，write_pos/total_written 控制有效范围
+            # No need to zero out the bytearray; write_pos/total_written control the valid range
 
     @property
     def available_ms(self) -> int:
-        """当前缓冲区中可用的音频毫秒数。"""
+        """Number of milliseconds of audio currently available in the buffer."""
         with self._lock:
             available = min(self._total_written, self._capacity)
         return available // BYTES_PER_MS
 
     @property
     def capacity_ms(self) -> int:
-        """缓冲区总容量（毫秒）。"""
+        """Total buffer capacity in milliseconds."""
         return self._capacity // BYTES_PER_MS
 
     # ------------------------------------------------------------------
-    # 内部
+    # Internal
     # ------------------------------------------------------------------
 
     def _read_tail(self, nbytes: int) -> bytes:
-        """从当前写入位置往回读 nbytes 字节。调用者需持有 _lock。"""
+        """Read nbytes from the current write position backwards. Caller must hold _lock."""
         start = (self._write_pos - nbytes) % self._capacity
         return self._read_from(start, nbytes)
 
     def _read_from(self, start: int, nbytes: int) -> bytes:
-        """从 start 位置读取 nbytes 字节。调用者需持有 _lock。"""
+        """Read nbytes from the given start position. Caller must hold _lock."""
         end = start + nbytes
         if end <= self._capacity:
             return bytes(self._buf[start:end])

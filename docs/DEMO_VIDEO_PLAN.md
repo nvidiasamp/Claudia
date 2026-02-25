@@ -1,152 +1,152 @@
 # Demo Video Recording Plan
 
-Claudia プロジェクトの GitHub リポジトリ用 Demo 動画の録画計画。
+Recording plan for demo videos for the Claudia project GitHub repository.
 
 ---
 
-## 動画一覧
+## Video List
 
-### 1. Hero Demo（メインデモ）— P0 必須
+### 1. Hero Demo (Main Demo) -- P0 Required
 
-**目的**: README トップに配置する最重要デモ。プロジェクトの第一印象を決める。
+**Purpose**: The most important demo placed at the top of the README. Determines the project's first impression.
 
-**内容**:
-- 日本語で数コマンドを実行（こんにちは、踊って、座って、可愛いね）
-- 意味理解の実演："疲れた"（疲れた）→ 座る（キーワードマッチングではない）
-- コマンドシーケンス："立ってから挨拶して" → StandUp(1004) → Hello(1016)
-- LLM 推論過程が見えるターミナル画面
+**Content**:
+- Execute several commands in Japanese (こんにちは, 踊って, 座って, 可愛いね)
+- Demonstrate semantic understanding: "疲れた" (tired) -> sit down (not keyword matching)
+- Command sequence: "立ってから挨拶して" -> StandUp(1004) -> Hello(1016)
+- Terminal screen showing LLM inference process
 
-**撮影方式**: ターミナル画面 + ロボット実物の PiP（Picture-in-Picture）
+**Recording Method**: Terminal screen + robot physical unit PiP (Picture-in-Picture)
 
-**時間**: 60〜90 秒
-
----
-
-### 2. Voice Pipeline（音声パイプライン）— P1
-
-**目的**: USB マイク → ASR → LLM → ロボット実行の完全チェーン。
-
-**内容**:
-- パイプライン全体のフロー（ASR 認識 → LLM 推論 → Safety 検証 → 実行）
-- ウェイクワード機能の実演（"クラちゃん踊って"）
-- 緊急停止の音声コマンド（"止まれ！"）
-- ターミナルログで各ステージのタイミングを表示
-
-**撮影方式**: ターミナル画面 + 音声入力の可視化 + ロボット実物
-
-**時間**: 45〜60 秒
+**Duration**: 60-90 seconds
 
 ---
 
-### 3. Multilingual（多言語対応）— P1
+### 2. Voice Pipeline -- P1
 
-**目的**: 日本語・中国語・英語の 3 言語で同一ロボットを制御。
+**Purpose**: Complete chain from USB mic -> ASR -> LLM -> robot execution.
 
-**内容**:
-- 日本語: "挨拶して" → Hello(1016)
-- 中国語: "跳个舞" → Dance(1022/1023)
-- English: "sit down" → Sit(1009)
+**Content**:
+- Full pipeline flow (ASR recognition -> LLM inference -> Safety verification -> execution)
+- Wake word feature demonstration ("クラちゃん踊って")
+- Emergency stop voice command ("止まれ！")
+- Terminal logs showing timing for each stage
 
-**撮影方式**: 各言語の入力とロボットの反応を連続カット
+**Recording Method**: Terminal screen + audio input visualization + robot physical unit
 
-**時間**: 30〜45 秒
-
----
-
-### 4. Safety System（安全システム）— P2
-
-**目的**: SafetyCompiler による安全メカニズムの実動作デモ。
-
-**内容**:
-- 低バッテリー時の高エネルギー動作リクエスト → ダンスへ自動降格
-- 站立前提動作の自動 StandUp 挿入
-- 緊急停止のゼロ遅延レスポンス
-- ターミナルログで SafetyCompiler の判定結果を表示
-
-**撮影方式**: ターミナル画面（安全ログ重視）+ ロボット実物
-
-**時間**: 30〜45 秒
+**Duration**: 45-60 seconds
 
 ---
 
-### 5. Action Showcase（動作集）— P2
+### 3. Multilingual -- P1
 
-**目的**: 全パフォーマンス動作の視覚的紹介。
+**Purpose**: Control the same robot in three languages: Japanese, Chinese, and English.
 
-**内容**:
-- Heart(1036)、Dance1/Dance2(1022/1023)、Hello(1016)、Stretch(1017)
-- FrontFlip(1030)、FrontJump(1031) など高リスク動作
-- WiggleHips(1033)、Scrape(1029)
+**Content**:
+- Japanese: "挨拶して" -> Hello(1016)
+- Chinese: "跳个舞" -> Dance(1022/1023)
+- English: "sit down" -> Sit(1009)
 
-**撮影方式**: 快速カット編集、BGM 付き
+**Recording Method**: Continuous cuts showing input in each language and robot response
 
-**時間**: 30〜60 秒
-
----
-
-### 6. Startup & Config Panel（起動 & 設定パネル）— P3
-
-**目的**: `start_production_brain.sh` のインタラクティブランチャーの使い方。
-
-**内容**:
-- モード選択（キーボード/音声 × シミュレーション/実機）
-- 設定パネル（ルーティングモード、ウェイクワード、モデル選択）
-- tmux バックグラウンド実行 + SSH 切断復帰
-
-**撮影方式**: ターミナル画面のみ
-
-**時間**: 20〜30 秒
+**Duration**: 30-45 seconds
 
 ---
 
-### 7. Edge AI on Jetson（Jetson エッジ推論）— P3
+### 4. Safety System -- P2
 
-**目的**: Jetson Orin NX 上での完全ローカル推論を強調。
+**Purpose**: Live demonstration of the safety mechanism provided by SafetyCompiler.
 
-**内容**:
-- ハードウェアセットアップ（Jetson + Go2 の実物接続）
-- Ollama モデルロード + 推論レイテンシ（〜3-5秒）
-- クラウド不要、完全オンデバイス動作
+**Content**:
+- High-energy action request during low battery -> automatic downgrade to dance
+- Automatic StandUp insertion for actions requiring standing
+- Zero-latency emergency stop response
+- Terminal logs showing SafetyCompiler verdict results
 
-**撮影方式**: ハードウェア実物 + ターミナル画面
+**Recording Method**: Terminal screen (focusing on safety logs) + robot physical unit
 
-**時間**: 20〜30 秒
+**Duration**: 30-45 seconds
 
 ---
 
-## 優先順位
+### 5. Action Showcase -- P2
 
-| 優先度 | 動画 | 理由 |
+**Purpose**: Visual introduction of all performance actions.
+
+**Content**:
+- Heart(1036), Dance1/Dance2(1022/1023), Hello(1016), Stretch(1017)
+- High-risk actions such as FrontFlip(1030), FrontJump(1031)
+- WiggleHips(1033), Scrape(1029)
+
+**Recording Method**: Quick-cut editing with background music
+
+**Duration**: 30-60 seconds
+
+---
+
+### 6. Startup & Config Panel -- P3
+
+**Purpose**: How to use the `start_production_brain.sh` interactive launcher.
+
+**Content**:
+- Mode selection (keyboard/voice x simulation/hardware)
+- Config panel (routing mode, wake word, model selection)
+- tmux background execution + SSH disconnect recovery
+
+**Recording Method**: Terminal screen only
+
+**Duration**: 20-30 seconds
+
+---
+
+### 7. Edge AI on Jetson -- P3
+
+**Purpose**: Highlight fully local inference on Jetson Orin NX.
+
+**Content**:
+- Hardware setup (physical connection of Jetson + Go2)
+- Ollama model load + inference latency (~3-5 seconds)
+- No cloud required, fully on-device operation
+
+**Recording Method**: Hardware physical unit + terminal screen
+
+**Duration**: 20-30 seconds
+
+---
+
+## Priority
+
+| Priority | Video | Reason |
 |:------:|------|------|
-| **P0** | Hero Demo | README 最上部、第一印象を決定 |
-| **P1** | Voice Pipeline | プロジェクト最大の技術的ハイライト |
-| **P1** | Multilingual | 差別化要素、視覚的インパクト大 |
-| **P2** | Safety System | エンジニアリング品質のアピール |
-| **P2** | Action Showcase | 視覚的な吸引力が高い |
-| **P3** | Startup & Config | 開発者向け、補足コンテンツ |
-| **P3** | Edge AI on Jetson | エッジ AI / ローカル推論の特長 |
+| **P0** | Hero Demo | Top of README, determines first impression |
+| **P1** | Voice Pipeline | Biggest technical highlight of the project |
+| **P1** | Multilingual | Differentiating factor, high visual impact |
+| **P2** | Safety System | Demonstrates engineering quality |
+| **P2** | Action Showcase | High visual appeal |
+| **P3** | Startup & Config | Developer-oriented, supplementary content |
+| **P3** | Edge AI on Jetson | Edge AI / local inference features |
 
 ---
 
-## 撮影ガイドライン
+## Recording Guidelines
 
-### 画面構成
-- **Hero / Voice / Safety**: ターミナル画面 + ロボット実物の PiP（Picture-in-Picture）
-- **Multilingual / Action Showcase**: ロボット実物メイン、ターミナルはサブ
-- **Startup / Jetson**: ターミナル画面またはハードウェア実物
+### Screen Layout
+- **Hero / Voice / Safety**: Terminal screen + robot physical unit PiP (Picture-in-Picture)
+- **Multilingual / Action Showcase**: Robot physical unit as main, terminal as secondary
+- **Startup / Jetson**: Terminal screen or hardware physical unit
 
-### ホスティング
-- YouTube にアップロード
-- README には `[![Demo](thumbnail.jpg)](youtube-url)` 形式で埋め込み
-- GIF 版（5〜10 秒ループ）を README トップに配置、フル動画リンクは下部
+### Hosting
+- Upload to YouTube
+- Embed in README using `[![Demo](thumbnail.jpg)](youtube-url)` format
+- Place GIF version (5-10 second loop) at top of README, full video link below
 
-### ターミナル設定
-- フォントサイズ: 16pt 以上（可読性確保）
-- 背景: ダーク系（コントラスト重視）
-- ウィンドウサイズ: 120×30 以上
+### Terminal Settings
+- Font size: 16pt or larger (for readability)
+- Background: Dark theme (for contrast)
+- Window size: 120x30 or larger
 
-### 注意事項
-- ロボットの撮影は明るい室内で
-- 緊急停止用のリモコンを手元に用意
-- 高リスク動作（FrontFlip 等）は十分なスペースを確保
-- バッテリー残量を事前に確認（Safety デモ用に低残量状態も準備）
+### Notes
+- Film the robot in a well-lit indoor environment
+- Keep the emergency stop remote control at hand
+- Ensure sufficient space for high-risk actions (FrontFlip, etc.)
+- Check battery level in advance (also prepare a low-battery state for Safety demo)

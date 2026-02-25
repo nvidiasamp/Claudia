@@ -26,19 +26,19 @@
     },
     "phase_c": {
       "enabled": false,
-      "note": "扬声器校准功能待实现",
+      "note": "Speaker calibration pending implementation",
       "max_thd_percent": 1.0,
       "min_snr_db": 60
     },
     "phase_d": {
       "enabled": false,
-      "note": "ROS2集成功能待实现",
+      "note": "ROS2 integration pending implementation",
       "ros2_node_name": "audio_validator",
       "topic_prefix": "/claudia/audio"
     },
     "phase_e": {
       "enabled": false,
-      "note": "可视化功能待实现",
+      "note": "Visualization pending implementation",
       "output_format": "html",
       "realtime_display": true
     }
@@ -57,4 +57,4 @@
       "bypass_assistant": true
     }
   }
-} 
+}

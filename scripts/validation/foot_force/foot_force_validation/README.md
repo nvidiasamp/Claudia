@@ -1,140 +1,140 @@
-# Unitree Go2 足端力传感器验证框架
+# Unitree Go2 Foot Force Sensor Validation Framework
 
-## 🎯 项目概述
+## Project Overview
 
-本项目为Unitree Go2四足机器人的足端力传感器提供全面的验证框架，确保传感器系统的准确性、稳定性和可靠性。验证框架采用模块化设计，支持多种验证场景和分析方法。
+This project provides a comprehensive validation framework for the Unitree Go2 quadruped robot's foot force sensors, ensuring the accuracy, stability, and reliability of the sensor system. The validation framework adopts a modular design, supporting multiple validation scenarios and analysis methods.
 
-## 📁 项目结构
+## Project Structure
 
 ```
 foot_force_validation/
-├── 📄 README.md                     # 项目文档
-├── ⚙️ validation_config.json        # 配置文件
-├── 📊 basic_test.py                 # 基础测试脚本
-├── 🔧 static_validation.py          # 静态验证主脚本 [NEW]
-├── 📋 foot_force_config.py          # 足端力配置模块
-├── 💾 data_collector.py             # 数据收集模块
-├── 🧪 static_tester.py              # 静态测试器 [NEW]
-├── 📈 analyzer.py                   # 数据分析器 [NEW]
-├── 🎨 visualizer.py                 # 可视化模块 [NEW]
-├── 📁 logs/                         # 日志目录
-└── 📁 output/                       # 输出目录
+├── README.md                     # Project documentation
+├── validation_config.json        # Configuration file
+├── basic_test.py                 # Basic test script
+├── static_validation.py          # Static validation main script [NEW]
+├── foot_force_config.py          # Foot force configuration module
+├── data_collector.py             # Data collection module
+├── static_tester.py              # Static tester [NEW]
+├── analyzer.py                   # Data analyzer [NEW]
+├── visualizer.py                 # Visualization module [NEW]
+├── logs/                         # Log directory
+└── output/                       # Output directory
 ```
 
-## 🚀 快速开始
+## Quick Start
 
-### 阶段A: 数据读取框架 ✅ (已完成)
+### Phase A: Data Reading Framework (Completed)
 
-基础数据采集和处理能力：
+Basic data acquisition and processing capabilities:
 
 ```bash
-# 运行基础测试
+# Run basic test
 ./run_basic_test.sh
 
-# 或直接运行Python脚本
+# Or run the Python script directly
 python3 basic_test.py
 ```
 
-### 阶段B: 静态力分布验证 🔥 (当前阶段)
+### Phase B: Static Force Distribution Validation (Current Phase)
 
-静态条件下的传感器验证：
+Sensor validation under static conditions:
 
 ```bash
-# 运行静态验证交互式界面
+# Run static validation interactive interface
 cd /path/to/foot_force_validation
 ../run_static_validation.sh
 
-# 或直接运行完整静态验证
+# Or run full static validation directly
 python3 static_validation.py --config validation_config.json
 
-# 快速测试模式（缩短测试时间）
+# Quick test mode (shortened test duration)
 python3 static_validation.py --config validation_config.json --test-mode
 
-# 自定义参数
+# Custom parameters
 python3 static_validation.py --config validation_config.json --log-level DEBUG --skip-visualization
 ```
 
-## 🔧 静态验证详细说明
+## Static Validation Details
 
-### 验证项目
+### Validation Items
 
-#### 1. 零负载测试 🔧
-- **目的**: 验证传感器零点准确性和偏移量
-- **条件**: 机器人完全悬空，足端不接触任何表面
-- **测试内容**:
-  - 零点数值验证
-  - 传感器偏移分析
-  - 噪声水平测量
-  - 四足端一致性检查
+#### 1. Zero Load Test
+- **Purpose**: Verify sensor zero-point accuracy and offset
+- **Conditions**: Robot completely suspended, feet not touching any surface
+- **Test Contents**:
+  - Zero-point value verification
+  - Sensor offset analysis
+  - Noise level measurement
+  - Four-foot consistency check
 
-#### 2. 静态站立测试 🤖
-- **目的**: 验证静态负载下的力分布准确性
-- **条件**: 机器人正常站立，四足平稳接触地面
-- **测试内容**:
-  - 总重量测量准确性
-  - 四足重量分布分析
-  - 重心位置计算
-  - 负载平衡评估
+#### 2. Static Standing Test
+- **Purpose**: Verify force distribution accuracy under static load
+- **Conditions**: Robot standing normally, all four feet in stable contact with the ground
+- **Test Contents**:
+  - Total weight measurement accuracy
+  - Four-foot weight distribution analysis
+  - Center of gravity position calculation
+  - Load balance evaluation
 
-#### 3. 零点漂移分析 📊
-- **目的**: 评估传感器长时间稳定性
-- **条件**: 机器人保持悬空状态
-- **测试内容**:
-  - 长时间零点稳定性
-  - 温度漂移分析
-  - 时域稳定性评估
-  - 漂移速率计算
+#### 3. Zero Drift Analysis
+- **Purpose**: Evaluate long-term sensor stability
+- **Conditions**: Robot maintained in suspended state
+- **Test Contents**:
+  - Long-term zero-point stability
+  - Temperature drift analysis
+  - Time-domain stability evaluation
+  - Drift rate calculation
 
-#### 4. 综合数据分析 📈
-- **内容**:
-  - 统计分析（均值、方差、分布等）
-  - 频域分析（功率谱、频率特性）
-  - 异常检测（离群值、突变点）
-  - 相关性分析（四足端响应一致性）
-  - 趋势分析（漂移趋势、稳定性）
+#### 4. Comprehensive Data Analysis
+- **Contents**:
+  - Statistical analysis (mean, variance, distribution, etc.)
+  - Frequency domain analysis (power spectrum, frequency characteristics)
+  - Anomaly detection (outliers, change points)
+  - Correlation analysis (four-foot response consistency)
+  - Trend analysis (drift trends, stability)
 
-#### 5. 可视化报告 🎨
-- **输出**:
-  - 实时数据图表
-  - 静态分析图表
-  - 3D力分布图
-  - 验证汇总仪表板
-  - 综合评估报告
+#### 5. Visualization Report
+- **Outputs**:
+  - Real-time data charts
+  - Static analysis charts
+  - 3D force distribution plots
+  - Validation summary dashboard
+  - Comprehensive evaluation report
 
-### 验证流程
+### Validation Workflow
 
 ```mermaid
 graph TD
-    A[开始静态验证] --> B[环境检查]
-    B --> C[初始化组件]
-    C --> D[零负载测试]
-    D --> E[静态站立测试]
-    E --> F[零点漂移分析]
-    F --> G[综合数据分析]
-    G --> H[生成可视化图表]
-    H --> I[生成最终报告]
-    I --> J[验证完成]
+    A[Start Static Validation] --> B[Environment Check]
+    B --> C[Initialize Components]
+    C --> D[Zero Load Test]
+    D --> E[Static Standing Test]
+    E --> F[Zero Drift Analysis]
+    F --> G[Comprehensive Data Analysis]
+    G --> H[Generate Visualization Charts]
+    H --> I[Generate Final Report]
+    I --> J[Validation Complete]
 ```
 
-## 🛠️ 配置说明
+## Configuration
 
-### validation_config.json 主要配置项
+### validation_config.json Main Configuration Items
 
 ```json
 {
   "static_validation": {
-    "zero_load_test_duration": 30.0,        // 零负载测试时间(秒)
-    "static_standing_duration": 60.0,       // 静态站立测试时间(秒)
-    "zero_drift_duration": 300.0,           // 零点漂移分析时间(秒)
-    "expected_total_force": 150.0,          // 期望总重量(N)
-    "weight_distribution_tolerance": 15.0,   // 重量分布容差(%)
-    "zero_offset_threshold": 2.0,           // 零点偏移阈值(N)
-    "drift_rate_threshold": 0.1,            // 漂移速率阈值(N/min)
-    "noise_level_threshold": 0.5             // 噪声水平阈值(N)
+    "zero_load_test_duration": 30.0,        // Zero load test duration (seconds)
+    "static_standing_duration": 60.0,       // Static standing test duration (seconds)
+    "zero_drift_duration": 300.0,           // Zero drift analysis duration (seconds)
+    "expected_total_force": 150.0,          // Expected total weight (N)
+    "weight_distribution_tolerance": 15.0,   // Weight distribution tolerance (%)
+    "zero_offset_threshold": 2.0,           // Zero offset threshold (N)
+    "drift_rate_threshold": 0.1,            // Drift rate threshold (N/min)
+    "noise_level_threshold": 0.5             // Noise level threshold (N)
   },
   "analysis": {
-    "outlier_threshold": 3.0,               // 异常检测阈值
-    "frequency_bands": {                    // 频段分析配置
+    "outlier_threshold": 3.0,               // Anomaly detection threshold
+    "frequency_bands": {                    // Frequency band analysis configuration
       "dc": [0, 1],
       "low": [1, 10],
       "mid": [10, 50],
@@ -144,137 +144,137 @@ graph TD
 }
 ```
 
-## 📊 输出文件说明
+## Output File Description
 
-### 验证报告
-- `static_validation_final_report_YYYYMMDD_HHMMSS.json` - 最终验证报告
-- `comprehensive_analysis_YYYYMMDD_HHMMSS.json` - 综合分析报告
+### Validation Reports
+- `static_validation_final_report_YYYYMMDD_HHMMSS.json` - Final validation report
+- `comprehensive_analysis_YYYYMMDD_HHMMSS.json` - Comprehensive analysis report
 
-### 数据文件
-- `static_validation_data_YYYYMMDD_HHMMSS.csv` - 原始数据导出
-- 日志文件位于 `logs/` 目录
+### Data Files
+- `static_validation_data_YYYYMMDD_HHMMSS.csv` - Raw data export
+- Log files are located in the `logs/` directory
 
-### 可视化图表
-- `static_analysis_YYYYMMDD_HHMMSS.png` - 静态分析图表
-- `force_distribution_3d_YYYYMMDD_HHMMSS.png` - 3D力分布图
-- `validation_dashboard_YYYYMMDD_HHMMSS.png` - 验证汇总仪表板
+### Visualization Charts
+- `static_analysis_YYYYMMDD_HHMMSS.png` - Static analysis charts
+- `force_distribution_3d_YYYYMMDD_HHMMSS.png` - 3D force distribution plot
+- `validation_dashboard_YYYYMMDD_HHMMSS.png` - Validation summary dashboard
 
-## 🎯 评分标准
+## Scoring Criteria
 
-### 验证项目评分 (0-100分)
+### Validation Item Scores (0-100 points)
 
-#### 零负载测试
-- **90-100分**: 零点偏移 < 1N，噪声 < 0.3N，一致性 > 95%
-- **80-89分**: 零点偏移 < 2N，噪声 < 0.5N，一致性 > 90%
-- **70-79分**: 零点偏移 < 3N，噪声 < 1N，一致性 > 85%
-- **<70分**: 超出阈值，需要重新校准
+#### Zero Load Test
+- **90-100 points**: Zero offset < 1N, noise < 0.3N, consistency > 95%
+- **80-89 points**: Zero offset < 2N, noise < 0.5N, consistency > 90%
+- **70-79 points**: Zero offset < 3N, noise < 1N, consistency > 85%
+- **<70 points**: Exceeds threshold, recalibration required
 
-#### 静态站立测试
-- **90-100分**: 重量误差 < 5%，分布均匀性 > 90%
-- **80-89分**: 重量误差 < 10%，分布均匀性 > 80%
-- **70-79分**: 重量误差 < 15%，分布均匀性 > 70%
-- **<70分**: 超出阈值，需要检查安装
+#### Static Standing Test
+- **90-100 points**: Weight error < 5%, distribution uniformity > 90%
+- **80-89 points**: Weight error < 10%, distribution uniformity > 80%
+- **70-79 points**: Weight error < 15%, distribution uniformity > 70%
+- **<70 points**: Exceeds threshold, installation inspection required
 
-#### 零点漂移分析
-- **90-100分**: 漂移率 < 0.05N/min，稳定性 > 95%
-- **80-89分**: 漂移率 < 0.1N/min，稳定性 > 90%
-- **70-79分**: 漂移率 < 0.2N/min，稳定性 > 85%
-- **<70分**: 漂移过大，需要温控或重新校准
+#### Zero Drift Analysis
+- **90-100 points**: Drift rate < 0.05N/min, stability > 95%
+- **80-89 points**: Drift rate < 0.1N/min, stability > 90%
+- **70-79 points**: Drift rate < 0.2N/min, stability > 85%
+- **<70 points**: Excessive drift, temperature control or recalibration required
 
-### 总体评估标准
-- **PASS (≥85分且通过率≥80%)**: 传感器验证通过，可投入使用
-- **WARNING (≥70分且通过率≥60%)**: 基本通过，建议优化
-- **FAIL (<70分或通过率<60%)**: 验证失败，需要维修或校准
+### Overall Evaluation Criteria
+- **PASS (>=85 points and pass rate >=80%)**: Sensor validation passed, ready for deployment
+- **WARNING (>=70 points and pass rate >=60%)**: Basically passed, optimization recommended
+- **FAIL (<70 points or pass rate <60%)**: Validation failed, repair or calibration required
 
-## 🔍 故障排除
+## Troubleshooting
 
-### 常见问题
+### Common Issues
 
-#### 1. 环境检查失败
+#### 1. Environment Check Failed
 ```bash
-# 安装Python依赖
+# Install Python dependencies
 pip3 install numpy scipy matplotlib pandas
 
-# 检查Unitree SDK
+# Check Unitree SDK
 python3 -c "from unitree_sdk2py.core.channel import ChannelSubscriber"
 ```
 
-#### 2. 传感器连接问题
-- 检查网络连接: `ping 192.168.123.161`
-- 验证DDS通信: 查看日志文件详细错误信息
-- 重启机器人网络服务
+#### 2. Sensor Connection Issues
+- Check network connection: `ping 192.168.123.161`
+- Verify DDS communication: Check log files for detailed error messages
+- Restart robot network services
 
-#### 3. 数据质量问题
-- 确保测试环境安静，无振动干扰
-- 检查机器人安装是否牢固
-- 验证传感器校准状态
+#### 3. Data Quality Issues
+- Ensure the test environment is quiet with no vibration interference
+- Check that the robot installation is secure
+- Verify sensor calibration status
 
-#### 4. 磁盘空间不足
+#### 4. Insufficient Disk Space
 ```bash
-# 清理旧文件
+# Clean up old files
 cd foot_force_validation
 find output/ -name "*.png" -mtime +7 -delete
 find logs/ -name "*.log" -mtime +30 -delete
 ```
 
-### 调试模式
+### Debug Mode
 
-启用详细日志进行问题诊断：
+Enable verbose logging for problem diagnosis:
 
 ```bash
 python3 static_validation.py --config validation_config.json --log-level DEBUG
 ```
 
-## 📈 使用建议
+## Usage Recommendations
 
-### 验证频率
-- **首次部署**: 完整静态验证
-- **定期维护**: 每月快速测试
-- **故障排查**: 特定项目验证
-- **系统升级**: 重新完整验证
+### Validation Frequency
+- **Initial deployment**: Full static validation
+- **Regular maintenance**: Monthly quick test
+- **Troubleshooting**: Specific item validation
+- **System upgrade**: Full re-validation
 
-### 测试环境要求
-- 安静的测试环境（避免振动）
-- 稳定的地面（用于静态站立测试）
-- 足够的悬空空间（用于零负载测试）
-- 稳定的网络连接
+### Test Environment Requirements
+- Quiet test environment (avoid vibration)
+- Stable ground surface (for static standing test)
+- Sufficient clearance for suspension (for zero load test)
+- Stable network connection
 
-### 数据管理
-- 定期备份验证报告
-- 保留历史数据用于趋势分析
-- 及时清理临时文件释放空间
+### Data Management
+- Regularly back up validation reports
+- Retain historical data for trend analysis
+- Promptly clean up temporary files to free space
 
-## 🔮 后续开发计划
+## Future Development Plan
 
-### 阶段C: 动态负载验证 (计划中)
-- 步态过程中的力分布验证
-- 动态负载下的传感器响应
-- 运动过程中的数据一致性
+### Phase C: Dynamic Load Validation (Planned)
+- Force distribution validation during gait
+- Sensor response under dynamic load
+- Data consistency during locomotion
 
-### 阶段D: 校准与补偿 (计划中)
-- 自动校准算法
-- 温度补偿机制
-- 动态零点调整
+### Phase D: Calibration and Compensation (Planned)
+- Automatic calibration algorithms
+- Temperature compensation mechanisms
+- Dynamic zero-point adjustment
 
-### 阶段E: 实时监控 (计划中)
-- 实时数据流监控
-- 异常自动检测
-- 预警系统集成
+### Phase E: Real-Time Monitoring (Planned)
+- Real-time data stream monitoring
+- Automatic anomaly detection
+- Warning system integration
 
-## 📞 技术支持
+## Technical Support
 
-### 文档资源
-- 📖 详细使用文档: 查看本README
-- 🐛 问题诊断: 检查 `logs/` 目录
-- 📊 验证报告: 查看 `output/` 目录
+### Documentation Resources
+- Detailed usage documentation: See this README
+- Problem diagnosis: Check the `logs/` directory
+- Validation reports: See the `output/` directory
 
-### 联系方式
-- 项目仓库: [GitHub链接]
-- 技术讨论: [论坛链接]
-- 问题反馈: [Issue链接]
+### Contact
+- Project repository: [GitHub link]
+- Technical discussions: [Forum link]
+- Issue reporting: [Issue link]
 
 ---
 
-*版本: v2.0.0*  
-*更新时间: 2025-06-27*  
-*支持平台: Unitree Go2* 
+*Version: v2.0.0*
+*Last updated: 2025-06-27*
+*Supported platform: Unitree Go2*

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-test_commander_wakeup.py — 唤醒动画单元测试
+test_commander_wakeup.py — Wakeup animation unit tests
 
-验证:
-  - 环境变量门控（默认关闭，COMMANDER_WAKEUP_ANIMATION=1 启用）
-  - 非硬件模式跳过
-  - StandUp 成功 (code=0) → Stretch → 姿态更新
-  - StandUp 已站立 (code=-1) → Stretch → 姿态更新
-  - StandUp 超时 (code=3104) → _verify_standing_after_unknown → 条件继续
-  - StandUp 失败 (code=3103) → 跳过 Stretch
-  - 异常不阻塞启动
-  - 审计日志写入
+Validates:
+  - Environment variable gating (disabled by default, enabled with COMMANDER_WAKEUP_ANIMATION=1)
+  - Non-hardware mode skip
+  - StandUp success (code=0) -> Stretch -> posture update
+  - StandUp already standing (code=-1) -> Stretch -> posture update
+  - StandUp timeout (code=3104) -> _verify_standing_after_unknown -> conditional continue
+  - StandUp failure (code=3103) -> skip Stretch
+  - Exceptions do not block startup
+  - Audit log recording
 """
 
 import sys
@@ -35,7 +35,7 @@ def _run(coro):
 
 
 def _make_commander(use_real_hardware=True, sport_client=True, router_mode="legacy"):
-    """构建 mock Commander 实例"""
+    """Build mock Commander instance"""
     from production_commander import ProductionCommander
 
     with patch.object(ProductionCommander, '__init__', lambda self, **kw: None):
@@ -57,20 +57,20 @@ def _make_commander(use_real_hardware=True, sport_client=True, router_mode="lega
     return cmd
 
 
-# === 门控测试 ===
+# === Gating tests ===
 
 class TestWakeupGating:
-    """环境变量和硬件模式门控"""
+    """Environment variable and hardware mode gating"""
 
     def test_skipped_when_env_not_set(self):
-        """默认不设置 COMMANDER_WAKEUP_ANIMATION 时跳过动画"""
+        """Skips animation when COMMANDER_WAKEUP_ANIMATION is not set (default)"""
         cmd = _make_commander()
         os.environ.pop("COMMANDER_WAKEUP_ANIMATION", None)
         _run(cmd._wakeup_animation())
         cmd.brain._rpc_call.assert_not_called()
 
     def test_skipped_when_env_is_zero(self):
-        """COMMANDER_WAKEUP_ANIMATION=0 时跳过动画"""
+        """Skips animation when COMMANDER_WAKEUP_ANIMATION=0"""
         cmd = _make_commander()
         os.environ["COMMANDER_WAKEUP_ANIMATION"] = "0"
         try:
@@ -80,7 +80,7 @@ class TestWakeupGating:
             os.environ.pop("COMMANDER_WAKEUP_ANIMATION", None)
 
     def test_skipped_when_not_hardware(self):
-        """模拟模式跳过动画"""
+        """Skips animation in simulation mode"""
         cmd = _make_commander(use_real_hardware=False)
         os.environ["COMMANDER_WAKEUP_ANIMATION"] = "1"
         try:
@@ -90,7 +90,7 @@ class TestWakeupGating:
             os.environ.pop("COMMANDER_WAKEUP_ANIMATION", None)
 
     def test_skipped_when_no_sport_client(self):
-        """SportClient 不可用时跳过动画"""
+        """Skips animation when SportClient is not available"""
         cmd = _make_commander(sport_client=False)
         os.environ["COMMANDER_WAKEUP_ANIMATION"] = "1"
         try:
@@ -100,7 +100,7 @@ class TestWakeupGating:
             os.environ.pop("COMMANDER_WAKEUP_ANIMATION", None)
 
     def test_enabled_when_env_is_one(self):
-        """COMMANDER_WAKEUP_ANIMATION=1 时执行动画"""
+        """Executes animation when COMMANDER_WAKEUP_ANIMATION=1"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [0, 0]  # StandUp, Stretch
         os.environ["COMMANDER_WAKEUP_ANIMATION"] = "1"
@@ -113,10 +113,10 @@ class TestWakeupGating:
             os.environ.pop("COMMANDER_WAKEUP_ANIMATION", None)
 
 
-# === StandUp 返回码分支 ===
+# === StandUp return code branches ===
 
 class TestWakeupStandUpBranches:
-    """StandUp 返回码的不同处理路径"""
+    """Different handling paths for StandUp return codes"""
 
     def setup_method(self):
         os.environ["COMMANDER_WAKEUP_ANIMATION"] = "1"
@@ -125,7 +125,7 @@ class TestWakeupStandUpBranches:
         os.environ.pop("COMMANDER_WAKEUP_ANIMATION", None)
 
     def test_standup_success_updates_posture(self):
-        """StandUp code=0 → 更新姿态 + 执行 Stretch"""
+        """StandUp code=0 -> update posture + execute Stretch"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [0, 0]  # StandUp=0, Stretch=0
         with patch('production_commander.asyncio.sleep', new_callable=AsyncMock):
@@ -135,7 +135,7 @@ class TestWakeupStandUpBranches:
         assert cmd.brain._rpc_call.call_count == 2
 
     def test_standup_already_standing_updates_posture(self):
-        """StandUp code=-1 (已站立) → 更新姿态 + 执行 Stretch"""
+        """StandUp code=-1 (already standing) -> update posture + execute Stretch"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [-1, 0]
         with patch('production_commander.asyncio.sleep', new_callable=AsyncMock):
@@ -145,7 +145,7 @@ class TestWakeupStandUpBranches:
         assert cmd.brain._rpc_call.call_count == 2
 
     def test_standup_3104_verifies_then_continues(self):
-        """StandUp code=3104 → _verify_standing_after_unknown → 确认后继续"""
+        """StandUp code=3104 -> _verify_standing_after_unknown -> continues after confirmation"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [3104, 0]  # StandUp=3104, Stretch=0
         cmd.brain._verify_standing_after_unknown = AsyncMock(return_value=True)
@@ -157,7 +157,7 @@ class TestWakeupStandUpBranches:
         assert cmd.brain._rpc_call.call_count == 2
 
     def test_standup_3104_unconfirmed_skips_stretch(self):
-        """StandUp code=3104 + 未确认站立 → 跳过 Stretch"""
+        """StandUp code=3104 + standing unconfirmed -> skip Stretch"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [3104]
         cmd.brain._verify_standing_after_unknown = AsyncMock(return_value=False)
@@ -165,10 +165,10 @@ class TestWakeupStandUpBranches:
             with patch.object(cmd, '_log_wakeup_audit'):
                 _run(cmd._wakeup_animation())
         cmd.brain._update_posture_tracking.assert_not_called()
-        assert cmd.brain._rpc_call.call_count == 1  # 只调了 StandUp
+        assert cmd.brain._rpc_call.call_count == 1  # Only called StandUp
 
     def test_standup_failure_skips_stretch(self):
-        """StandUp code=3103 (失败) → 跳过 Stretch"""
+        """StandUp code=3103 (failure) -> skip Stretch"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [3103]
         with patch('production_commander.asyncio.sleep', new_callable=AsyncMock):
@@ -178,7 +178,7 @@ class TestWakeupStandUpBranches:
         assert cmd.brain._rpc_call.call_count == 1
 
     def test_standup_tuple_return(self):
-        """_rpc_call 返回 tuple (code, data) 时正确提取 code"""
+        """_rpc_call returns tuple (code, data) -> correctly extracts code"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [(0, {}), (0, {})]
         with patch('production_commander.asyncio.sleep', new_callable=AsyncMock):
@@ -187,10 +187,10 @@ class TestWakeupStandUpBranches:
         cmd.brain._update_posture_tracking.assert_called_once_with(1004)
 
 
-# === 异常安全 ===
+# === Exception safety ===
 
 class TestWakeupExceptionSafety:
-    """异常不阻塞启动"""
+    """Exceptions do not block startup"""
 
     def setup_method(self):
         os.environ["COMMANDER_WAKEUP_ANIMATION"] = "1"
@@ -199,17 +199,17 @@ class TestWakeupExceptionSafety:
         os.environ.pop("COMMANDER_WAKEUP_ANIMATION", None)
 
     def test_rpc_exception_does_not_propagate(self):
-        """_rpc_call 异常被捕获，不阻塞启动"""
+        """_rpc_call exception is caught, does not block startup"""
         cmd = _make_commander()
-        cmd.brain._rpc_call.side_effect = RuntimeError("DDS 断连")
+        cmd.brain._rpc_call.side_effect = RuntimeError("DDS disconnected")
         with patch.object(cmd, '_log_wakeup_audit'):
-            _run(cmd._wakeup_animation())  # 不应抛出
+            _run(cmd._wakeup_animation())  # Should not raise
 
 
-# === 审计日志 ===
+# === Audit logging ===
 
 class TestWakeupAudit:
-    """审计日志记录"""
+    """Audit log recording"""
 
     def setup_method(self):
         os.environ["COMMANDER_WAKEUP_ANIMATION"] = "1"
@@ -218,7 +218,7 @@ class TestWakeupAudit:
         os.environ.pop("COMMANDER_WAKEUP_ANIMATION", None)
 
     def test_audit_logged_on_success(self):
-        """成功完成后记录审计"""
+        """Audit is recorded on successful completion"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [0, 0]
         with patch('production_commander.asyncio.sleep', new_callable=AsyncMock):
@@ -237,7 +237,7 @@ class TestWakeupAudit:
                 assert entry.safety_verdict == "ok"
 
     def test_audit_logged_on_standup_failure(self):
-        """StandUp 失败后也记录审计"""
+        """Audit is recorded even on StandUp failure"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [3103]
         with patch('production_commander.asyncio.sleep', new_callable=AsyncMock):
@@ -254,9 +254,9 @@ class TestWakeupAudit:
                 assert "3103" in entry.safety_reason
 
     def test_audit_3104_confirmed_standing_is_success(self):
-        """3104 + _verify_standing_after_unknown=True → audit success=True
+        """3104 + _verify_standing_after_unknown=True -> audit success=True
 
-        核心回归保护: standup_confirmed 语义修复的验证网。
+        Core regression protection: validation net for standup_confirmed semantic fix.
         """
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [3104, 0]  # StandUp=3104, Stretch=0
@@ -275,7 +275,7 @@ class TestWakeupAudit:
                 assert entry.sequence == [1004, 1017]
 
     def test_audit_3104_unconfirmed_is_failure(self):
-        """3104 + _verify_standing_after_unknown=False → audit success=False"""
+        """3104 + _verify_standing_after_unknown=False -> audit success=False"""
         cmd = _make_commander()
         cmd.brain._rpc_call.side_effect = [3104]
         cmd.brain._verify_standing_after_unknown = AsyncMock(return_value=False)
@@ -292,13 +292,13 @@ class TestWakeupAudit:
                 assert entry.safety_verdict == "standup_failed"
 
     def test_audit_standup_ok_stretch_fail_is_consistent(self):
-        """StandUp 成功 + Stretch 失败 → success=False + safety_verdict='stretch_failed'
+        """StandUp success + Stretch failure -> success=False + safety_verdict='stretch_failed'
 
-        防止 success 与 safety_verdict 不一致:
-        曾出现 success=False + safety_verdict='ok' 的矛盾状态。
+        Prevents inconsistency between success and safety_verdict:
+        Previously had contradictory state of success=False + safety_verdict='ok'.
         """
         cmd = _make_commander()
-        cmd.brain._rpc_call.side_effect = [0, 3103]  # StandUp=0, Stretch=3103(失败)
+        cmd.brain._rpc_call.side_effect = [0, 3103]  # StandUp=0, Stretch=3103(failure)
         with patch('production_commander.asyncio.sleep', new_callable=AsyncMock):
             with patch(
                 'claudia.brain.audit_logger.get_audit_logger'
@@ -313,13 +313,13 @@ class TestWakeupAudit:
                 assert "3103" in entry.safety_reason
 
 
-# === Action 模型预热 ===
+# === Action model warmup ===
 
 class TestActionModelWarmup:
-    """Dual/Shadow 模式下预热 Action 模型"""
+    """Warm up Action model in Dual/Shadow mode"""
 
     def test_legacy_mode_no_action_warmup(self):
-        """Legacy 模式只预热 7B 模型"""
+        """Legacy mode only warms up 7B model"""
         cmd = _make_commander(router_mode="legacy")
         call_count = 0
 
@@ -332,10 +332,10 @@ class TestActionModelWarmup:
             with patch.dict('sys.modules', {'ollama': MagicMock(chat=mock_chat)}):
                 _run(cmd._warmup_model())
 
-        assert call_count == 1  # 只预热了 7B
+        assert call_count == 1  # Only warmed up 7B
 
     def test_shadow_mode_warms_action_first_7b_last(self):
-        """Shadow 模式: Action 先预热 → 7B 后预热（7B 驻留显存，首条命令主路径）"""
+        """Shadow mode: Action warms up first -> 7B last (7B stays in VRAM, primary path for first command)"""
         cmd = _make_commander(router_mode="shadow")
         warmed_models = []
 
@@ -347,11 +347,11 @@ class TestActionModelWarmup:
             _run(cmd._warmup_model())
 
         assert len(warmed_models) == 2
-        assert warmed_models[0] == "test-action-model"  # Action 先
-        assert warmed_models[1] == "test-model"          # 7B 后（驻留显存）
+        assert warmed_models[0] == "test-action-model"  # Action first
+        assert warmed_models[1] == "test-model"          # 7B last (stays in VRAM)
 
     def test_dual_mode_warms_action_only(self):
-        """Dual 模式 (Action-primary): 只预热 Action 模型，不预热 7B"""
+        """Dual mode (Action-primary): Only warms up Action model, not 7B"""
         cmd = _make_commander(router_mode="dual")
         warmed_models = []
 
@@ -363,10 +363,10 @@ class TestActionModelWarmup:
             _run(cmd._warmup_model())
 
         assert len(warmed_models) == 1
-        assert warmed_models[0] == "test-action-model"   # Action 唯一预热
+        assert warmed_models[0] == "test-action-model"   # Action is the only warmup
 
     def test_shadow_first_timeout_still_warms_second(self):
-        """Shadow 模式: Action 超时 → 7B 仍然预热（超时隔离）"""
+        """Shadow mode: Action timeout -> 7B still warms up (timeout isolation)"""
         cmd = _make_commander(router_mode="shadow")
         warmed_models = []
         call_idx = [0]
@@ -375,16 +375,16 @@ class TestActionModelWarmup:
             idx = call_idx[0]
             call_idx[0] += 1
             if idx == 0:
-                # Action 模型超时: 阻塞足够长触发 wait_for timeout
+                # Action model timeout: block long enough to trigger wait_for timeout
                 import time as _time
                 _time.sleep(999)
             warmed_models.append(kwargs.get('model'))
             return {'message': {'content': '{}'}}
 
-        # wait_for 的 timeout 会取消第一个任务，循环继续到第二个
+        # wait_for timeout cancels first task, loop continues to second
         with patch.dict('sys.modules', {'ollama': MagicMock(chat=mock_chat)}):
             _run(cmd._warmup_model())
 
-        # 第一个超时被跳过，第二个 (7B) 应正常预热
+        # First timed out and was skipped, second (7B) should warm up normally
         assert len(warmed_models) == 1
-        assert warmed_models[0] == "test-model"  # 7B 仍然被预热
+        assert warmed_models[0] == "test-model"  # 7B still gets warmed up

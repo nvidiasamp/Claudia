@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-ASR 推理スモークテスト (Phase 1)
-faster-whisper (CTranslate2) モデルの読み込み・推理を検証する
+ASR Inference Smoke Test (Phase 1)
+Validates faster-whisper (CTranslate2) model loading and inference
 
-使用方法:
-  # Production モード (要 faster-whisper)
+Usage:
+  # Production mode (requires faster-whisper)
   python3 scripts/validation/audio/asr_inference_test.py
 
-  # Mock モード (モデルなしで import とパイプライン構造のみ検証)
+  # Mock mode (verifies imports and pipeline structure only, no model needed)
   python3 scripts/validation/audio/asr_inference_test.py --mock
 
-  # モデルサイズ指定
+  # Specify model size
   python3 scripts/validation/audio/asr_inference_test.py --model medium
 
-注意: 手動実行専用。Shadow 比較中は実行しないこと (GPU VRAM 競合)。
+Note: For manual execution only. Do not run during Shadow comparison (GPU VRAM conflict).
 
 Author: Claudia AI System
 Generated: 2026-02-16
@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Optional
 
 # ---------------------------------------------------------------------------
-# 設定
+# Configuration
 # ---------------------------------------------------------------------------
 SAMPLE_RATE = 16000
 CHANNELS = 1
@@ -42,18 +42,18 @@ logger = logging.getLogger("claudia.asr.smoke_test")
 
 
 # ---------------------------------------------------------------------------
-# テスト音声生成
+# Test audio generation
 # ---------------------------------------------------------------------------
 
 def generate_test_wav(duration_silence_s: float = 1.0,
                       duration_tone_s: float = 1.0,
                       freq_hz: float = 440.0) -> bytes:
-    """テスト用 WAV を生成: 無音 + 正弦波トーン
+    """Generate test WAV: silence + sine wave tone
 
     Returns
     -------
     bytes
-        16kHz 16-bit mono PCM データ (WAV ヘッダーなし)
+        16kHz 16-bit mono PCM data (no WAV header)
     """
     n_silence = int(SAMPLE_RATE * duration_silence_s)
     n_tone = int(SAMPLE_RATE * duration_tone_s)
@@ -72,7 +72,7 @@ def generate_test_wav(duration_silence_s: float = 1.0,
 
 
 def save_test_wav(pcm_data: bytes, filepath: Path) -> None:
-    """PCM データを WAV ファイルとして保存"""
+    """Save PCM data as a WAV file"""
     import wave
     filepath.parent.mkdir(parents=True, exist_ok=True)
     with wave.open(str(filepath), "wb") as wf:
@@ -80,17 +80,17 @@ def save_test_wav(pcm_data: bytes, filepath: Path) -> None:
         wf.setsampwidth(SAMPLE_WIDTH)
         wf.setframerate(SAMPLE_RATE)
         wf.writeframes(pcm_data)
-    logger.info("テスト WAV 保存: %s (%d bytes, %.1fs)",
+    logger.info("Test WAV saved: %s (%d bytes, %.1fs)",
                 filepath, len(pcm_data),
                 len(pcm_data) / (SAMPLE_RATE * SAMPLE_WIDTH * CHANNELS))
 
 
 # ---------------------------------------------------------------------------
-# テスト実行
+# Test execution
 # ---------------------------------------------------------------------------
 
 class ASRSmokeTest:
-    """ASR 推理スモークテスト"""
+    """ASR Inference Smoke Test"""
 
     def __init__(self, mock: bool = False,
                  model_size: Optional[str] = None) -> None:
@@ -101,7 +101,7 @@ class ASRSmokeTest:
         self._passed = True
 
     def run_all(self) -> bool:
-        """全テスト実行。True = 全パス"""
+        """Run all tests. True = all passed"""
         print("=" * 60)
         print("  Claudia ASR Inference Smoke Test")
         print("  Mode: {}".format("MOCK" if self.mock else "PRODUCTION"))
@@ -131,12 +131,12 @@ class ASRSmokeTest:
         return self._passed
 
     # ------------------------------------------------------------------
-    # 個別テスト
+    # Individual tests
     # ------------------------------------------------------------------
 
     def _test_imports(self) -> None:
-        """基本 import テスト"""
-        self._section("Import 検証")
+        """Basic import test"""
+        self._section("Import Verification")
         failures = []
 
         required = ["numpy", "struct", "asyncio", "json", "logging"]
@@ -154,7 +154,7 @@ class ASRSmokeTest:
             self._ok("import faster_whisper.WhisperModel")
         except ImportError as e:
             if self.mock:
-                self._warn("import faster_whisper: {} (mock モードなので続行)".format(e))
+                self._warn("import faster_whisper: {} (mock mode, continuing)".format(e))
             else:
                 self._fail("import faster_whisper: {}".format(e))
                 failures.append("faster_whisper")
@@ -174,8 +174,8 @@ class ASRSmokeTest:
             self._passed = False
 
     def _test_generate_audio(self) -> None:
-        """テスト音声生成"""
-        self._section("テスト音声生成")
+        """Test audio generation"""
+        self._section("Test Audio Generation")
 
         pcm_data = generate_test_wav()
         expected_samples = SAMPLE_RATE * 2  # 1s silence + 1s tone
@@ -183,43 +183,43 @@ class ASRSmokeTest:
         actual_bytes = len(pcm_data)
 
         if actual_bytes == expected_bytes:
-            self._ok("PCM 生成: {} bytes ({} samples, 2.0s)".format(
+            self._ok("PCM generated: {} bytes ({} samples, 2.0s)".format(
                 actual_bytes, expected_samples))
         else:
-            self._fail("PCM サイズ不一致: expected={}, actual={}".format(
+            self._fail("PCM size mismatch: expected={}, actual={}".format(
                 expected_bytes, actual_bytes))
             self._passed = False
             return
 
         wav_path = OUTPUT_DIR / "asr_smoke_test.wav"
         save_test_wav(pcm_data, wav_path)
-        self._ok("WAV 保存: {}".format(wav_path))
+        self._ok("WAV saved: {}".format(wav_path))
 
         self.results["pcm_data"] = pcm_data
         self.results["wav_path"] = wav_path
 
     def _test_mock_pipeline(self) -> None:
-        """Mock モード: パイプラインテスト"""
-        self._section("Mock パイプライン検証")
+        """Mock mode: pipeline test"""
+        self._section("Mock Pipeline Verification")
 
         pcm_data = self.results.get("pcm_data", b"")
         if not pcm_data:
-            self._fail("テスト音声なし")
+            self._fail("No test audio available")
             self._passed = False
             return
 
         try:
             start = time.monotonic()
-            mock_text = "mock転写結果"
+            mock_text = "mock transcription result"
             mock_confidence = 0.99
             elapsed_ms = (time.monotonic() - start) * 1000
-            self._ok("Mock 転写: '{}' (conf={}, latency={:.1f}ms)".format(
+            self._ok("Mock transcription: '{}' (conf={}, latency={:.1f}ms)".format(
                 mock_text, mock_confidence, elapsed_ms))
         except Exception as e:
-            self._fail("Mock パイプライン失敗: {}".format(e))
+            self._fail("Mock pipeline failed: {}".format(e))
             self._passed = False
 
-        # RingBuffer テスト
+        # RingBuffer test
         try:
             sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
             from claudia.audio.asr_service.ring_buffer import RingBuffer
@@ -229,12 +229,12 @@ class ASRSmokeTest:
             assert len(last) == 960, "RingBuffer read_last mismatch: {}".format(len(last))
             rb.clear()
             assert rb.available_ms == 0
-            self._ok("RingBuffer: write/read_last/clear 正常")
+            self._ok("RingBuffer: write/read_last/clear OK")
         except Exception as e:
-            self._fail("RingBuffer テスト失敗: {}".format(e))
+            self._fail("RingBuffer test failed: {}".format(e))
             self._passed = False
 
-        # VADProcessor mock テスト
+        # VADProcessor mock test
         try:
             from claudia.audio.asr_service.vad_processor import (
                 VADProcessor, VADConfig, VADState,
@@ -251,14 +251,14 @@ class ASRSmokeTest:
                 mock=True,
             )
             assert vad.state == VADState.SILENCE
-            self._ok("VADProcessor: mock 初期化成功 (state=SILENCE)")
+            self._ok("VADProcessor: mock initialization successful (state=SILENCE)")
         except Exception as e:
-            self._fail("VADProcessor テスト失敗: {}".format(e))
+            self._fail("VADProcessor test failed: {}".format(e))
             self._passed = False
 
     def _test_model_load(self) -> None:
-        """Production: モデル読み込み"""
-        self._section("モデル読み込み")
+        """Production: model loading"""
+        self._section("Model Loading")
 
         try:
             from faster_whisper import WhisperModel
@@ -274,26 +274,26 @@ class ASRSmokeTest:
             load_ms = (time.monotonic() - start) * 1000
 
             self.results["load_ms"] = load_ms
-            self._ok("モデル読み込み成功: whisper-{}".format(self.model_size))
-            self._ok("  読み込み時間: {:.0f}ms".format(load_ms))
+            self._ok("Model loaded successfully: whisper-{}".format(self.model_size))
+            self._ok("  Load time: {:.0f}ms".format(load_ms))
             self._ok("  compute_type: {}".format(compute_type))
 
         except Exception as e:
-            self._fail("モデル読み込み失敗: {}".format(e))
+            self._fail("Model loading failed: {}".format(e))
             self._passed = False
 
     def _test_inference(self) -> None:
-        """Production: 完整推理テスト"""
-        self._section("推理テスト (beam_size=3)")
+        """Production: full inference test"""
+        self._section("Inference Test (beam_size=3)")
 
         if self._model is None:
-            self._fail("モデル未読み込み -- スキップ")
+            self._fail("Model not loaded -- skipping")
             self._passed = False
             return
 
         pcm_data = self.results.get("pcm_data", b"")
         if not pcm_data:
-            self._fail("テスト音声なし -- スキップ")
+            self._fail("No test audio -- skipping")
             self._passed = False
             return
 
@@ -330,25 +330,25 @@ class ASRSmokeTest:
             self.results["text"] = text
             self.results["confidence"] = confidence
 
-            self._ok("推理完了: '{}'".format(text))
+            self._ok("Inference complete: '{}'".format(text))
             self._ok("  segments: {}".format(n_segments))
-            self._ok("  信頼度: {:.3f}".format(confidence))
-            self._ok("  推理時間: {:.0f}ms".format(inference_ms))
-            self._ok("  言語検出: {} (prob={:.2f})".format(info.language, info.language_probability))
+            self._ok("  confidence: {:.3f}".format(confidence))
+            self._ok("  inference time: {:.0f}ms".format(inference_ms))
+            self._ok("  language detected: {} (prob={:.2f})".format(info.language, info.language_probability))
 
             if inference_ms > 5000:
-                self._warn("推理時間が長い: {:.0f}ms (目標 < 2000ms)".format(inference_ms))
+                self._warn("Inference time is long: {:.0f}ms (target < 2000ms)".format(inference_ms))
 
         except Exception as e:
-            self._fail("推理失敗: {}".format(e))
+            self._fail("Inference failed: {}".format(e))
             self._passed = False
 
     def _test_quick_inference(self) -> None:
-        """Production: quick_transcribe テスト (beam_size=1)"""
-        self._section("Quick 推理テスト (beam_size=1)")
+        """Production: quick_transcribe test (beam_size=1)"""
+        self._section("Quick Inference Test (beam_size=1)")
 
         if self._model is None:
-            self._fail("モデル未読み込み -- スキップ")
+            self._fail("Model not loaded -- skipping")
             return
 
         pcm_data = self.results.get("pcm_data", b"")
@@ -358,7 +358,7 @@ class ASRSmokeTest:
         try:
             import numpy as np
 
-            # 最初の 300ms のみ (emergency check 用)
+            # First 300ms only (for emergency check)
             n_bytes = int(SAMPLE_RATE * 0.3 * SAMPLE_WIDTH)
             short_pcm = pcm_data[:n_bytes]
             audio_np = np.frombuffer(short_pcm, dtype=np.int16).astype(np.float32) / 32768.0
@@ -376,14 +376,14 @@ class ASRSmokeTest:
             quick_ms = (time.monotonic() - start) * 1000
 
             self.results["quick_inference_ms"] = quick_ms
-            self._ok("Quick 推理完了: '{}' ({:.0f}ms)".format(text, quick_ms))
+            self._ok("Quick inference complete: '{}' ({:.0f}ms)".format(text, quick_ms))
 
         except Exception as e:
-            self._fail("Quick 推理失敗: {}".format(e))
+            self._fail("Quick inference failed: {}".format(e))
 
     def _test_asr_service_imports(self) -> None:
-        """ASR サービスモジュール import テスト"""
-        self._section("ASR サービス import 検証")
+        """ASR service module import test"""
+        self._section("ASR Service Import Verification")
 
         try:
             sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
@@ -396,9 +396,9 @@ class ASRSmokeTest:
                 VADEvent,
                 RingBuffer,
             )
-            self._ok("claudia.audio.asr_service: 全 export import 成功")
+            self._ok("claudia.audio.asr_service: all exports imported successfully")
         except ImportError as e:
-            self._fail("ASR サービス import 失敗: {}".format(e))
+            self._fail("ASR service import failed: {}".format(e))
             self._passed = False
 
         try:
@@ -415,7 +415,7 @@ class ASRSmokeTest:
             self._warn("ipc_protocol import: {}".format(e))
 
     # ------------------------------------------------------------------
-    # 出力ヘルパー
+    # Output helpers
     # ------------------------------------------------------------------
 
     def _section(self, name: str) -> None:
@@ -450,7 +450,7 @@ class ASRSmokeTest:
 
 
 # ---------------------------------------------------------------------------
-# エントリポイント
+# Entry point
 # ---------------------------------------------------------------------------
 
 def main() -> int:
@@ -459,23 +459,23 @@ def main() -> int:
     )
     parser.add_argument(
         "--mock", action="store_true",
-        help="Mock モード: モデルなしで import とパイプライン構造のみ検証",
+        help="Mock mode: verify imports and pipeline structure only, no model needed",
     )
     parser.add_argument(
         "--model", type=str, default=None,
-        help="Whisper モデルサイズ (default: base)",
+        help="Whisper model size (default: base)",
     )
     parser.add_argument(
         "--usb-mic", action="store_true",
-        help="USB マイク実録テスト (AT2020USB-XP, 5 秒録音 → ASR)",
+        help="USB microphone live recording test (AT2020USB-XP, 5-second recording -> ASR)",
     )
     parser.add_argument(
         "--usb-device", type=str, default="hw:2,0",
-        help="ALSA USB マイクデバイス名 (default: hw:2,0)",
+        help="ALSA USB microphone device name (default: hw:2,0)",
     )
     parser.add_argument(
         "--usb-rate", type=int, default=44100,
-        help="USB マイクのネイティブサンプルレート (default: 44100)",
+        help="USB microphone native sample rate (default: 44100)",
     )
     args = parser.parse_args()
 
@@ -502,16 +502,16 @@ def main() -> int:
 
 
 def _run_usb_mic_test(model_size: str, device: str, native_rate: int) -> int:
-    """USB マイク実録 → ASR エンドツーエンドテスト
+    """USB microphone live recording -> ASR end-to-end test
 
-    AT2020USB-XP は 44100Hz ネイティブ。Tegra ALSA plughw は全零を出すため、
-    ネイティブレートで録音し Python 側で 16kHz にリサンプルする。
+    AT2020USB-XP has a native rate of 44100Hz. Tegra ALSA plughw outputs all zeros,
+    so we record at native rate and resample to 16kHz on the Python side.
     """
     import subprocess
     import wave
 
     print("=" * 60)
-    print("  USB Microphone → ASR End-to-End Test")
+    print("  USB Microphone -> ASR End-to-End Test")
     print("  Device: {}  Native Rate: {}Hz".format(device, native_rate))
     print("  Model: whisper-{}".format(model_size))
     print("=" * 60)
@@ -520,7 +520,7 @@ def _run_usb_mic_test(model_size: str, device: str, native_rate: int) -> int:
     wav_path = "/tmp/claudia_usb_mic_test.wav"
     duration_s = 5
 
-    # 1. 録音
+    # 1. Recording
     print("[1/4] Recording {}s from {} at {}Hz ...".format(duration_s, device, native_rate))
     try:
         subprocess.run(
@@ -534,9 +534,9 @@ def _run_usb_mic_test(model_size: str, device: str, native_rate: int) -> int:
         print("  [FAIL] arecord failed: {}".format(e))
         return 1
 
-    # 2. WAV 読み込み + リサンプル
+    # 2. WAV reading + resampling
     import numpy as np
-    print("[2/4] Reading WAV and resampling {}→16000Hz ...".format(native_rate))
+    print("[2/4] Reading WAV and resampling {}->16000Hz ...".format(native_rate))
     try:
         with wave.open(wav_path, "rb") as wf:
             sr_in = wf.getframerate()
@@ -548,20 +548,20 @@ def _run_usb_mic_test(model_size: str, device: str, native_rate: int) -> int:
         print("  Original: {} samples, RMS={}".format(len(samples), rms_orig))
 
         if rms_orig < 10:
-            print("  [WARN] Very low RMS — mic may not be capturing audio")
+            print("  [WARN] Very low RMS -- mic may not be capturing audio")
 
-        # リサンプル (numpy index-based)
+        # Resample (numpy index-based)
         sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
         from claudia.audio.pcm_utils import resample_pcm_int16
         from claudia.audio.asr_service.asr_server import SAMPLE_RATE
         resampled = resample_pcm_int16(samples, sr_in, SAMPLE_RATE)
-        print("  Resampled: {} → {} samples (16kHz)".format(len(samples), len(resampled)))
+        print("  Resampled: {} -> {} samples (16kHz)".format(len(samples), len(resampled)))
         print("  [PASS] Resampling OK")
     except Exception as e:
         print("  [FAIL] WAV processing failed: {}".format(e))
         return 1
 
-    # 3. ASR 推理
+    # 3. ASR inference
     print("[3/4] Loading whisper-{} and transcribing ...".format(model_size))
     try:
         from faster_whisper import WhisperModel
@@ -589,7 +589,7 @@ def _run_usb_mic_test(model_size: str, device: str, native_rate: int) -> int:
         print("  [FAIL] ASR inference failed: {}".format(e))
         return 1
 
-    # 4. サマリー
+    # 4. Summary
     print()
     print("[4/4] Summary")
     print("  Device:      {}".format(device))
@@ -604,7 +604,7 @@ def _run_usb_mic_test(model_size: str, device: str, native_rate: int) -> int:
     if text:
         print("  RESULT: USB MIC TEST PASSED")
     else:
-        print("  RESULT: USB MIC TEST PASSED (empty transcription — silent input?)")
+        print("  RESULT: USB MIC TEST PASSED (empty transcription -- silent input?)")
     print("=" * 60)
     return 0
 

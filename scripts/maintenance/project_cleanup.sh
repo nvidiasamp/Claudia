@@ -1,52 +1,52 @@
 #!/bin/bash
 # -*- coding: utf-8 -*-
 ################################################################################
-# Claudia项目自动化清理脚本
+# Claudia Project Automated Cleanup Script
 #
-# 功能: 清理废弃文件、归档开发文档、优化项目结构
-# 作者: Claude Code
-# 日期: 2025-10-31
-# 版本: 1.0
+# Features: Clean obsolete files, archive development docs, optimize project structure
+# Author: Claude Code
+# Date: 2025-10-31
+# Version: 1.0
 #
-# 使用方法:
-#   bash scripts/maintenance/project_cleanup.sh --mode=safe    # 安全模式（仅缓存清理）
-#   bash scripts/maintenance/project_cleanup.sh --mode=full    # 完整清理（包括归档）
-#   bash scripts/maintenance/project_cleanup.sh --mode=preview # 预览模式（不执行）
+# Usage:
+#   bash scripts/maintenance/project_cleanup.sh --mode=safe    # Safe mode (cache cleanup only)
+#   bash scripts/maintenance/project_cleanup.sh --mode=full    # Full cleanup (including archiving)
+#   bash scripts/maintenance/project_cleanup.sh --mode=preview # Preview mode (no execution)
 ################################################################################
 
-set -e  # 遇到错误立即退出
+set -e  # Exit immediately on error
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 项目根目录
+# Project root directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# 时间戳
+# Timestamp
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 BACKUP_DIR="${PROJECT_ROOT}/backups/cleanup_${TIMESTAMP}"
 REPORT_FILE="${PROJECT_ROOT}/logs/cleanup_report_${TIMESTAMP}.log"
 
-# 默认模式
+# Default mode
 MODE="${1:-safe}"
 if [[ "$MODE" == --mode=* ]]; then
     MODE="${MODE#--mode=}"
 fi
 
-# 统计变量
+# Statistics variables
 DELETED_FILES=0
 DELETED_DIRS=0
 ARCHIVED_FILES=0
 FREED_SPACE=0
 
 ################################################################################
-# 辅助函数
+# Helper functions
 ################################################################################
 
 print_header() {
@@ -56,27 +56,27 @@ print_header() {
 }
 
 print_success() {
-    echo -e "${GREEN}✓${NC} $1"
+    echo -e "${GREEN}[OK]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠${NC} $1"
+    echo -e "${YELLOW}[WARN]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}✗${NC} $1"
+    echo -e "${RED}[ERR]${NC} $1"
 }
 
 print_info() {
-    echo -e "${BLUE}ℹ${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
-# 记录到日志文件
+# Write to log file
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$REPORT_FILE"
 }
 
-# 创建备份
+# Create backup
 create_backup() {
     local source="$1"
     local backup_path="${BACKUP_DIR}/${source}"
@@ -88,7 +88,7 @@ create_backup() {
     fi
 }
 
-# 计算文件/目录大小（MB）
+# Calculate file/directory size (MB)
 get_size_mb() {
     local path="$1"
     if [[ -e "$path" ]]; then
@@ -99,23 +99,23 @@ get_size_mb() {
 }
 
 ################################################################################
-# Phase 1: Python缓存清理
+# Phase 1: Python cache cleanup
 ################################################################################
 
 cleanup_python_cache() {
-    print_header "Phase 1: 清理Python缓存文件"
+    print_header "Phase 1: Clean Python Cache Files"
 
     local cache_count=0
     local cache_size=0
 
-    # 统计缓存大小
+    # Calculate cache size
     cache_size=$(find . -type d -name "__pycache__" -exec du -sm {} + 2>/dev/null | awk '{sum+=$1} END {print sum}')
     cache_size=${cache_size:-0}
 
-    print_info "发现Python缓存大小: ${cache_size} MB"
+    print_info "Python cache size found: ${cache_size} MB"
 
     if [[ "$MODE" != "preview" ]]; then
-        # 删除 __pycache__ 目录
+        # Delete __pycache__ directories
         while IFS= read -r dir; do
             if [[ -n "$dir" ]]; then
                 rm -rf "$dir"
@@ -124,33 +124,33 @@ cleanup_python_cache() {
             fi
         done < <(find . -type d -name "__pycache__" 2>/dev/null)
 
-        # 删除 .pyc 文件
+        # Delete .pyc files
         find . -type f -name "*.pyc" -delete 2>/dev/null
 
-        # 删除 pytest 缓存
+        # Delete pytest cache
         find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 
         DELETED_DIRS=$((DELETED_DIRS + cache_count))
         FREED_SPACE=$((FREED_SPACE + cache_size))
 
-        print_success "清理了 ${cache_count} 个缓存目录，释放 ${cache_size} MB"
+        print_success "Cleaned ${cache_count} cache directories, freed ${cache_size} MB"
     else
-        print_info "[预览] 将清理 ${cache_count} 个缓存目录"
+        print_info "[Preview] Would clean ${cache_count} cache directories"
     fi
 
     log "Phase 1 completed: Cleaned ${cache_count} cache directories"
 }
 
 ################################################################################
-# Phase 2: 归档开发文档
+# Phase 2: Archive development documents
 ################################################################################
 
 archive_development_docs() {
-    print_header "Phase 2: 归档开发过程文档"
+    print_header "Phase 2: Archive Development Process Documents"
 
     local archive_dir="${PROJECT_ROOT}/docs/archive/development"
 
-    # 保留的核心文档
+    # Core documents to keep
     local keep_docs=(
         "GO2_SUPPORTED_ACTIONS.md"
         "CORRECT_LLM_ARCHITECTURE.md"
@@ -158,12 +158,12 @@ archive_development_docs() {
         "guides/LED_SYSTEM_VERIFICATION_REPORT.md"
     )
 
-    # 创建归档目录
+    # Create archive directory
     if [[ "$MODE" != "preview" ]]; then
         mkdir -p "$archive_dir"
     fi
 
-    # 需要归档的文档模式
+    # Document patterns to archive
     local archive_patterns=(
         "BRAIN_OPTIMIZATION_REPORT.md"
         "COMPLETE_API_ANALYSIS.md"
@@ -195,7 +195,7 @@ archive_development_docs() {
         for doc in docs/${pattern}; do
             if [[ -f "$doc" ]]; then
                 local basename=$(basename "$doc")
-                print_info "归档: $doc"
+                print_info "Archiving: $doc"
 
                 if [[ "$MODE" != "preview" ]]; then
                     create_backup "$doc"
@@ -209,22 +209,22 @@ archive_development_docs() {
         done
     done
 
-    # 归档子目录中的文档
+    # Archive subdirectory documents
     for subdir in ai_models deployment troubleshooting tasks; do
         if [[ -d "docs/${subdir}" ]]; then
             local subdir_size=$(get_size_mb "docs/${subdir}")
-            print_info "归档子目录: docs/${subdir}/ (${subdir_size} MB)"
+            print_info "Archiving subdirectory: docs/${subdir}/ (${subdir_size} MB)"
 
             if [[ "$MODE" != "preview" ]]; then
                 mkdir -p "${archive_dir}/${subdir}"
                 create_backup "docs/${subdir}"
 
-                # 移动所有文件
+                # Move all files
                 if [[ -n "$(ls -A docs/${subdir}/*.md 2>/dev/null)" ]]; then
                     mv docs/${subdir}/*.md "${archive_dir}/${subdir}/" 2>/dev/null || true
                 fi
 
-                # 如果子目录为空，删除它
+                # If subdirectory is empty, delete it
                 if [[ -z "$(ls -A docs/${subdir} 2>/dev/null)" ]]; then
                     rmdir "docs/${subdir}" 2>/dev/null || true
                 fi
@@ -236,16 +236,16 @@ archive_development_docs() {
         fi
     done
 
-    print_success "归档了 ${archived} 个开发文档"
+    print_success "Archived ${archived} development documents"
     log "Phase 2 completed: Archived ${archived} development documents"
 }
 
 ################################################################################
-# Phase 3: 清理根目录废弃文档
+# Phase 3: Clean deprecated root directory documents
 ################################################################################
 
 cleanup_root_deprecated_docs() {
-    print_header "Phase 3: 清理根目录废弃文档"
+    print_header "Phase 3: Clean Deprecated Root Directory Documents"
 
     local deprecated_docs=(
         "README_FINAL_SOLUTION.md"
@@ -257,7 +257,7 @@ cleanup_root_deprecated_docs() {
     for doc in "${deprecated_docs[@]}"; do
         if [[ -f "$doc" ]]; then
             local doc_size=$(get_size_mb "$doc")
-            print_info "删除: $doc (${doc_size} MB)"
+            print_info "Deleting: $doc (${doc_size} MB)"
 
             if [[ "$MODE" != "preview" ]]; then
                 create_backup "$doc"
@@ -270,23 +270,23 @@ cleanup_root_deprecated_docs() {
         fi
     done
 
-    print_success "清理了 ${cleaned} 个根目录废弃文档"
+    print_success "Cleaned ${cleaned} deprecated root directory documents"
     log "Phase 3 completed: Cleaned ${cleaned} deprecated root docs"
 }
 
 ################################################################################
-# Phase 4: 清理临时文件和测试结果
+# Phase 4: Clean temporary files and test results
 ################################################################################
 
 cleanup_temp_files() {
-    print_header "Phase 4: 清理临时文件和测试结果"
+    print_header "Phase 4: Clean Temporary Files and Test Results"
 
     local cleaned=0
 
-    # 清理测试结果JSON
+    # Clean test result JSON files
     for result_file in test_results_*.json; do
         if [[ -f "$result_file" ]]; then
-            print_info "删除测试结果: $result_file"
+            print_info "Deleting test result: $result_file"
 
             if [[ "$MODE" != "preview" ]]; then
                 rm "$result_file"
@@ -298,11 +298,11 @@ cleanup_temp_files() {
         fi
     done
 
-    # 清理空的备份目录
+    # Clean empty backup directories
     if [[ -d "backups" ]]; then
         local backup_count=$(find backups -type f 2>/dev/null | wc -l)
         if [[ "$backup_count" -eq 0 ]]; then
-            print_info "删除空的backups目录"
+            print_info "Deleting empty backups directory"
             if [[ "$MODE" != "preview" ]]; then
                 rm -rf backups
                 log "Deleted: backups/ (empty)"
@@ -311,11 +311,11 @@ cleanup_temp_files() {
         fi
     fi
 
-    # 清理空的docker目录
+    # Clean empty docker directories
     if [[ -d "docker" ]]; then
         local docker_count=$(find docker -type f 2>/dev/null | wc -l)
         if [[ "$docker_count" -eq 0 ]]; then
-            print_info "删除空的docker目录"
+            print_info "Deleting empty docker directory"
             if [[ "$MODE" != "preview" ]]; then
                 rm -rf docker
                 log "Deleted: docker/ (empty)"
@@ -324,43 +324,43 @@ cleanup_temp_files() {
         fi
     fi
 
-    print_success "清理了 ${cleaned} 个临时文件"
+    print_success "Cleaned ${cleaned} temporary files"
     log "Phase 4 completed: Cleaned ${cleaned} temporary files"
 }
 
 ################################################################################
-# Phase 5: 可选大型目录清理
+# Phase 5: Optional large directory cleanup
 ################################################################################
 
 cleanup_large_dirs() {
-    print_header "Phase 5: 大型目录清理（可选）"
+    print_header "Phase 5: Large Directory Cleanup (Optional)"
 
-    print_warning "以下大型目录可以清理，但需要手动确认："
+    print_warning "The following large directories can be cleaned, but require manual confirmation:"
 
     # node_modules
     if [[ -d "node_modules" ]]; then
         local size=$(get_size_mb "node_modules")
-        print_info "node_modules/: ${size} MB (可通过 npm install 恢复)"
+        print_info "node_modules/: ${size} MB (can be restored via npm install)"
     fi
 
-    # cyclonedds源码
+    # cyclonedds source code
     if [[ -d "cyclonedds" ]]; then
         local size=$(get_size_mb "cyclonedds")
-        print_info "cyclonedds/: ${size} MB (DDS源码，非运行时必需)"
+        print_info "cyclonedds/: ${size} MB (DDS source, not required at runtime)"
     fi
 
-    print_warning "这些目录不会自动清理，请根据需要手动删除"
+    print_warning "These directories will not be cleaned automatically. Please delete manually as needed."
     log "Phase 5: Large directories reported (manual cleanup required)"
 }
 
 ################################################################################
-# Phase 6: Git清理建议
+# Phase 6: Git cleanup suggestions
 ################################################################################
 
 suggest_git_cleanup() {
-    print_header "Phase 6: Git清理建议"
+    print_header "Phase 6: Git Cleanup Suggestions"
 
-    print_info "检测到以下git标记删除的目录:"
+    print_info "Detected the following git-marked-for-deletion directories:"
 
     local git_deleted=(
         ".clinerules"
@@ -374,131 +374,131 @@ suggest_git_cleanup() {
     local found=0
     for dir in "${git_deleted[@]}"; do
         if [[ -d "$dir" ]]; then
-            print_info "  - $dir (标记删除但未清理)"
+            print_info "  - $dir (marked for deletion but not yet cleaned)"
             ((found++))
         fi
     done
 
     if [[ "$found" -gt 0 ]]; then
-        print_warning "建议执行以下命令完成git清理:"
-        echo "  git add -u          # 提交已删除的文件"
-        echo "  git clean -fd       # 清理未跟踪的文件和目录"
+        print_warning "Recommended to run the following commands to complete git cleanup:"
+        echo "  git add -u          # Stage deleted files"
+        echo "  git clean -fd       # Clean untracked files and directories"
     else
-        print_success "没有发现需要清理的git标记目录"
+        print_success "No git-marked directories requiring cleanup found"
     fi
 
     log "Phase 6: Git cleanup suggestions provided"
 }
 
 ################################################################################
-# 生成清理报告
+# Generate cleanup report
 ################################################################################
 
 generate_report() {
-    print_header "清理报告"
+    print_header "Cleanup Report"
 
     local report_path="${PROJECT_ROOT}/docs/cleanup_report_${TIMESTAMP}.md"
 
     cat > "$report_path" << EOF
-# Claudia项目清理报告
+# Claudia Project Cleanup Report
 
-**执行时间**: $(date '+%Y-%m-%d %H:%M:%S')
-**执行模式**: ${MODE}
-**备份目录**: ${BACKUP_DIR}
+**Execution time**: $(date '+%Y-%m-%d %H:%M:%S')
+**Execution mode**: ${MODE}
+**Backup directory**: ${BACKUP_DIR}
 
-## 清理统计
+## Cleanup Statistics
 
-- **删除文件数**: ${DELETED_FILES}
-- **删除目录数**: ${DELETED_DIRS}
-- **归档文档数**: ${ARCHIVED_FILES}
-- **释放空间**: ${FREED_SPACE} MB
+- **Files deleted**: ${DELETED_FILES}
+- **Directories deleted**: ${DELETED_DIRS}
+- **Documents archived**: ${ARCHIVED_FILES}
+- **Space freed**: ${FREED_SPACE} MB
 
-## 执行的操作
+## Operations Performed
 
-### Phase 1: Python缓存清理
-- 清理了所有 \`__pycache__/\` 目录
-- 删除了所有 \`.pyc\` 文件
-- 清理了 pytest 缓存
+### Phase 1: Python Cache Cleanup
+- Cleaned all \`__pycache__/\` directories
+- Deleted all \`.pyc\` files
+- Cleaned pytest cache
 
-### Phase 2: 文档归档
-- 归档路径: \`docs/archive/development/\`
-- 归档文档数: ${ARCHIVED_FILES}
+### Phase 2: Document Archiving
+- Archive path: \`docs/archive/development/\`
+- Documents archived: ${ARCHIVED_FILES}
 
-### Phase 3: 废弃文档清理
-- 删除了根目录的废弃README文件
+### Phase 3: Deprecated Document Cleanup
+- Deleted deprecated README files from root directory
 
-### Phase 4: 临时文件清理
-- 清理了测试结果JSON文件
-- 删除了空的临时目录
+### Phase 4: Temporary File Cleanup
+- Cleaned test result JSON files
+- Deleted empty temporary directories
 
-## 备份信息
+## Backup Information
 
-所有被修改或删除的文件都已备份到:
+All modified or deleted files have been backed up to:
 \`${BACKUP_DIR}\`
 
-## 回滚方法
+## Rollback Method
 
-如需恢复文件:
+To restore files:
 \`\`\`bash
 cp -r ${BACKUP_DIR}/<path> <original_path>
 \`\`\`
 
-## 验证建议
+## Verification Recommendations
 
-清理完成后，建议执行以下验证:
+After cleanup, the following verification is recommended:
 \`\`\`bash
-# 运行测试
+# Run tests
 python3 test/run_tests.py
 
-# 验证LLM brain
+# Verify LLM brain
 ./start_production_brain.sh
 
-# 检查文档结构
+# Check document structure
 tree docs/ -L 2
 
-# 验证TaskMaster
+# Verify TaskMaster
 ls -lh .taskmaster/tasks/tasks.json
 \`\`\`
 
 ---
-*生成时间: $(date '+%Y-%m-%d %H:%M:%S')*
+*Generated: $(date '+%Y-%m-%d %H:%M:%S')*
 EOF
 
-    print_success "清理报告已生成: ${report_path}"
+    print_success "Cleanup report generated: ${report_path}"
     log "Report generated: ${report_path}"
 }
 
 ################################################################################
-# 主执行流程
+# Main execution flow
 ################################################################################
 
 main() {
-    print_header "Claudia项目自动化清理脚本 v1.0"
+    print_header "Claudia Project Automated Cleanup Script v1.0"
 
-    echo "项目根目录: ${PROJECT_ROOT}"
-    echo "执行模式: ${MODE}"
-    echo "时间戳: ${TIMESTAMP}"
+    echo "Project root: ${PROJECT_ROOT}"
+    echo "Execution mode: ${MODE}"
+    echo "Timestamp: ${TIMESTAMP}"
     echo ""
 
-    # 创建日志目录
+    # Create log directory
     mkdir -p "${PROJECT_ROOT}/logs"
 
-    # 创建备份目录（除了preview模式）
+    # Create backup directory (except in preview mode)
     if [[ "$MODE" != "preview" ]]; then
         mkdir -p "$BACKUP_DIR"
         log "Cleanup started - Mode: ${MODE}"
     fi
 
-    # 根据模式执行清理
+    # Execute cleanup based on mode
     case "$MODE" in
         safe)
-            print_info "安全模式: 仅清理缓存和临时文件"
+            print_info "Safe mode: Only cleaning caches and temporary files"
             cleanup_python_cache
             cleanup_temp_files
             suggest_git_cleanup
             ;;
         full)
-            print_info "完整模式: 执行所有清理操作"
+            print_info "Full mode: Executing all cleanup operations"
             cleanup_python_cache
             archive_development_docs
             cleanup_root_deprecated_docs
@@ -507,7 +507,7 @@ main() {
             suggest_git_cleanup
             ;;
         preview)
-            print_info "预览模式: 显示将要执行的操作（不实际执行）"
+            print_info "Preview mode: Showing operations that would be performed (not actually executing)"
             cleanup_python_cache
             archive_development_docs
             cleanup_root_deprecated_docs
@@ -516,33 +516,33 @@ main() {
             suggest_git_cleanup
             ;;
         *)
-            print_error "未知模式: ${MODE}"
-            echo "可用模式: safe, full, preview"
+            print_error "Unknown mode: ${MODE}"
+            echo "Available modes: safe, full, preview"
             exit 1
             ;;
     esac
 
-    # 生成报告
+    # Generate report
     if [[ "$MODE" != "preview" ]]; then
         generate_report
     fi
 
-    print_header "清理完成"
+    print_header "Cleanup Complete"
 
-    echo "统计信息:"
-    echo "  - 删除文件: ${DELETED_FILES}"
-    echo "  - 删除目录: ${DELETED_DIRS}"
-    echo "  - 归档文档: ${ARCHIVED_FILES}"
-    echo "  - 释放空间: ${FREED_SPACE} MB"
+    echo "Statistics:"
+    echo "  - Files deleted: ${DELETED_FILES}"
+    echo "  - Directories deleted: ${DELETED_DIRS}"
+    echo "  - Documents archived: ${ARCHIVED_FILES}"
+    echo "  - Space freed: ${FREED_SPACE} MB"
 
     if [[ "$MODE" != "preview" ]]; then
         echo ""
-        echo "备份位置: ${BACKUP_DIR}"
-        echo "日志文件: ${REPORT_FILE}"
+        echo "Backup location: ${BACKUP_DIR}"
+        echo "Log file: ${REPORT_FILE}"
     fi
 
-    print_success "项目清理成功完成！"
+    print_success "Project cleanup completed successfully!"
 }
 
-# 执行主函数
+# Execute main function
 main "$@"

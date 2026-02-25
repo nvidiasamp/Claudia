@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ChannelRouter — 双通道 LLM 决策路由器（PR2-B）
+ChannelRouter -- Dual-Channel LLM Decision Router (PR2-B)
 
-决策层：根据 BRAIN_ROUTER_MODE 环境变量决定使用哪个 LLM 通道。
-**不执行动作，不调用 SafetyCompiler** — 只产出候选决策 (api_code/sequence/response)，
-交由 process_command() 安全编译后再执行。
+Decision layer: Determines which LLM channel to use based on the BRAIN_ROUTER_MODE environment variable.
+**Does not execute actions, does not call SafetyCompiler** -- only produces candidate decisions
+(api_code/sequence/response), which are passed to process_command() for safety compilation before execution.
 
-三种模式:
-  - LEGACY: 完全透传现有 7B LLM 路径（零行为变更）
-  - DUAL:   Action 通道优先，a=null 时回退 Voice 通道
-  - SHADOW: Legacy 为主，Action 顺序观测 + 日志对比（单 GPU 优化）
+Three modes:
+  - LEGACY: Full passthrough of existing 7B LLM path (zero behavior change)
+  - DUAL:   Action channel priority, falls back to Voice channel when a=null
+  - SHADOW: Legacy as primary, Action sequentially observed + logged for comparison (single GPU optimized)
 """
 
 import os
@@ -36,7 +36,7 @@ from claudia.brain.action_registry import (
 
 
 class RouterMode(Enum):
-    """路由模式（BRAIN_ROUTER_MODE 环境变量）"""
+    """Router mode (BRAIN_ROUTER_MODE environment variable)"""
     LEGACY = "legacy"
     DUAL = "dual"
     SHADOW = "shadow"
@@ -44,41 +44,41 @@ class RouterMode(Enum):
 
 @dataclass
 class RouterResult:
-    """路由决策结果 — process_command() 映射到 BrainOutput 前的中间表示
+    """Router decision result -- intermediate representation before process_command() maps to BrainOutput
 
-    所有路由方法统一返回此类型（Fix #2: 无 tuple 返回值）。
-    shadow_comparison 仅在 SHADOW 模式下填充。
+    All routing methods return this type uniformly (Fix #2: no tuple return values).
+    shadow_comparison is only populated in SHADOW mode.
     """
     api_code: Optional[int]
     sequence: Optional[List[int]]
     response: str
-    route: str                                # audit_routes 常量
+    route: str                                # audit_routes constant
     action_latency_ms: float = 0.0
     voice_latency_ms: float = 0.0
-    request_id: str = ""                      # Invariant 4: 全链路追踪
-    raw_llm_output: Optional[str] = None      # 审计用: 原始 LLM JSON
-    shadow_comparison: Optional[Dict[str, Any]] = None  # Shadow 模式专用
-    # action channel 状态（shadow 对比用，区分 a=null vs 超时 vs 非法输出）
+    request_id: str = ""                      # Invariant 4: end-to-end tracing
+    raw_llm_output: Optional[str] = None      # For audit: raw LLM JSON
+    shadow_comparison: Optional[Dict[str, Any]] = None  # Shadow mode only
+    # Action channel status (for shadow comparison, distinguishes a=null vs timeout vs invalid output)
     # "ok" | "timeout" | "error" | "invalid_output"
     _action_status: str = "ok"
 
     @property
     def has_action(self):
         # type: () -> bool
-        """是否包含可执行动作（api_code 或 sequence）"""
+        """Whether it contains an executable action (api_code or sequence)"""
         return self.api_code is not None or (self.sequence is not None and len(self.sequence) > 0)
 
 
-# 序列校验常量（Fix #4）
+# Sequence validation constants (Fix #4)
 MAX_SEQUENCE_LENGTH = 4
 
 
 class ChannelRouter:
-    """决策路由器 — 只决策，不执行，不调用 SafetyCompiler
+    """Decision router -- decides only, does not execute, does not call SafetyCompiler
 
-    产出候选 (api_code, sequence, response)，process_command() 负责:
-    1. SafetyCompiler.compile() 安全编译
-    2. execute_action() 实际执行
+    Produces candidate (api_code, sequence, response); process_command() is responsible for:
+    1. SafetyCompiler.compile() safety compilation
+    2. execute_action() actual execution
     """
 
     def __init__(self, brain, mode):
@@ -95,7 +95,7 @@ class ChannelRouter:
 
     async def route(self, command, state_snapshot=None, start_time=None):
         # type: (str, Any, Optional[float]) -> RouterResult
-        """主入口: 根据当前模式分派到对应路由方法"""
+        """Main entry: dispatch to corresponding routing method based on current mode"""
         request_id = uuid.uuid4().hex[:8]
         if self._mode == RouterMode.LEGACY:
             return await self._legacy_route(command, request_id,
@@ -111,17 +111,17 @@ class ChannelRouter:
                                             start_time=start_time)
 
     # ------------------------------------------------------------------
-    # Legacy: 完全透传现有 7B LLM
+    # Legacy: Full passthrough of existing 7B LLM
     # ------------------------------------------------------------------
 
     async def _legacy_route(self, command, request_id,
                             state_snapshot=None, start_time=None,
                             route=ROUTE_LLM_7B, ollama_timeout=30):
         # type: (str, str, Any, Optional[float], str, int) -> RouterResult
-        """Legacy 模式: 调用现有 7B 模型，返回 RouterResult
+        """Legacy mode: Call existing 7B model, return RouterResult
 
-        透传: 行为与 PR1 完全一致，只是包装为 RouterResult。
-        ollama_timeout: Ollama 调用超时（Legacy/Dual=30s，Shadow=45s 含 VRAM 换入）
+        Passthrough: behavior is fully identical to PR1, just wrapped as RouterResult.
+        ollama_timeout: Ollama call timeout (Legacy/Dual=30s, Shadow=45s including VRAM swap-in)
         """
         await self._brain._ensure_model_loaded(self._brain.model_7b, num_ctx=2048)
         t0 = time.monotonic()
@@ -141,7 +141,7 @@ class ChannelRouter:
                 request_id=request_id,
             )
 
-        # 提取字段（兼容完整和缩写字段名）
+        # Extract fields (compatible with full and abbreviated field names)
         raw_response = result.get("response") or result.get("r", "実行します")
         response = self._brain._sanitize_response(raw_response)
         api_code = result.get("api_code") or result.get("a")
@@ -158,42 +158,42 @@ class ChannelRouter:
         )
 
     # ------------------------------------------------------------------
-    # Dual: Action 通道优先，a=null → Voice 回退
+    # Dual: Action channel priority, a=null -> Voice fallback
     # ------------------------------------------------------------------
 
     async def _dual_route(self, command, request_id,
                           state_snapshot=None, start_time=None):
         # type: (str, str, Any, Optional[float]) -> RouterResult
-        """Dual 模式: Action 通道决策，模板回复（不依赖 7B 模型）
+        """Dual mode: Action channel decision, template response (no 7B model dependency)
 
-        a=null → 使用 brain._generate_conversational_response() 模板回复
-        有动作 → 使用 ACTION_RESPONSES 模板回复
-        全程只用 Action 模型，无需 7B 在 VRAM 中。
+        a=null -> Use brain._generate_conversational_response() template response
+        Has action -> Use ACTION_RESPONSES template response
+        Only uses Action model throughout, no need for 7B in VRAM.
         """
-        # Step 1: Action 通道（短 prompt，~30 tokens）
+        # Step 1: Action channel (short prompt, ~30 tokens)
         action_result = await self._action_channel(command, request_id)
 
-        # Step 2: a=null → 模板对话回复（无需调用 7B）
+        # Step 2: a=null -> Template conversational response (no 7B call needed)
         if not action_result.has_action:
             if action_result.route == ROUTE_ACTION_FALLBACK:
                 return action_result
-            # 使用 brain 的对话模板生成器（关键词匹配，不调用 LLM）
+            # Use brain's conversational template generator (keyword matching, no LLM call)
             action_result.response = self._brain._generate_conversational_response(command)
             action_result.route = ROUTE_VOICE_CHANNEL
             return action_result
 
-        # Step 3: 有动作 → 使用模板响应（不需要 LLM 生成文本）
+        # Step 3: Has action -> Use template response (no LLM text generation needed)
         action_result.response = self._generate_template_response(action_result)
         return action_result
 
     async def _action_channel(self, command, request_id,
                               allow_fallback=True, ollama_timeout=10):
         # type: (str, str, bool, int) -> RouterResult
-        """Action 通道: 调用 action model，只输出 {a:N} 或 {s:[...]} 或 {a:null}
+        """Action channel: Call action model, outputs only {a:N} or {s:[...]} or {a:null}
 
-        Fix #4: 校验 api_code 和 sequence 合法性
-        allow_fallback: True=失败时回退 legacy（Dual 模式），False=直接返回失败结果（Shadow 观测用）
-        ollama_timeout: Ollama 调用超时（Dual=10s Jetson GPU 推理余裕, Shadow=15s 含 VRAM 换入）
+        Fix #4: Validates api_code and sequence legality
+        allow_fallback: True=fallback to legacy on failure (Dual mode), False=return failure result directly (Shadow observation)
+        ollama_timeout: Ollama call timeout (Dual=10s Jetson GPU inference margin, Shadow=15s including VRAM swap-in)
         """
         await self._brain._ensure_model_loaded(self._action_model, num_ctx=1024)
         t0 = time.monotonic()
@@ -201,20 +201,20 @@ class ChannelRouter:
             model=self._action_model,
             command=command,
             timeout=ollama_timeout,
-            num_predict=30,     # ~30 tokens 足够输出 {"a":1009}
-            num_ctx=1024,       # 缩小上下文窗口，降低推理开销
-            output_format=ACTION_SCHEMA,  # 结构化输出: 强制 {"a":N} | {"s":[...]}
+            num_predict=30,     # ~30 tokens sufficient for {"a":1009}
+            num_ctx=1024,       # Reduced context window to lower inference overhead
+            output_format=ACTION_SCHEMA,  # Structured output: forces {"a":N} | {"s":[...]}
         )
         latency = (time.monotonic() - t0) * 1000
 
         if raw is None:
             if allow_fallback:
-                # Dual 模式: 超时/失败 → 模板回复（不调用 7B）
-                self._logger.warning("Action チャネルタイムアウト/失敗、テンプレート応答")
+                # Dual mode: timeout/failure -> template response (no 7B call)
+                self._logger.warning("Action channel timeout/failure, using template response")
                 return self._template_fallback(command, request_id, latency)
             else:
-                # Shadow 观测: 不回退，直接记录失败（保持对照纯净性）
-                self._logger.warning("Action チャネルタイムアウト/失敗 (shadow 観測、フォールバックなし)")
+                # Shadow observation: no fallback, directly record failure (maintain control purity)
+                self._logger.warning("Action channel timeout/failure (shadow observation, no fallback)")
                 return RouterResult(
                     api_code=None, sequence=None,
                     response="",
@@ -228,55 +228,56 @@ class ChannelRouter:
         api_code = raw.get("a")
         sequence = raw.get("s")
 
-        # --- Fix: a+s 同时出现时归一化 ---
-        # s 更具体（序列动作），优先于 a；清除 a 防止模板响应与执行不一致
+        # --- Fix: Normalize when both a+s are present ---
+        # s is more specific (sequence action), takes priority over a; clear a to prevent
+        # inconsistency between template response and execution
         if api_code is not None and sequence is not None:
             self._logger.info(
-                "Action 通道 a={} 与 s={} 同时出现，s 优先".format(api_code, sequence))
+                "Action channel a={} and s={} both present, s takes priority".format(api_code, sequence))
             api_code = None
 
-        # 校验状态追踪（shadow 对比用）
-        action_status = "ok"  # 会被下游校验降级
+        # Validation status tracking (for shadow comparison)
+        action_status = "ok"  # May be downgraded by downstream validation
 
-        # --- 单动作校验 ---
+        # --- Single action validation ---
         if api_code is not None and api_code not in VALID_API_CODES:
             self._logger.warning(
-                "Action 通道非法 api_code={}".format(api_code))
+                "Action channel illegal api_code={}".format(api_code))
             if allow_fallback:
                 return self._template_fallback(command, request_id, latency)
-            # Shadow 观测: 记录非法结果，不回退
+            # Shadow observation: record illegal result, no fallback
             api_code = None
             action_status = "invalid_output"
 
-        # --- 序列校验（Fix #4）---
+        # --- Sequence validation (Fix #4) ---
         if sequence is not None:
             if not isinstance(sequence, list) or len(sequence) == 0:
                 self._logger.warning(
-                    "Action 通道序列类型错误或为空")
+                    "Action channel sequence type error or empty")
                 if allow_fallback:
                     return self._template_fallback(command, request_id, latency)
                 sequence = None
                 action_status = "invalid_output"
             else:
-                # 过滤: 保留合法码，记录非法项
+                # Filter: keep valid codes, log invalid items
                 valid_seq = [c for c in sequence
                              if isinstance(c, int) and c in VALID_API_CODES]
                 invalid_items = [c for c in sequence
                                  if not (isinstance(c, int) and c in VALID_API_CODES)]
                 if invalid_items:
                     self._logger.warning(
-                        "Action 通道过滤非法序列项: {}".format(invalid_items))
+                        "Action channel filtered invalid sequence items: {}".format(invalid_items))
 
-                # 长度限制
+                # Length limit
                 if len(valid_seq) > MAX_SEQUENCE_LENGTH:
                     self._logger.warning(
-                        "Action 通道序列过长 ({}), 截断至 {}".format(
+                        "Action channel sequence too long ({}), truncating to {}".format(
                             len(valid_seq), MAX_SEQUENCE_LENGTH))
                     valid_seq = valid_seq[:MAX_SEQUENCE_LENGTH]
 
                 if not valid_seq:
-                    # 全部非法
-                    self._logger.warning("Action チャネルシーケンス全不正")
+                    # All invalid
+                    self._logger.warning("Action channel sequence all invalid")
                     if allow_fallback:
                         return self._template_fallback(command, request_id, latency)
                     sequence = None
@@ -287,7 +288,7 @@ class ChannelRouter:
         return RouterResult(
             api_code=api_code,
             sequence=sequence,
-            response="",  # 由 _generate_template_response 填充
+            response="",  # Filled by _generate_template_response
             route=ROUTE_ACTION_CHANNEL,
             action_latency_ms=latency,
             request_id=request_id,
@@ -297,7 +298,7 @@ class ChannelRouter:
 
     def _generate_template_response(self, result):
         # type: (RouterResult) -> str
-        """根据 api_code/sequence 生成模板日语响应"""
+        """Generate template Japanese response from api_code/sequence"""
         if result.api_code is not None:
             return get_response_for_action(result.api_code)
         elif result.sequence:
@@ -306,10 +307,10 @@ class ChannelRouter:
 
     def _template_fallback(self, command, request_id, latency):
         # type: (str, str, float) -> RouterResult
-        """Action 通道失败时的模板回退（不调用 7B）
+        """Template fallback when action channel fails (no 7B call)
 
-        使用 brain._generate_conversational_response() 的关键词匹配生成回复，
-        零 LLM 推理开销，避免 VRAM 模型切换。
+        Uses brain._generate_conversational_response() keyword matching to generate response,
+        zero LLM inference overhead, avoids VRAM model switching.
         """
         response = self._brain._generate_conversational_response(command)
         return RouterResult(
@@ -322,39 +323,39 @@ class ChannelRouter:
         )
 
     # ------------------------------------------------------------------
-    # Shadow: Legacy 为主，Action 顺序观测
+    # Shadow: Legacy as primary, Action sequentially observed
     # ------------------------------------------------------------------
 
     async def _shadow_route(self, command, request_id,
                             state_snapshot=None, start_time=None):
         # type: (str, str, Any, Optional[float]) -> RouterResult
-        """Shadow 模式: Legacy 为主（返回给用户），Action 通道顺序观测 + 对比日志
+        """Shadow mode: Legacy as primary (returned to user), Action channel sequentially observed + comparison logged
 
-        单 GPU 设计: Ollama 无法并行处理不同模型（8GB VRAM 只容纳一个 4.7GB 模型）。
-        并行 ensure_future 会被 Ollama 串行处理，但超时从请求提交时计算，
-        导致排在后面的请求必然超时。因此改为顺序执行:
+        Single GPU design: Ollama cannot process different models in parallel (8GB VRAM holds only one 4.7GB model).
+        Parallel ensure_future would be serialized by Ollama, but timeout is calculated from request submission,
+        causing the queued request to inevitably timeout. Therefore, sequential execution:
 
-        1. Action 通道先跑（观测用，VRAM 换入 action 模型）
-        2. Legacy 7B 后跑（主路径，VRAM 换入 7B — 留在 VRAM 为下条命令准备）
+        1. Action channel runs first (for observation, swaps action model into VRAM)
+        2. Legacy 7B runs second (main path, swaps 7B into VRAM -- stays in VRAM for next command)
 
-        Invariant 4: request_id 全链路追踪，action 超时/错误显式记录
-        Fix #2: 统一返回 RouterResult（shadow_comparison 为 Optional 字段）
-        Fix #3: 对比 api_code + sequence，检测 high_risk_divergence
+        Invariant 4: request_id end-to-end tracing, action timeout/error explicitly recorded
+        Fix #2: Unified RouterResult return (shadow_comparison is Optional field)
+        Fix #3: Compare api_code + sequence, detect high_risk_divergence
         """
-        # Step 1: Action 通道观测（allow_fallback=False 保持对照纯净性）
-        # Jetson 8GB 统一内存: 模型切换 ~15-25s（Ollama 内部 30s + 外层 45s 兜底）
+        # Step 1: Action channel observation (allow_fallback=False to maintain control purity)
+        # Jetson 8GB unified memory: model swap ~15-25s (Ollama internal 30s + outer 45s safety net)
         dual_result = await self._action_channel_shadow(
             command, request_id, timeout=45)
 
-        # Step 2: Legacy 7B 主路径（7B 模型留在 VRAM，为下条命令优化）
-        # VRAM 换入 ~15-25s + 推理 ~5-10s → ollama_timeout=45s
+        # Step 2: Legacy 7B main path (7B model stays in VRAM, optimized for next command)
+        # VRAM swap-in ~15-25s + inference ~5-10s -> ollama_timeout=45s
         legacy_result = await self._legacy_route(
             command, request_id,
             state_snapshot=state_snapshot,
             start_time=start_time,
             ollama_timeout=45)
 
-        # Step 3: 构建对比
+        # Step 3: Build comparison
         shadow = self._build_shadow_comparison(legacy_result, dual_result)
         legacy_result.route = ROUTE_SHADOW
         legacy_result.shadow_comparison = shadow
@@ -362,10 +363,10 @@ class ChannelRouter:
 
     async def _action_channel_shadow(self, command, request_id, timeout=20):
         # type: (str, str, int) -> RouterResult
-        """Shadow 专用 action 通道: 捕获超时/异常，返回带状态的 RouterResult
+        """Shadow-specific action channel: captures timeout/exception, returns RouterResult with status
 
-        超时放宽: Ollama 内部 30s（Jetson VRAM 换入 ~15-25s + 推理 ~3-5s），
-        外层 45s（兜底）。
+        Timeout relaxed: Ollama internal 30s (Jetson VRAM swap-in ~15-25s + inference ~3-5s),
+        outer 45s (safety net).
         """
         try:
             result = await asyncio.wait_for(
@@ -377,7 +378,7 @@ class ChannelRouter:
             return result
         except asyncio.TimeoutError:
             self._logger.warning(
-                "Shadow action 通道超时 (>{}s), request_id={}".format(
+                "Shadow action channel timeout (>{}s), request_id={}".format(
                     timeout, request_id))
             return RouterResult(
                 api_code=None, sequence=None,
@@ -389,7 +390,7 @@ class ChannelRouter:
             )
         except Exception as e:
             self._logger.error(
-                "Shadow action 通道异常: {}, request_id={}".format(
+                "Shadow action channel exception: {}, request_id={}".format(
                     e, request_id))
             return RouterResult(
                 api_code=None, sequence=None,
@@ -402,13 +403,13 @@ class ChannelRouter:
 
     def _build_shadow_comparison(self, legacy_result, dual_result):
         # type: (RouterResult, RouterResult) -> Dict[str, Any]
-        """构建 shadow 对比数据（同步版，双结果均已完成）
+        """Build shadow comparison data (synchronous, both results already complete)
 
-        dual_status 语义:
-          "ok"             — action channel 正常返回（含 a=null）
-          "timeout"        — Ollama 调用超时
-          "error"          — 异常（代码错误、网络断等）
-          "invalid_output" — 模型输出非法 api_code/sequence，校验后清零
+        dual_status semantics:
+          "ok"             -- action channel returned normally (including a=null)
+          "timeout"        -- Ollama call timeout
+          "error"          -- Exception (code error, network disconnect, etc.)
+          "invalid_output" -- Model output illegal api_code/sequence, cleared after validation
         """
         dual_status = getattr(dual_result, '_action_status', 'ok')
 
@@ -452,7 +453,7 @@ class ChannelRouter:
     @staticmethod
     def _extract_action_codes(result):
         # type: (RouterResult) -> set
-        """从 RouterResult 提取动作码集合（用于分歧检测）"""
+        """Extract action code set from RouterResult (for divergence detection)"""
         codes = set()  # type: set
         if result.api_code is not None:
             codes.add(result.api_code)

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-test_action_registry.py — action_registry 单元测试
+test_action_registry.py — action_registry unit tests
 
-验证:
-  - 派生集合与 ActionDef 属性一致
-  - VALID_API_CODES 不含参数化动作
-  - EXECUTABLE_API_CODES 包含 safe_default_params 动作
-  - METHOD_MAP 只含 enabled 动作
-  - generate_modelfile_action_block() 输出与 VALID_API_CODES 一致
+Validates:
+  - Derived sets are consistent with ActionDef attributes
+  - VALID_API_CODES does not contain parameterized actions
+  - EXECUTABLE_API_CODES includes actions with safe_default_params
+  - METHOD_MAP only contains enabled actions
+  - generate_modelfile_action_block() output is consistent with VALID_API_CODES
 """
 
 import sys
@@ -27,56 +27,56 @@ from claudia.brain.action_registry import (
 
 
 class TestDerivedSets:
-    """派生集合一致性"""
+    """Derived set consistency"""
 
     def test_valid_api_codes_no_params(self):
-        """VALID_API_CODES 不包含 has_params 动作"""
+        """VALID_API_CODES does not include has_params actions"""
         for a in _ACTIONS:
             if a.has_params:
                 assert a.api_code not in VALID_API_CODES, (
-                    "has_params=True 的 {} 不应在 VALID_API_CODES 中".format(a.api_code)
+                    "has_params=True action {} should not be in VALID_API_CODES".format(a.api_code)
                 )
 
     def test_valid_api_codes_only_enabled(self):
-        """VALID_API_CODES 只包含 enabled 动作"""
+        """VALID_API_CODES only includes enabled actions"""
         for a in _ACTIONS:
             if not a.enabled:
                 assert a.api_code not in VALID_API_CODES, (
-                    "enabled=False 的 {} 不应在 VALID_API_CODES 中".format(a.api_code)
+                    "enabled=False action {} should not be in VALID_API_CODES".format(a.api_code)
                 )
 
     def test_valid_api_codes_completeness(self):
-        """所有无参数+已启用的动作都在 VALID_API_CODES 中"""
+        """All non-parameterized + enabled actions are in VALID_API_CODES"""
         expected = {a.api_code for a in _ACTIONS if a.enabled and not a.has_params}
         assert VALID_API_CODES == expected
 
     def test_executable_includes_safe_default_params(self):
-        """EXECUTABLE_API_CODES 包含有 safe_default_params 的参数化动作"""
+        """EXECUTABLE_API_CODES includes parameterized actions with safe_default_params"""
         for a in _ACTIONS:
             if a.enabled and a.has_params and a.safe_default_params is not None:
                 assert a.api_code in EXECUTABLE_API_CODES, (
-                    "safe_default_params 的 {} 应在 EXECUTABLE_API_CODES 中".format(a.api_code)
+                    "Action {} with safe_default_params should be in EXECUTABLE_API_CODES".format(a.api_code)
                 )
 
     def test_executable_excludes_params_without_defaults(self):
-        """EXECUTABLE_API_CODES 不包含无 safe_default_params 的参数化动作"""
+        """EXECUTABLE_API_CODES does not include parameterized actions without safe_default_params"""
         for a in _ACTIONS:
             if a.enabled and a.has_params and a.safe_default_params is None:
                 assert a.api_code not in EXECUTABLE_API_CODES, (
-                    "无 safe_default_params 的 {} 不应在 EXECUTABLE_API_CODES 中".format(a.api_code)
+                    "Action {} without safe_default_params should not be in EXECUTABLE_API_CODES".format(a.api_code)
                 )
 
     def test_executable_superset_of_valid(self):
-        """EXECUTABLE_API_CODES 是 VALID_API_CODES 的超集"""
+        """EXECUTABLE_API_CODES is a superset of VALID_API_CODES"""
         assert VALID_API_CODES.issubset(EXECUTABLE_API_CODES)
 
     def test_pose_1028_in_executable_not_valid(self):
-        """Pose(1028) 在 EXECUTABLE 中但不在 VALID 中（双层白名单核心验证）"""
+        """Pose(1028) is in EXECUTABLE but not in VALID (core dual-layer whitelist validation)"""
         assert 1028 in EXECUTABLE_API_CODES
         assert 1028 not in VALID_API_CODES
 
     def test_safe_default_params_dict(self):
-        """SAFE_DEFAULT_PARAMS 只含有 safe_default_params 的已启用参数化动作"""
+        """SAFE_DEFAULT_PARAMS only contains enabled parameterized actions with safe_default_params"""
         for api_code, params in SAFE_DEFAULT_PARAMS.items():
             a = ACTION_REGISTRY[api_code]
             assert a.enabled
@@ -85,24 +85,24 @@ class TestDerivedSets:
             assert params == a.safe_default_params
 
     def test_require_standing_matches(self):
-        """REQUIRE_STANDING 与 requires_standing=True 一致"""
+        """REQUIRE_STANDING matches requires_standing=True"""
         expected = {a.api_code for a in _ACTIONS if a.requires_standing}
         assert REQUIRE_STANDING == expected
 
     def test_sit_1009_explicitly_requires_standing(self):
-        """策略约束: Sit(1009) 明确要求站立前置"""
+        """Policy constraint: Sit(1009) explicitly requires standing prerequisite"""
         assert 1009 in REQUIRE_STANDING, (
-            "Sit(1009) 应在 REQUIRE_STANDING 中，"
-            "用于不可信状态下触发 SafetyCompiler 自动前插 StandUp"
+            "Sit(1009) should be in REQUIRE_STANDING "
+            "to trigger SafetyCompiler auto-prepend of StandUp when state is untrusted"
         )
 
     def test_high_energy_matches(self):
-        """HIGH_ENERGY_ACTIONS 与 risk_level='high' 一致"""
+        """HIGH_ENERGY_ACTIONS matches risk_level='high'"""
         expected = {a.api_code for a in _ACTIONS if a.risk_level == "high"}
         assert HIGH_ENERGY_ACTIONS == expected
 
     def test_method_map_only_enabled(self):
-        """METHOD_MAP 只包含 enabled 动作"""
+        """METHOD_MAP only includes enabled actions"""
         for a in _ACTIONS:
             if a.enabled:
                 assert a.api_code in METHOD_MAP
@@ -111,7 +111,7 @@ class TestDerivedSets:
                 assert a.api_code not in METHOD_MAP
 
     def test_action_responses_only_enabled(self):
-        """ACTION_RESPONSES 只包含 enabled 动作"""
+        """ACTION_RESPONSES only includes enabled actions"""
         for a in _ACTIONS:
             if a.enabled:
                 assert a.api_code in ACTION_RESPONSES
@@ -120,7 +120,7 @@ class TestDerivedSets:
 
 
 class TestResponseHelpers:
-    """响应辅助函数"""
+    """Response helper functions"""
 
     def test_get_response_known(self):
         assert get_response_for_action(1004) == "立ちます"
@@ -135,54 +135,54 @@ class TestResponseHelpers:
 
 
 class TestModelfileGeneration:
-    """Modelfile 生成"""
+    """Modelfile generation"""
 
     def test_generate_nonempty(self):
         block = generate_modelfile_action_block()
         assert len(block) > 0
 
     def test_generate_contains_all_valid(self):
-        """生成的动作列表包含所有 VALID_API_CODES"""
+        """Generated action list contains all VALID_API_CODES"""
         block = generate_modelfile_action_block()
         for code in VALID_API_CODES:
             assert str(code) in block, (
-                "VALID_API_CODES 中的 {} 未出现在生成的 Modelfile 动作列表中".format(code)
+                "Code {} from VALID_API_CODES not found in generated Modelfile action list".format(code)
             )
 
     def test_generate_no_params_actions(self):
-        """生成的动作列表不包含参数化动作"""
+        """Generated action list does not contain parameterized actions"""
         block = generate_modelfile_action_block()
         for a in _ACTIONS:
             if a.has_params:
-                # 参数化动作的 api_code 不应作为独立条目出现
+                # Parameterized action api_code should not appear as a standalone entry
                 entry = "{}=".format(a.api_code)
                 assert entry not in block, (
-                    "参数化动作 {} 不应出现在 Modelfile 生成中".format(a.api_code)
+                    "Parameterized action {} should not appear in Modelfile generation".format(a.api_code)
                 )
 
 
 class TestRegistryIntegrity:
-    """注册表完整性"""
+    """Registry integrity"""
 
     def test_no_duplicate_api_codes(self):
         codes = [a.api_code for a in _ACTIONS]
-        assert len(codes) == len(set(codes)), "存在重复的 api_code"
+        assert len(codes) == len(set(codes)), "Duplicate api_code found"
 
     def test_no_duplicate_methods(self):
         methods = [a.method for a in _ACTIONS]
-        assert len(methods) == len(set(methods)), "存在重复的 method"
+        assert len(methods) == len(set(methods)), "Duplicate method found"
 
     def test_all_enabled_have_method_name(self):
         for a in _ACTIONS:
             if a.enabled:
-                assert a.method, "enabled 动作 {} 缺少 method".format(a.api_code)
+                assert a.method, "Enabled action {} is missing method".format(a.api_code)
 
     def test_all_have_name_ja(self):
         for a in _ACTIONS:
-            assert a.name_ja, "动作 {} 缺少 name_ja".format(a.api_code)
+            assert a.name_ja, "Action {} is missing name_ja".format(a.api_code)
 
     def test_disabled_not_in_executable(self):
-        """禁用动作不在任何可执行白名单中"""
+        """Disabled actions are not in any executable whitelist"""
         for a in _ACTIONS:
             if not a.enabled:
                 assert a.api_code not in VALID_API_CODES
@@ -191,47 +191,47 @@ class TestRegistryIntegrity:
 
 
 class TestActionModelApiCodes:
-    """PR2: ACTION_MODEL_API_CODES 一致性"""
+    """PR2: ACTION_MODEL_API_CODES consistency"""
 
     def test_subset_of_valid(self):
-        """ACTION_MODEL_API_CODES 是 VALID_API_CODES 的子集"""
+        """ACTION_MODEL_API_CODES is a subset of VALID_API_CODES"""
         assert ACTION_MODEL_API_CODES <= VALID_API_CODES
 
     def test_no_high_risk(self):
-        """ACTION_MODEL_API_CODES 不含高风险动作"""
+        """ACTION_MODEL_API_CODES does not contain high-risk actions"""
         overlap = ACTION_MODEL_API_CODES & HIGH_ENERGY_ACTIONS
         assert not overlap, (
-            "ACTION_MODEL_API_CODES 不应包含高风险动作: {}".format(overlap))
+            "ACTION_MODEL_API_CODES should not contain high-risk actions: {}".format(overlap))
 
     def test_excludes_exactly_high_risk(self):
-        """VALID - ACTION_MODEL = 仅高风险动作"""
+        """VALID - ACTION_MODEL = only high-risk actions"""
         diff = VALID_API_CODES - ACTION_MODEL_API_CODES
         expected_high = frozenset(
             a.api_code for a in _ACTIONS
             if a.enabled and not a.has_params and a.risk_level == "high"
         )
         assert diff == expected_high, (
-            "VALID - ACTION_MODEL 应恰好等于高风险动作集合，"
-            "差异: {}".format(diff ^ expected_high))
+            "VALID - ACTION_MODEL should be exactly the high-risk action set, "
+            "diff: {}".format(diff ^ expected_high))
 
     def test_generate_no_high_risk(self):
-        """generate_modelfile_action_block(include_high_risk=False) 不含高风险码"""
+        """generate_modelfile_action_block(include_high_risk=False) does not contain high-risk codes"""
         block = generate_modelfile_action_block(include_high_risk=False)
         for code in HIGH_ENERGY_ACTIONS:
-            # 确保高风险码不作为独立条目出现
-            # 注意: 1030 不应出现为 "1030=" 的形式
+            # Ensure high-risk codes do not appear as standalone entries
+            # Note: 1030 should not appear as "1030="
             assert "{}=".format(code) not in block, (
-                "高风险动作 {} 不应出现在 Action 模型列表中".format(code))
+                "High-risk action {} should not appear in Action model list".format(code))
 
     def test_generate_includes_safe_actions(self):
-        """generate_modelfile_action_block(include_high_risk=False) 包含安全动作"""
+        """generate_modelfile_action_block(include_high_risk=False) includes safe actions"""
         block = generate_modelfile_action_block(include_high_risk=False)
         for code in ACTION_MODEL_API_CODES:
             assert str(code) in block, (
-                "安全动作 {} 未出现在 Action 模型列表中".format(code))
+                "Safe action {} not found in Action model list".format(code))
 
     def test_modelfile_action_list_consistent(self):
-        """ClaudiaAction modelfile 动作列表与 ACTION_MODEL_API_CODES 一致"""
+        """ClaudiaAction modelfile action list is consistent with ACTION_MODEL_API_CODES"""
         import re
         modelfile_path = os.path.join(
             os.path.dirname(__file__), '..', '..', 'models',
@@ -239,31 +239,32 @@ class TestActionModelApiCodes:
         with open(modelfile_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # 只在 SYSTEM 区域内匹配 "NNNN=" 格式的动作定义
-        # 避免误匹配 PARAMETER 值（如 num_ctx=1024）
+        # Match "NNNN=" format action definitions only within SYSTEM section
+        # Avoid false matches on PARAMETER values (e.g., num_ctx=1024)
         codes_in_file = set()
         for match in re.finditer(r'(\d{4})=', content):
             code = int(match.group(1))
             if 1000 <= code <= 1099:
                 codes_in_file.add(code)
 
-        # modelfile 中的码应是 ACTION_MODEL_API_CODES 的子集
+        # Codes in modelfile should be a subset of ACTION_MODEL_API_CODES
         unexpected = codes_in_file - ACTION_MODEL_API_CODES
         assert not unexpected, (
-            "Modelfile 包含不在 ACTION_MODEL_API_CODES 中的码: {}。"
-            "如果这些是高风险动作，请从 modelfile 中移除。".format(unexpected))
+            "Modelfile contains codes not in ACTION_MODEL_API_CODES: {}. "
+            "If these are high-risk actions, please remove them from the modelfile.".format(unexpected))
 
-        # ACTION_MODEL_API_CODES 中的码应出现在 modelfile 中
+        # Codes in ACTION_MODEL_API_CODES should appear in modelfile
         missing = ACTION_MODEL_API_CODES - codes_in_file
         assert not missing, (
-            "ACTION_MODEL_API_CODES 中的码 {} 未出现在 modelfile 中。"
-            "请更新 modelfile 或 registry。".format(missing))
+            "Codes {} from ACTION_MODEL_API_CODES not found in modelfile. "
+            "Please update the modelfile or registry.".format(missing))
 
     def test_7b_modelfile_action_list_consistent(self):
-        """ClaudiaIntelligent 7B modelfile 动作列表与 VALID_API_CODES 一致
+        """ClaudiaIntelligent 7B modelfile action list is consistent with VALID_API_CODES
 
-        7B 模型可输出任何 VALID_API_CODES 中的码（含高风险）。
-        Modelfile 中不应包含参数化动作码（会被运行时过滤，浪费推理 token）。
+        The 7B model can output any code in VALID_API_CODES (including high-risk).
+        The modelfile should not contain parameterized action codes (they are filtered
+        at runtime, wasting inference tokens).
         """
         import re
         modelfile_path = os.path.join(
@@ -272,22 +273,23 @@ class TestActionModelApiCodes:
         with open(modelfile_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # 提取 SYSTEM 块中 "NNNN=" 格式的动作定义（排除 PARAMETER 行的值）
+        # Extract "NNNN=" format action definitions in SYSTEM block (exclude PARAMETER line values)
         codes_in_file = set()
         for match in re.finditer(r'(\d{4})=', content):
             code = int(match.group(1))
             if 1000 <= code <= 1099:
                 codes_in_file.add(code)
 
-        # Modelfile 中的码应是 VALID_API_CODES 的子集（不应含参数化动作）
+        # Codes in modelfile should be a subset of VALID_API_CODES (should not contain parameterized actions)
         unexpected = codes_in_file - VALID_API_CODES
         assert not unexpected, (
-            "7B Modelfile 包含不在 VALID_API_CODES 中的码: {}。"
-            "参数化动作（1008/1015/1028 等）会被运行时过滤，不应出现在 modelfile 中。"
+            "7B Modelfile contains codes not in VALID_API_CODES: {}. "
+            "Parameterized actions (1008/1015/1028 etc.) are filtered at runtime "
+            "and should not appear in the modelfile."
             .format(unexpected))
 
-        # VALID_API_CODES 中的码应出现在 Modelfile 中（确保模型能学到所有合法动作）
+        # Codes in VALID_API_CODES should appear in modelfile (ensure the model can learn all valid actions)
         missing = VALID_API_CODES - codes_in_file
         assert not missing, (
-            "VALID_API_CODES 中的码 {} 未出现在 7B modelfile 中。"
-            "请更新 modelfile 使模型能学到这些动作。".format(missing))
+            "Codes {} from VALID_API_CODES not found in 7B modelfile. "
+            "Please update the modelfile so the model can learn these actions.".format(missing))

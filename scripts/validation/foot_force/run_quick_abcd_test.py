@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # scripts/validation/foot_force/run_quick_abcd_test.py
 # Generated: 2025-06-26 19:10:00
-# Purpose: Unitree Go2 足端力传感器快速ABCD验证测试
+# Purpose: Unitree Go2 foot force sensor quick ABCD validation test
 
 import os
 import sys
@@ -10,179 +10,179 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-# 设置环境变量
+# Set environment variables
 os.environ['RMW_IMPLEMENTATION'] = 'rmw_cyclonedds_cpp'
 
-# 添加项目路径
+# Add project path
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
 def test_abcd_components():
-    """测试ABCD各个组件是否正常工作"""
-    
-    print("🧪 Unitree Go2 足端力传感器 ABCD 组件测试")
+    """Test whether all ABCD components are working correctly"""
+
+    print("Unitree Go2 Foot Force Sensor ABCD Component Test")
     print("="*60)
-    
+
     results = {
         'phase_a': False,
         'phase_b': False,
         'phase_c': False,
         'phase_d': False
     }
-    
-    # 测试阶段A: 数据读取框架
-    print("\n🔍 测试阶段A: 数据读取框架")
+
+    # Test Phase A: Data reading framework
+    print("\nTesting Phase A: Data Reading Framework")
     try:
         sys.path.append(str(Path(__file__).parent / "foot_force_validation"))
         from foot_force_validation.foot_force_config import FootForceConfig
-        
+
         config_path = Path(__file__).parent / "foot_force_validation" / "validation_config.json"
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
-        
-        # 模拟测试FootForceConfig
+
+        # Mock test FootForceConfig
         foot_config = FootForceConfig(network_interface="eth0")
-        print("  ✅ FootForceConfig 初始化成功")
+        print("  FootForceConfig initialization successful")
         results['phase_a'] = True
-        
+
     except Exception as e:
-        print(f"  ❌ 阶段A测试失败: {e}")
-    
-    # 测试阶段B: 静态验证
-    print("\n⚖️ 测试阶段B: 静态验证框架")
+        print(f"  Phase A test failed: {e}")
+
+    # Test Phase B: Static validation
+    print("\nTesting Phase B: Static Validation Framework")
     try:
         from foot_force_validation.static_tester import StaticFootForceTester
-        print("  ✅ StaticFootForceTester 导入成功")
+        print("  StaticFootForceTester import successful")
         results['phase_b'] = True
-        
+
     except Exception as e:
-        print(f"  ❌ 阶段B测试失败: {e}")
-    
-    # 测试阶段C: 动态测试
-    print("\n🏃 测试阶段C: 动态测试框架")
+        print(f"  Phase B test failed: {e}")
+
+    # Test Phase C: Dynamic testing
+    print("\nTesting Phase C: Dynamic Testing Framework")
     try:
         from foot_force_validation.dynamic_tester import DynamicFootForceTester
-        print("  ✅ DynamicFootForceTester 导入成功")
+        print("  DynamicFootForceTester import successful")
         results['phase_c'] = True
-        
+
     except Exception as e:
-        print(f"  ❌ 阶段C测试失败: {e}")
-    
-    # 测试阶段D: 综合可视化
-    print("\n📊 测试阶段D: 综合可视化框架")
+        print(f"  Phase C test failed: {e}")
+
+    # Test Phase D: Comprehensive visualization
+    print("\nTesting Phase D: Comprehensive Visualization Framework")
     try:
         from foot_force_validation.comprehensive_dashboard import ComprehensiveFootForceDashboard
-        print("  ✅ ComprehensiveFootForceDashboard 导入成功")
+        print("  ComprehensiveFootForceDashboard import successful")
         results['phase_d'] = True
-        
+
     except Exception as e:
-        print(f"  ❌ 阶段D测试失败: {e}")
-    
-    # 汇总结果
-    print("\n📋 测试结果汇总:")
+        print(f"  Phase D test failed: {e}")
+
+    # Summary results
+    print("\nTest Results Summary:")
     print("="*60)
-    
+
     success_count = sum(results.values())
     total_count = len(results)
-    
+
     for phase, success in results.items():
-        status = "✅ 通过" if success else "❌ 失败"
+        status = "PASSED" if success else "FAILED"
         print(f"  {phase.upper()}: {status}")
-    
-    print(f"\n总体结果: {success_count}/{total_count} 阶段通过")
-    
+
+    print(f"\nOverall result: {success_count}/{total_count} phases passed")
+
     if success_count == total_count:
-        print("🎉 所有ABCD组件测试通过！可以运行完整验证流程。")
+        print("All ABCD component tests passed! You can run the full validation workflow.")
         return True
     else:
-        print("⚠️ 部分组件测试失败，请检查相关模块。")
+        print("WARNING: Some component tests failed. Please check the relevant modules.")
         return False
 
 def run_minimal_test():
-    """运行最小化的足端力测试"""
-    print("\n🔬 运行最小化足端力验证测试")
+    """Run minimal foot force test"""
+    print("\nRunning Minimal Foot Force Validation Test")
     print("-"*60)
-    
+
     try:
-        # 阶段A: 模拟数据读取
-        print("📊 阶段A: 模拟数据读取测试...")
+        # Phase A: Mock data reading
+        print("Phase A: Mock data reading test...")
         import numpy as np
-        
-        # 模拟足端力数据
+
+        # Mock foot force data
         mock_data = {
             'timestamp': time.time(),
-            'foot_forces': [[10.0, 5.0, 40.0] for _ in range(4)],  # 4个足端
+            'foot_forces': [[10.0, 5.0, 40.0] for _ in range(4)],  # 4 feet
             'contact_states': [True, True, True, True],
             'total_force': 160.0
         }
-        print(f"  ✅ 模拟数据生成: 总力 {mock_data['total_force']}N")
-        
-        # 阶段B: 模拟静态验证
-        print("🧪 阶段B: 模拟静态验证测试...")
+        print(f"  Mock data generated: total force {mock_data['total_force']}N")
+
+        # Phase B: Mock static validation
+        print("Phase B: Mock static validation test...")
         static_score = 85.0
-        print(f"  ✅ 模拟静态验证: 评分 {static_score}")
-        
-        # 阶段C: 模拟动态测试
-        print("🏃 阶段C: 模拟动态测试...")
+        print(f"  Mock static validation: score {static_score}")
+
+        # Phase C: Mock dynamic test
+        print("Phase C: Mock dynamic test...")
         dynamic_scores = [82.0, 78.5, 85.2]
         avg_dynamic = np.mean(dynamic_scores)
-        print(f"  ✅ 模拟动态测试: 平均评分 {avg_dynamic:.1f}")
-        
-        # 阶段D: 模拟报告生成
-        print("📊 阶段D: 模拟报告生成...")
+        print(f"  Mock dynamic test: average score {avg_dynamic:.1f}")
+
+        # Phase D: Mock report generation
+        print("Phase D: Mock report generation...")
         report_data = {
             'timestamp': datetime.now().isoformat(),
             'static_score': static_score,
             'dynamic_score': avg_dynamic,
             'overall_score': static_score * 0.6 + avg_dynamic * 0.4
         }
-        
-        # 保存模拟报告
+
+        # Save mock report
         output_dir = Path("scripts/validation/foot_force/foot_force_validation/output")
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         report_file = output_dir / f"mock_test_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         with open(report_file, 'w', encoding='utf-8') as f:
             json.dump(report_data, f, indent=2, ensure_ascii=False)
-        
-        print(f"  ✅ 模拟报告已保存: {report_file.name}")
-        
-        print(f"\n🎯 模拟测试完成:")
-        print(f"   总体评分: {report_data['overall_score']:.1f}")
-        print(f"   报告文件: {report_file}")
-        
+
+        print(f"  Mock report saved: {report_file.name}")
+
+        print(f"\nMock test complete:")
+        print(f"   Overall score: {report_data['overall_score']:.1f}")
+        print(f"   Report file: {report_file}")
+
         return True
-        
+
     except Exception as e:
-        print(f"❌ 最小化测试失败: {e}")
+        print(f"Minimal test failed: {e}")
         return False
 
 def main():
-    """主函数"""
-    print("🚀 启动快速ABCD组件测试")
-    
-    # 1. 测试组件导入
+    """Main function"""
+    print("Starting Quick ABCD Component Test")
+
+    # 1. Test component imports
     components_ok = test_abcd_components()
-    
-    # 2. 运行最小化测试
+
+    # 2. Run minimal test
     minimal_test_ok = run_minimal_test()
-    
-    # 3. 给出建议
-    print("\n💡 建议:")
-    
+
+    # 3. Provide recommendations
+    print("\nRecommendations:")
+
     if components_ok and minimal_test_ok:
-        print("✅ 所有测试通过！您可以运行完整的ABCD验证:")
+        print("All tests passed! You can run the full ABCD validation:")
         print("   python3 scripts/validation/foot_force/run_complete_validation.py")
     elif components_ok:
-        print("⚠️ 组件测试通过，但需要连接机器人进行实际测试")
-        print("   请确保机器人网络连接正常，然后运行完整验证")
+        print("WARNING: Component tests passed, but need to connect to robot for actual testing")
+        print("   Please ensure robot network connection is working, then run full validation")
     else:
-        print("❌ 组件测试失败，请检查:")
-        print("   1. 确保所有依赖包已安装")
-        print("   2. 检查 cyclonedds 环境配置")
-        print("   3. 验证 Python 路径设置")
-    
-    print(f"\n📁 输出目录: scripts/validation/foot_force/foot_force_validation/output/")
+        print("Component tests failed. Please check:")
+        print("   1. Ensure all dependency packages are installed")
+        print("   2. Check cyclonedds environment configuration")
+        print("   3. Verify Python path settings")
+
+    print(f"\nOutput directory: scripts/validation/foot_force/foot_force_validation/output/")
 
 if __name__ == "__main__":
-    main() 
+    main()

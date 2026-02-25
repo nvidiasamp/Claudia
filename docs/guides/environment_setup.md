@@ -1,32 +1,32 @@
-# Claudia机器人环境配置指南
+# Claudia Robot Environment Configuration Guide
 
-## 🎯 概述
+## Overview
 
-本指南详细说明了Claudia机器人项目的完整环境配置过程，特别是关键的DDS通信环境设置。
+This guide provides detailed instructions for the complete environment configuration of the Claudia robot project, with particular focus on the critical DDS communication environment setup.
 
-## 📋 系统要求
+## System Requirements
 
-### 硬件要求
-- **计算平台**: NVIDIA Jetson Orin NX
-- **机器人**: Unitree Go2 R&D Plus
-- **内存**: 至少8GB RAM
-- **存储**: 至少64GB可用空间
+### Hardware Requirements
+- **Compute Platform**: NVIDIA Jetson Orin NX
+- **Robot**: Unitree Go2 R&D Plus
+- **Memory**: At least 8GB RAM
+- **Storage**: At least 64GB available space
 
-### 软件要求
-- **操作系统**: Ubuntu 20.04.5 LTS (aarch64)
-- **ROS版本**: ROS2 Foxy
-- **Python版本**: Python 3.8+
-- **DDS实现**: CycloneDDS
+### Software Requirements
+- **Operating System**: Ubuntu 20.04.5 LTS (aarch64)
+- **ROS Version**: ROS2 Foxy
+- **Python Version**: Python 3.8+
+- **DDS Implementation**: CycloneDDS
 
-## 🛠️ 安装步骤
+## Installation Steps
 
-### 1. 基础环境准备
+### 1. Basic Environment Preparation
 
 ```bash
-# 更新系统
+# Update system
 sudo apt update && sudo apt upgrade -y
 
-# 安装基础依赖
+# Install basic dependencies
 sudo apt install -y \
     curl \
     wget \
@@ -37,222 +37,222 @@ sudo apt install -y \
     python3-dev
 ```
 
-### 2. ROS2 Foxy安装
+### 2. ROS2 Foxy Installation
 
 ```bash
-# 设置ROS2源
+# Set up ROS2 source
 curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
-# 安装ROS2 Foxy
+# Install ROS2 Foxy
 sudo apt update
 sudo apt install -y ros-foxy-desktop python3-argcomplete
 ```
 
-### 3. CycloneDDS工作空间配置 ⭐
+### 3. CycloneDDS Workspace Configuration (Critical)
 
-这是**最关键**的配置步骤，确保正确的DDS通信环境：
+This is the **most critical** configuration step, ensuring the correct DDS communication environment:
 
 ```bash
-# 进入项目根目录
+# Enter project root directory
 cd ~/claudia
 
-# 创建CycloneDDS工作空间（如果不存在的话，已存在则跳过）
+# Create CycloneDDS workspace (if it doesn't exist; skip if already present)
 mkdir -p cyclonedds_ws/src
 cd cyclonedds_ws
 
-# 注意：实际项目中CycloneDDS已经通过其他方式安装
-# 这里记录的是工作空间结构
+# Note: In the actual project, CycloneDDS was installed via other means
+# This documents the workspace structure
 ```
 
-### 4. Unitree SDK2 Python安装
+### 4. Unitree SDK2 Python Installation
 
 ```bash
-# 克隆SDK
+# Clone SDK
 cd ~/claudia
 git clone https://github.com/unitreerobotics/unitree_sdk2_python.git
 
-# 安装依赖
+# Install dependencies
 cd unitree_sdk2_python
 pip3 install -e .
 ```
 
-## 🚀 **关键环境配置** ⭐
+## **Critical Environment Configuration**
 
-### 正确的DDS环境设置
+### Correct DDS Environment Setup
 
-**每次运行Unitree相关测试前，必须按以下顺序执行：**
+**Before running any Unitree-related tests, you must execute the following in this order:**
 
 ```bash
-# 1. 首先source CycloneDDS工作空间
+# 1. First source the CycloneDDS workspace
 source cyclonedds_ws/install/setup.bash
 
-# 2. 然后设置RMW实现
+# 2. Then set the RMW implementation
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
-# 3. 验证环境变量
+# 3. Verify environment variables
 echo "RMW_IMPLEMENTATION: $RMW_IMPLEMENTATION"
 ```
 
-**⚠️ 重要说明：**
-- 必须按照上述顺序执行
-- **不是** `rmw_cyclonedx_cpp`，而是 `rmw_cyclonedds_cpp`
-- 每个新终端都需要重新设置
-- 设置错误会导致DDS库加载失败
+**Important Notes:**
+- Must execute in the order shown above
+- It is **not** `rmw_cyclonedx_cpp`, but `rmw_cyclonedds_cpp`
+- Each new terminal requires re-setup
+- Incorrect settings will cause DDS library loading failures
 
-### 自动化环境设置脚本
+### Automated Environment Setup Script
 
-创建便捷的环境设置脚本：
+Create a convenient environment setup script:
 
 ```bash
-# 创建环境设置脚本
+# Create environment setup script
 cat > scripts/setup/setup_environment.sh << 'EOF'
 #!/bin/bash
-# Claudia机器人环境设置脚本
+# Claudia Robot Environment Setup Script
 # Generated: 2025-06-26 18:40:00
 
-echo "🔧 设置Claudia机器人环境..."
+echo "Setting up Claudia robot environment..."
 
-# 检查项目根目录
+# Check project root directory
 if [ ! -f "pyproject.toml" ]; then
-    echo "❌ 请在项目根目录运行此脚本"
+    echo "Please run this script from the project root directory"
     exit 1
 fi
 
-# 设置ROS2环境
+# Set up ROS2 environment
 source /opt/ros/foxy/setup.bash
-echo "✅ ROS2 Foxy环境已加载"
+echo "ROS2 Foxy environment loaded"
 
-# 设置CycloneDDS工作空间
+# Set up CycloneDDS workspace
 if [ -f "cyclonedds_ws/install/setup.bash" ]; then
     source cyclonedds_ws/install/setup.bash
-    echo "✅ CycloneDDS工作空间已加载"
+    echo "CycloneDDS workspace loaded"
 else
-    echo "⚠️ CycloneDDS工作空间未找到，请先构建"
+    echo "WARNING: CycloneDDS workspace not found, please build first"
 fi
 
-# 设置RMW实现
+# Set RMW implementation
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-echo "✅ RMW_IMPLEMENTATION设置为: $RMW_IMPLEMENTATION"
+echo "RMW_IMPLEMENTATION set to: $RMW_IMPLEMENTATION"
 
-# 设置Python路径
+# Set Python path
 export PYTHONPATH=$PYTHONPATH:~/claudia/unitree_sdk2_python
-echo "✅ Python路径已设置"
+echo "Python path set"
 
-echo "🎉 环境设置完成！可以运行Unitree测试了"
+echo "Environment setup complete! Ready to run Unitree tests"
 EOF
 
 chmod +x scripts/setup/setup_environment.sh
 ```
 
-### 使用环境设置脚本
+### Using the Environment Setup Script
 
 ```bash
-# 在项目根目录运行
+# Run in project root directory
 source scripts/setup/setup_environment.sh
 ```
 
-## 🧪 环境验证
+## Environment Verification
 
-### 验证DDS通信
+### Verify DDS Communication
 
 ```bash
-# 设置环境
+# Set up environment
 source scripts/setup/setup_environment.sh
 
-# 运行基础连接测试
+# Run basic connection test
 python3 test/hardware/test_unitree_connection.py
 
-# 运行通信性能测试
+# Run communication performance test
 python3 test/hardware/test_communication_performance.py
 ```
 
-### 预期输出示例
+### Expected Output Example
 
-正确配置后应看到：
+After correct configuration, you should see:
 ```
-✅ 成功导入所有必需的模块
-✅ 环境变量已设置: rmw_cyclonedds_cpp
-🤖 正在初始化Sport客户端...
-✅ Sport客户端初始化成功
-📊 通信性能测试开始...
+Successfully imported all required modules
+Environment variable set: rmw_cyclonedds_cpp
+Initializing Sport client...
+Sport client initialization successful
+Communication performance test starting...
 ```
 
-## ❌ 常见问题
+## Common Issues
 
-### 问题1: DDS库加载失败
+### Issue 1: DDS Library Loading Failure
 ```
 OSError: libddsc.so.0: cannot open shared object file
 ```
 
-**解决方案:**
+**Solution:**
 ```bash
-# 确保按正确顺序设置环境
+# Ensure environment is set up in the correct order
 source cyclonedds_ws/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ```
 
-### 问题2: 环境变量名称错误
+### Issue 2: Environment Variable Name Error
 ```
-设置了 rmw_cyclonedx_cpp 但仍然失败
+Set rmw_cyclonedx_cpp but still failing
 ```
 
-**解决方案:**
+**Solution:**
 ```bash
-# 使用正确的环境变量名称
+# Use the correct environment variable name
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-# 注意是 cyclonedds 不是 cyclonedx
+# Note: it's cyclonedds, not cyclonedx
 ```
 
-### 问题3: 工作空间未构建
+### Issue 3: Workspace Not Built
 ```
 cyclonedds_ws/install/setup.bash: No such file or directory
 ```
 
-**解决方案:**
+**Solution:**
 ```bash
 cd cyclonedds_ws
 colcon build --symlink-install
 ```
 
-## 📊 性能基准
+## Performance Benchmarks
 
-### 通信延迟基准 (任务3.7结果)
+### Communication Latency Benchmarks (Task 3.7 Results)
 
-- **轻量级命令 (Sit)**: 平均36.64ms, 97%<50ms ✅
-- **复杂动作命令 (StandUp)**: 平均640.87ms
-- **中等复杂命令 (Damp)**: 平均214.72ms
+- **Lightweight Command (Sit)**: Average 36.64ms, 97% <50ms
+- **Complex Action Command (StandUp)**: Average 640.87ms
+- **Moderate Complexity Command (Damp)**: Average 214.72ms
 
-## 🔄 环境重置
+## Environment Reset
 
-如果环境出现问题，可以重置：
+If environment issues occur, you can reset:
 
 ```bash
-# 清理构建文件
+# Clean build files
 rm -rf cyclonedds_ws/build cyclonedds_ws/install cyclonedds_ws/log
 
-# 重新构建
+# Rebuild
 cd cyclonedds_ws
 colcon build --symlink-install
 
-# 重新设置环境
+# Re-setup environment
 source scripts/setup/setup_environment.sh
 ```
 
-## 📝 配置检查清单
+## Configuration Checklist
 
-使用此检查清单验证环境配置：
+Use this checklist to verify environment configuration:
 
-- [ ] Ubuntu 20.04 已安装
-- [ ] ROS2 Foxy 已安装
-- [ ] CycloneDDS工作空间已构建
-- [ ] Unitree SDK2 Python已安装
-- [ ] 环境设置脚本可以运行
-- [ ] 基础连接测试通过
-- [ ] 通信性能测试通过
+- [ ] Ubuntu 20.04 installed
+- [ ] ROS2 Foxy installed
+- [ ] CycloneDDS workspace built
+- [ ] Unitree SDK2 Python installed
+- [ ] Environment setup script runs successfully
+- [ ] Basic connection test passes
+- [ ] Communication performance test passes
 
 ---
 
-**文档更新时间**: 2025-06-26 18:40:00  
-**适用版本**: Claudia v0.1.0  
-**测试平台**: NVIDIA Jetson Orin NX + Unitree Go2 
+**Document Updated**: 2025-06-26 18:40:00
+**Applicable Version**: Claudia v0.1.0
+**Test Platform**: NVIDIA Jetson Orin NX + Unitree Go2

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""AudioCapture ユニットテスト"""
+"""AudioCapture unit tests"""
 
 import asyncio
 import os
@@ -21,7 +21,7 @@ from claudia.audio.audio_capture import (
 
 
 def _run(coro):
-    """Python 3.8 互換の asyncio テストヘルパー"""
+    """Python 3.8 compatible asyncio test helper"""
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(coro)
@@ -30,7 +30,7 @@ def _run(coro):
 
 
 class TestAudioCaptureInit(unittest.TestCase):
-    """初期化テスト"""
+    """Initialization tests"""
 
     def test_default_init(self):
         cap = AudioCapture()
@@ -53,10 +53,10 @@ class TestAudioCaptureInit(unittest.TestCase):
 
 
 class TestDeviceDiscovery(unittest.TestCase):
-    """デバイス検出テスト"""
+    """Device discovery tests"""
 
     def test_discover_at2020(self):
-        """AT2020 がある arecord -l 出力を正しく解析する"""
+        """Correctly parses arecord -l output containing AT2020"""
         mock_output = (
             "**** List of CAPTURE Hardware Devices ****\n"
             "card 0: tegrahda [tegra-hda], device 3: HDMI 0 [HDMI 0]\n"
@@ -76,7 +76,7 @@ class TestDeviceDiscovery(unittest.TestCase):
         _run(_test())
 
     def test_discover_no_device_raises(self):
-        """AT2020 が見つからない場合 RuntimeError を投げる"""
+        """Raises RuntimeError when AT2020 is not found"""
         mock_output = (
             "**** List of CAPTURE Hardware Devices ****\n"
             "card 0: tegrahda [tegra-hda], device 3: HDMI 0 [HDMI 0]\n"
@@ -96,10 +96,10 @@ class TestDeviceDiscovery(unittest.TestCase):
 
 
 class TestFrameBuffer(unittest.TestCase):
-    """フレームバッファ (残差累積器) テスト"""
+    """Frame buffer (residual accumulator) tests"""
 
     def test_exact_frame_sends(self):
-        """FRAME_BYTES 丁度のデータは 1 フレーム送信"""
+        """Data exactly equal to FRAME_BYTES sends 1 frame"""
         sent_frames = []
 
         async def _test():
@@ -119,7 +119,7 @@ class TestFrameBuffer(unittest.TestCase):
         _run(_test())
 
     def test_partial_frame_buffered(self):
-        """FRAME_BYTES 未満のデータはバッファに蓄積"""
+        """Data less than FRAME_BYTES accumulates in buffer"""
         async def _test():
             cap = AudioCapture(mock=True)
             cap._running = True
@@ -136,7 +136,7 @@ class TestFrameBuffer(unittest.TestCase):
         _run(_test())
 
     def test_multiple_frames_plus_residual(self):
-        """2.5 フレーム分のデータ → 2 フレーム送信 + 残差 0.5 フレーム"""
+        """2.5 frames of data -> 2 frames sent + 0.5 frame residual"""
         async def _test():
             cap = AudioCapture(mock=True)
             cap._running = True
@@ -155,7 +155,7 @@ class TestFrameBuffer(unittest.TestCase):
 
 
 class TestShutdown(unittest.TestCase):
-    """シャットダウンテスト"""
+    """Shutdown tests"""
 
     def test_shutdown_sets_running_false(self):
         async def _test():

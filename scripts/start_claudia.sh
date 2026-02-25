@@ -2,18 +2,18 @@
 
 # Claudia Robot AI Assistant - Quick Start Script
 # Created: $(date '+%Y-%m-%d %H:%M:%S')
-# Purpose: 便捷启动和测试Claudia专属AI模型
+# Purpose: Convenient startup and testing for Claudia's dedicated AI model
 
 set -e
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 打印带颜色的消息
+# Print colored messages
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -30,11 +30,11 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 显示横幅
+# Display banner
 show_banner() {
     echo -e "${BLUE}"
     echo "================================================="
-    echo "    クラウディア (Claudia) Robot AI Assistant    "
+    echo "    Claudia Robot AI Assistant                    "
     echo "================================================="
     echo "   Japanese Robotics Environment AI Assistant    "
     echo "   Optimized for ROS2 Foxy + Jetson Orin NX     "
@@ -42,28 +42,28 @@ show_banner() {
     echo -e "${NC}"
 }
 
-# 检查Ollama服务状态
+# Check Ollama service status
 check_ollama_service() {
     print_status "Checking Ollama service status..."
-    
+
     if ! command -v ollama &> /dev/null; then
         print_error "Ollama not found! Please install Ollama first."
         exit 1
     fi
-    
+
     if ! pgrep -x "ollama" > /dev/null; then
         print_warning "Ollama service not running. Starting service..."
         ollama serve &
         sleep 3
     fi
-    
+
     print_success "Ollama service is running"
 }
 
-# 检查Claudia模型是否存在
+# Check if Claudia model exists
 check_claudia_model() {
     print_status "Checking Claudia model availability..."
-    
+
     if ollama list | grep -q "claudia-optimized"; then
         print_success "Claudia model found: claudia-optimized"
     else
@@ -74,39 +74,40 @@ check_claudia_model() {
     fi
 }
 
-# 运行快速测试
+# Run quick tests
 run_quick_tests() {
     print_status "Running quick functionality tests..."
-    
+
+    # Japanese robot commands used as test inputs
     echo -e "\n${YELLOW}Testing Control Mode:${NC}"
-    echo "Input: 前に進む"
-    echo "Output:" 
+    echo "Input: 'move forward' (前に進む)"
+    echo "Output:"
     echo "前に進む" | ollama run claudia-optimized
-    
+
     echo -e "\n${YELLOW}Testing LED Control:${NC}"
-    echo "Input: LED点灯"
+    echo "Input: 'LED on' (LED点灯)"
     echo "Output:"
     echo "LED点灯" | ollama run claudia-optimized
-    
+
     echo -e "\n${YELLOW}Testing Emergency Mode:${NC}"
-    echo "Input: 緊急停止"
+    echo "Input: 'emergency stop' (緊急停止)"
     echo "Output:"
     echo "緊急停止" | ollama run claudia-optimized
-    
+
     print_success "All tests completed successfully!"
 }
 
-# 交互模式
+# Interactive mode
 interactive_mode() {
     print_status "Starting interactive mode..."
     print_status "Type 'exit' or 'quit' to end session"
     print_status "Type 'test' to run quick tests"
     echo ""
-    
+
     while true; do
         echo -n -e "${GREEN}Claudia> ${NC}"
         read -r user_input
-        
+
         case $user_input in
             "exit"|"quit")
                 print_success "Session ended. Goodbye!"
@@ -127,7 +128,7 @@ interactive_mode() {
     done
 }
 
-# 显示使用帮助
+# Display usage help
 show_help() {
     echo "Usage: $0 [OPTION]"
     echo ""
@@ -141,14 +142,14 @@ show_help() {
     echo "Examples:"
     echo "  $0 -t           # Run tests"
     echo "  $0 -i           # Start interactive session"
-    echo "  echo '前に進む' | $0   # Quick command"
+    echo "  echo 'move forward' | $0   # Quick command"
 }
 
-# 显示系统状态
+# Display system status
 show_status() {
     print_status "System Status Report"
     echo "===================="
-    
+
     echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "Ollama Service: $(pgrep -x ollama >/dev/null && echo 'Running' || echo 'Stopped')"
     echo "Available Models:"
@@ -161,18 +162,18 @@ show_status() {
     top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1"%"}'
 }
 
-# 显示模型版本信息
+# Display model version information
 show_version() {
     print_status "Claudia Model Information"
     echo "========================="
     ollama show claudia-optimized | head -20
 }
 
-# 主函数
+# Main function
 main() {
     show_banner
-    
-    # 解析命令行参数
+
+    # Parse command line arguments
     case "${1:-}" in
         -h|--help)
             show_help
@@ -199,17 +200,17 @@ main() {
             exit 0
             ;;
         "")
-            # 无参数时的默认行为
+            # Default behavior when no arguments provided
             check_ollama_service
             check_claudia_model
-            
-            # 如果有管道输入，直接处理
+
+            # If there is piped input, process it directly
             if [ ! -t 0 ]; then
                 while IFS= read -r line; do
                     echo "$line" | ollama run claudia-optimized
                 done
             else
-                # 否则进入交互模式
+                # Otherwise enter interactive mode
                 interactive_mode
             fi
             ;;
@@ -221,5 +222,5 @@ main() {
     esac
 }
 
-# 执行主函数
-main "$@" 
+# Execute main function
+main "$@"

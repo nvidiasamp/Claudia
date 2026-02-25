@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-完整测试Unitree Go2 SDK所有声明的动作方法
-确认哪些动作在Go2硬件上真正可用
+Complete test of all declared action methods in Unitree Go2 SDK
+Confirms which actions are truly available on Go2 hardware
 """
 
 import os
@@ -10,12 +10,12 @@ import sys
 import time
 import json
 
-# 添加路径
+# Add paths
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(_PROJECT_ROOT)
 sys.path.append(os.path.join(_PROJECT_ROOT, 'unitree_sdk2_python'))
 
-# 设置环境变量
+# Set environment variables
 os.environ['CYCLONEDDS_HOME'] = os.path.join(_PROJECT_ROOT, 'cyclonedds', 'install')
 ld_path = os.environ.get('LD_LIBRARY_PATH', '')
 cyclone_lib = os.path.join(_PROJECT_ROOT, 'cyclonedds', 'install', 'lib')
@@ -30,87 +30,87 @@ os.environ['CYCLONEDDS_URI'] = '''<CycloneDDS><Domain><General><Interfaces>
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py.go2.sport.sport_client import SportClient
 
-# 定义SDK中声明的所有动作方法
+# Define all action methods declared in the SDK
 ALL_ACTIONS = [
-    # 基础控制动作（无参数）
-    (1001, "Damp", None, "阻尼"),
-    (1002, "BalanceStand", None, "平衡站立"),
-    (1003, "StopMove", None, "停止移动"),
-    (1004, "StandUp", None, "站立"),
-    (1005, "StandDown", None, "趴下"),
-    (1006, "RecoveryStand", None, "恢复站立"),
-    (1009, "Sit", None, "坐下"),
-    (1010, "RiseSit", None, "起坐"),
-    (1012, "Trigger", None, "触发器"),
-    
-    # 表演动作
-    (1016, "Hello", None, "打招呼"),
-    (1017, "Stretch", None, "伸懒腰"),
-    (1021, "Wallow", None, "打滚/比心？"),
-    (1022, "Dance1", None, "舞蹈1"),
-    (1023, "Dance2", None, "舞蹈2"),
-    
-    # 高级动作  
-    (1029, "Scrape", None, "刮擦"),
-    (1030, "FrontFlip", None, "前空翻"),
-    (1031, "FrontJump", None, "前跳"),
-    (1032, "FrontPounce", None, "前扑"),
-    (1033, "WiggleHips", None, "扭腰"),
-    (1036, "Heart", None, "比心"),
-    
-    # 高级动作（可能不支持）
-    (1042, "LeftFlip", None, "左翻"),
-    (1044, "BackFlip", None, "后空翻"),
-    
-    # 带参数的动作（需要参数）
-    (1007, "Euler", (0.0, 0.0, 0.0), "姿态角度"),
-    (1008, "Move", (0.0, 0.0, 0.0), "移动"),
-    (1011, "SwitchGait", (0,), "步态切换"),
-    (1013, "BodyHeight", (0.0,), "身体高度"),
-    (1014, "FootRaiseHeight", (0.0,), "抬脚高度"),
-    (1015, "SpeedLevel", (0,), "速度等级"),
-    (1019, "ContinuousGait", (1,), "连续步态"),
-    (1027, "SwitchJoystick", (True,), "切换摇杆"),
-    (1028, "Pose", (True,), "摆姿势"),
-    (1035, "EconomicGait", (True,), "经济步态"),
-    (1045, "FreeWalk", (True,), "自由行走"),
-    (1046, "FreeBound", (True,), "自由跳跃"),
-    (1047, "FreeJump", (True,), "自由跳"),
-    (1048, "FreeAvoid", (True,), "自由避障"),
-    (1049, "WalkStair", (True,), "爬楼梯"),
-    (1050, "WalkUpright", (True,), "直立行走"),
-    (1051, "CrossStep", (True,), "交叉步"),
+    # Basic control actions (no parameters)
+    (1001, "Damp", None, "Damping"),
+    (1002, "BalanceStand", None, "Balance stand"),
+    (1003, "StopMove", None, "Stop movement"),
+    (1004, "StandUp", None, "Stand up"),
+    (1005, "StandDown", None, "Lie down"),
+    (1006, "RecoveryStand", None, "Recovery stand"),
+    (1009, "Sit", None, "Sit"),
+    (1010, "RiseSit", None, "Rise from sit"),
+    (1012, "Trigger", None, "Trigger"),
+
+    # Performance actions
+    (1016, "Hello", None, "Hello gesture"),
+    (1017, "Stretch", None, "Stretch"),
+    (1021, "Wallow", None, "Wallow/roll"),
+    (1022, "Dance1", None, "Dance 1"),
+    (1023, "Dance2", None, "Dance 2"),
+
+    # Advanced actions
+    (1029, "Scrape", None, "Scrape"),
+    (1030, "FrontFlip", None, "Front flip"),
+    (1031, "FrontJump", None, "Front jump"),
+    (1032, "FrontPounce", None, "Front pounce"),
+    (1033, "WiggleHips", None, "Wiggle hips"),
+    (1036, "Heart", None, "Heart gesture"),
+
+    # Advanced actions (may not be supported)
+    (1042, "LeftFlip", None, "Left flip"),
+    (1044, "BackFlip", None, "Back flip"),
+
+    # Parameterized actions (require parameters)
+    (1007, "Euler", (0.0, 0.0, 0.0), "Euler angles"),
+    (1008, "Move", (0.0, 0.0, 0.0), "Move"),
+    (1011, "SwitchGait", (0,), "Switch gait"),
+    (1013, "BodyHeight", (0.0,), "Body height"),
+    (1014, "FootRaiseHeight", (0.0,), "Foot raise height"),
+    (1015, "SpeedLevel", (0,), "Speed level"),
+    (1019, "ContinuousGait", (1,), "Continuous gait"),
+    (1027, "SwitchJoystick", (True,), "Switch joystick"),
+    (1028, "Pose", (True,), "Pose"),
+    (1035, "EconomicGait", (True,), "Economic gait"),
+    (1045, "FreeWalk", (True,), "Free walk"),
+    (1046, "FreeBound", (True,), "Free bound"),
+    (1047, "FreeJump", (True,), "Free jump"),
+    (1048, "FreeAvoid", (True,), "Free avoid"),
+    (1049, "WalkStair", (True,), "Walk stairs"),
+    (1050, "WalkUpright", (True,), "Walk upright"),
+    (1051, "CrossStep", (True,), "Cross step"),
 ]
 
 def test_all_actions():
-    """测试所有SDK动作"""
-    
+    """Test all SDK actions"""
+
     print("="*80)
-    print("🔬 Unitree Go2 SDK动作完整测试")
+    print("Unitree Go2 SDK Complete Action Test")
     print("="*80)
-    
-    # 初始化
-    print("\n📡 初始化DDS通道...")
+
+    # Initialize
+    print("\nInitializing DDS channel...")
     ChannelFactoryInitialize(0, "eth0")
-    
+
     client = SportClient()
     client.SetTimeout(10.0)
     client.Init()
-    
-    # 测试连接
-    print("🔗 测试连接...")
+
+    # Test connection
+    print("Testing connection...")
     test_result = client.RecoveryStand()
     if test_result == 0:
-        print("✅ 连接成功")
+        print("Connection successful")
     elif test_result == 3103:
-        print("❌ APP占用，请关闭APP并重启机器人")
+        print("App is occupying the robot, please close the app and restart the robot")
         return
     else:
-        print(f"⚠️ 连接测试返回码: {test_result}")
-    
+        print(f"Connection test return code: {test_result}")
+
     time.sleep(1)
-    
-    # 统计
+
+    # Statistics
     results = {
         "supported": [],
         "unsupported_3203": [],
@@ -118,81 +118,81 @@ def test_all_actions():
         "error_other": [],
         "not_found": []
     }
-    
+
     print("\n" + "="*80)
-    print("📊 开始测试所有动作...")
+    print("Starting to test all actions...")
     print("="*80)
-    
+
     for api_id, method_name, params, description in ALL_ACTIONS:
-        print(f"\n测试 {api_id:4d} | {method_name:20s} | {description:20s}", end=" ")
-        
-        # 检查方法是否存在
+        print(f"\nTest {api_id:4d} | {method_name:20s} | {description:20s}", end=" ")
+
+        # Check if method exists
         if not hasattr(client, method_name):
-            print(f"❌ 方法不存在")
+            print(f"FAIL: Method not found")
             results["not_found"].append((api_id, method_name, description))
             continue
-        
-        # 获取方法
+
+        # Get method
         method = getattr(client, method_name)
-        
+
         try:
-            # 调用方法（根据是否需要参数）
+            # Call method (with or without parameters)
             if params is None:
                 result = method()
             else:
                 result = method(*params)
-            
-            # 分析返回码
+
+            # Analyze return code
             if result == 0:
-                print(f"✅ 成功 (0)")
+                print(f"PASS: Success (0)")
                 results["supported"].append((api_id, method_name, description))
             elif result == -1:
-                print(f"✅ 已在状态 (-1)")
+                print(f"PASS: Already in state (-1)")
                 results["supported"].append((api_id, method_name, description))
             elif result == 3203:
-                print(f"❌ 未实现 (3203)")
+                print(f"FAIL: Not implemented (3203)")
                 results["unsupported_3203"].append((api_id, method_name, description))
             elif result == 3104:
-                print(f"⚠️ 特殊返回 (3104)")
+                print(f"WARN: Special return (3104)")
                 results["unsupported_3104"].append((api_id, method_name, description))
             else:
-                print(f"❓ 未知返回码 ({result})")
+                print(f"UNKNOWN: Return code ({result})")
                 results["error_other"].append((api_id, method_name, description, result))
-                
+
         except Exception as e:
-            print(f"💥 异常: {e}")
+            print(f"ERROR: Exception: {e}")
             results["error_other"].append((api_id, method_name, description, str(e)))
-        
-        # 短暂延迟避免命令冲突
+
+        # Brief delay to avoid command conflicts
         time.sleep(0.5)
-    
-    # 打印总结
+
+    # Print summary
     print("\n" + "="*80)
-    print("📊 测试结果总结")
+    print("Test Results Summary")
     print("="*80)
-    
-    print(f"\n✅ **支持的动作** ({len(results['supported'])}个):")
+
+    print(f"\n**Supported actions** ({len(results['supported'])}):")
     for api_id, method, desc in results['supported']:
         print(f"   {api_id:4d} | {method:20s} | {desc}")
-    
-    print(f"\n❌ **未实现(3203)** ({len(results['unsupported_3203'])}个):")
+
+    print(f"\n**Not implemented (3203)** ({len(results['unsupported_3203'])}):")
     for api_id, method, desc in results['unsupported_3203']:
         print(f"   {api_id:4d} | {method:20s} | {desc}")
-    
-    print(f"\n⚠️ **特殊返回(3104)** ({len(results['unsupported_3104'])}个):")
+
+    print(f"\n**Special return (3104)** ({len(results['unsupported_3104'])}):")
     for api_id, method, desc in results['unsupported_3104']:
         print(f"   {api_id:4d} | {method:20s} | {desc}")
-    
-    print(f"\n❌ **方法不存在** ({len(results['not_found'])}个):")
+
+    print(f"\n**Method not found** ({len(results['not_found'])}):")
     for api_id, method, desc in results['not_found']:
         print(f"   {api_id:4d} | {method:20s} | {desc}")
-    
+
     if results['error_other']:
-        print(f"\n💥 **其他错误** ({len(results['error_other'])}个):")
+        print(f"\n**Other errors** ({len(results['error_other'])}):")
         for item in results['error_other']:
             print(f"   {item}")
-    
-    # 保存结果
+
+    # Save results
     result_file = os.path.join(_PROJECT_ROOT, f"test_results_{int(time.time())}.json")
     with open(result_file, 'w', encoding='utf-8') as f:
         json.dump({
@@ -211,18 +211,18 @@ def test_all_actions():
                 "not_found": len(results['not_found'])
             }
         }, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n💾 结果已保存到: {result_file}")
-    
-    # 最终统计
+
+    print(f"\nResults saved to: {result_file}")
+
+    # Final statistics
     print("\n" + "="*80)
-    print("🎯 最终统计")
+    print("Final Statistics")
     print("="*80)
-    print(f"测试动作总数: {len(ALL_ACTIONS)}")
-    print(f"✅ 支持: {len(results['supported'])}")
-    print(f"❌ 不支持(3203): {len(results['unsupported_3203'])}")
-    print(f"⚠️ 特殊(3104): {len(results['unsupported_3104'])}")
-    print(f"❌ 方法不存在: {len(results['not_found'])}")
+    print(f"Total actions tested: {len(ALL_ACTIONS)}")
+    print(f"Supported: {len(results['supported'])}")
+    print(f"Not supported (3203): {len(results['unsupported_3203'])}")
+    print(f"Special (3104): {len(results['unsupported_3104'])}")
+    print(f"Method not found: {len(results['not_found'])}")
     print("="*80)
 
 if __name__ == "__main__":
