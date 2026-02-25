@@ -23,7 +23,7 @@
 
 ### Claudia 语音流水线
 
-[![Voice Demo](https://img.youtube.com/vi/C67kufhKB_0/sddefault.jpg)](https://youtu.be/C67kufhKB_0)
+[![Voice Demo](https://img.youtube.com/vi/O6TpC9Se3Ds/sddefault.jpg)](https://youtu.be/O6TpC9Se3Ds)
 
 > 语音 → ASR → 本地 LLM → 机器人执行 —— 完全本地推理，无需云端。
 > 演示命令：站 / 座 / 趴（日语语音输入，Unitree Go2 实机）
