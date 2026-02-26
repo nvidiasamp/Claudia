@@ -4,7 +4,7 @@
 Canonical route field names for audit logs -- finalized once, no ad-hoc additions
 
 All _log_audit() calls must use constants from this module for the route= parameter.
-Enforced by runtime assert + AST-level CI test dual guarantee.
+Enforced by runtime ValueError + AST-level CI test dual guarantee.
 """
 
 # === PR1 Routes ===

@@ -99,7 +99,7 @@ class TestRunner:
             env = os.environ.copy()
             src_dir = str(self.project_root / "src")
             existing = env.get("PYTHONPATH", "")
-            env["PYTHONPATH"] = src_dir + (":" + existing if existing else "")
+            env["PYTHONPATH"] = src_dir + (os.pathsep + existing if existing else "")
             if verbose:
                 result = subprocess.run(cmd, cwd=self.project_root,
                                       env=env, capture_output=False, text=True)

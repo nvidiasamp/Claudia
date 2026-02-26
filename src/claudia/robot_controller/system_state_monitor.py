@@ -198,19 +198,23 @@ class SystemStateMonitor:
 
         try:
             # Suppress ROS2 error output (users should not see underlying RMW errors)
-            with contextlib.redirect_stderr(open(os.devnull, 'w')):
-                if not rclpy.ok():
-                    # Set ROS2 log level to FATAL (suppress ERROR level)
-                    os.environ['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = ''
-                    os.environ['RCUTILS_LOGGING_USE_STDOUT'] = '0'
-                    rclpy.init()
+            devnull = open(os.devnull, 'w')
+            try:
+                with contextlib.redirect_stderr(devnull):
+                    if not rclpy.ok():
+                        # Set ROS2 log level to FATAL (suppress ERROR level)
+                        os.environ['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = ''
+                        os.environ['RCUTILS_LOGGING_USE_STDOUT'] = '0'
+                        rclpy.init()
 
-                # Create node (may fail, but errors are suppressed)
-                self.node = SystemMonitorNode(
-                    node_name=self.node_name,
-                    state_callback=self._on_state_update,
-                    error_callback=self._on_system_error
-                )
+                    # Create node (may fail, but errors are suppressed)
+                    self.node = SystemMonitorNode(
+                        node_name=self.node_name,
+                        state_callback=self._on_state_update,
+                        error_callback=self._on_system_error
+                    )
+            finally:
+                devnull.close()
 
             # Create executor
             self.executor = MultiThreadedExecutor(num_threads=2)

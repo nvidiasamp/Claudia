@@ -72,18 +72,6 @@
 
 </details>
 
-### Claudia Demos
-
-| Demo | Description | Status |
-|------|-------------|--------|
-| **Hero Demo** | End-to-end: Japanese commands → LLM semantic understanding → robot action | Done |
-| **Voice Pipeline** | USB mic → ASR → LLM → SafetyCompiler → execution chain | Done |
-| **Terminal Control** | Interactive launcher → keyboard mode → text commands → robot action | Done |
-| **Advanced Actions** | High-risk mode toggle + advanced actions (Stretch, Front Jump, Front Flip) | Done |
-| **Multilingual** | Whisper language switching + Qwen2.5-7B cross-lingual command understanding | Planned |
-| **Safety System** | Battery gating, standing prerequisites, emergency stop | Planned |
-| **Action Showcase** | Full action montage — all performance actions in quick-cut | Planned |
-
 ---
 
 ## Key Features

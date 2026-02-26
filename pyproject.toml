@@ -15,7 +15,7 @@ dependencies = [
     "opencv-python>=4.5.0",
     # Note: ROS2 dependencies (rclpy, sensor_msgs, etc.) are installed via apt
     # Note: Audio capture uses arecord subprocess, not PyAudio
-    # Note: ASR uses faster-whisper (installed separately with ONNX pinning for Jetson)
+    # Note: ASR (faster-whisper) is in [asr] optional group below
 ]
 
 [project.optional-dependencies]
@@ -26,6 +26,15 @@ dev = [
     "flake8>=4.0.0",
     "mypy>=0.950",
     "pre-commit>=2.17.0",
+]
+
+asr = [
+    # Voice pipeline: faster-whisper ASR engine + silero-vad via onnxruntime
+    # IMPORTANT on Jetson Orin NX: onnxruntime must be pinned to 1.18.1
+    #   (>=1.19 crashes with SIGABRT in CPU topology detection on offline cores)
+    #   Install manually: pip3 install faster-whisper onnxruntime==1.18.1
+    "faster-whisper>=0.10.0",
+    "onnxruntime>=1.16.0",
 ]
 
 tensorrt = [

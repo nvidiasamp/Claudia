@@ -236,13 +236,15 @@ class VADProcessor:
             Events produced by this frame (may be empty)
         """
         frame_ms = len(frame) // BYTES_PER_MS
-        # Speech detection does not access shared state — run outside lock
-        is_speech = self._detect_speech(frame)
         now_ms = time.monotonic() * 1000
 
         events: List[VADEvent] = []
 
         with self._state_lock:
+            # Speech detection runs inside lock to prevent concurrent
+            # _vad_model() inference racing with reset()'s reset_states()
+            is_speech = self._detect_speech(frame)
+
             if self._state == VADState.SILENCE:
                 if is_speech:
                     self._transition_to_speech_start(now_ms)
@@ -473,9 +475,10 @@ class VADProcessor:
             if self._state != VADState.SILENCE:
                 logger.info("VAD external reset (current state: %s)", self._state.value)
             self._reset_state()
-        # Reset silero-vad internal state (outside lock — model reset is independent)
-        if self._vad_model is not None:
-            try:
-                self._vad_model.reset_states()
-            except Exception:
-                pass
+            # Reset silero-vad internal state (inside lock to prevent racing
+            # with _detect_speech_silero's model inference in executor thread)
+            if self._vad_model is not None:
+                try:
+                    self._vad_model.reset_states()
+                except Exception:
+                    pass
