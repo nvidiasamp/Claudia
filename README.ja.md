@@ -67,6 +67,13 @@
 > 高リスクモード切替 (c) → ストレッチ / 前ジャンプ / 前宙 — SafetyCompiler ゲート制御のデモ。
 > ターミナルモードで実演 — 音声とターミナルは同一の LLM パイプラインを共有し、入力方法のみが異なります。
 
+### Claudia 完全ワイヤレスデモ
+
+<!-- TODO: YouTube動画アップロード後、VIDEO_IDを実際のIDに置き換え -->
+<!-- [![Fully Wireless Demo](https://img.youtube.com/vi/VIDEO_ID/sddefault.jpg)](https://youtu.be/VIDEO_ID) -->
+
+> 近日公開 — 完全ワイヤレス構成（Wi-Fi + ワイヤレスマイク）による音声パイプラインのフルデモ。有線接続ゼロ。
+
 <details>
 <summary><strong>Go2 動作プレビュー</strong> — Unitree公式映像（クリックで展開）</summary>
 <br>
@@ -137,7 +144,7 @@
 | Python | 3.8以上 |
 | LLMランタイム | [Ollama](https://ollama.ai/) |
 | ミドルウェア | ROS2 Foxy + CycloneDDS |
-| ネットワーク | ロボットへのイーサネット (`192.168.123.x`) |
+| ネットワーク | Wi-Fi ([TP-Link Archer T2UB Nano](https://www.tp-link.com/jp/home-networking/adapter/archer-t2ub-nano/)) またはイーサネット (`192.168.123.x`) |
 
 ### インストール
 
@@ -301,8 +308,21 @@ Claudia は **Unitree Go2** 四足歩行ロボット上で、外付け **NVIDIA 
 | **OS** | Ubuntu 20.04、L4T R35.3.1（JetPack 5.1.1）、Python 3.8.10 |
 | **LLMランタイム** | Ollama + Qwen2.5-7B（Q4_K_M、VRAM ~4.7GB） |
 | **ASR** | faster-whisper base（CPU int8、~1.6秒/発話） |
-| **マイク** | Audio-Technica AT2020USB-XP（44.1kHz → 16kHz リサンプル） |
-| **ネットワーク** | Ethernet（eth0、192.168.123.x）ロボット DDS 通信用 |
+| **マイク** | DJI MIC 2（ワイヤレス）または Audio-Technica AT2020USB-XP（USB有線） |
+| **ネットワーク** | Wi-Fi ([TP-Link Archer T2UB Nano](https://www.tp-link.com/jp/home-networking/adapter/archer-t2ub-nano/)、`192.168.123.x`) — イーサネット不要 |
+
+### 完全ワイヤレス構成
+
+最新のアップデートにより、Claudia は Jetson への**有線接続ゼロ**で動作可能になりました。従来の有線周辺機器はすべて無線化されています：
+
+| 接続 | 従来（有線） | 現在（ワイヤレス） |
+|------|-------------|---------------------|
+| **ネットワーク** | Ethernet (eth0) | [TP-Link Archer T2UB Nano](https://www.tp-link.com/jp/home-networking/adapter/archer-t2ub-nano/) (AC600, USB Wi-Fi + Bluetooth 4.2) |
+| **マイク** | Audio-Technica AT2020USB-XP (USB) | [DJI MIC 2](https://www.dji.com/mic-2)（ワイヤレス、USB-Cレシーバー） |
+
+**Wi-Fi設定リファレンス**: [Jetson Orin NX Wi-Fi設定ガイド (Qiita)](https://qiita.com/todateman/items/aea5b12f1456308ed981)
+
+> TP-Link Archer T2UB Nano は USB 接続で Wi-Fi（`192.168.123.x` ロボットネットワーク用）と Bluetooth 4.2 を提供します。DJI MIC 2 は専用 USB-C レシーバーにより放送品質のワイヤレスオーディオを提供し、有線 USB マイクが不要になりました。
 
 ### コマンド処理パイプライン
 
@@ -350,7 +370,7 @@ flowchart TD
 ### 音声パイプライン
 
 ```
-USBマイク (AT2020USB-XP, カード自動検出, 44100Hz)
+ワイヤレスマイク (DJI MIC 2) または USBマイク (AT2020USB-XP), カード自動検出
   │ arecordサブプロセス → リサンプル → 16kHz 960byteフレーム
   v
 AudioCapture ──→ /tmp/claudia_audio.sock ──→ ASR Server（サブプロセス）

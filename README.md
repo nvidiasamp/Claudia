@@ -67,6 +67,13 @@
 > High-risk mode toggle (c) → Stretch / Front Jump / Front Flip — demonstrating SafetyCompiler gate control.
 > Terminal mode shown here — voice and terminal share the same LLM pipeline, only the input method differs.
 
+### Claudia Fully Wireless Demo
+
+<!-- TODO: Replace VIDEO_ID with actual YouTube video ID when uploaded -->
+<!-- [![Fully Wireless Demo](https://img.youtube.com/vi/VIDEO_ID/sddefault.jpg)](https://youtu.be/VIDEO_ID) -->
+
+> Coming soon — Full audio pipeline demo with completely wireless setup (Wi-Fi + wireless mic), zero wired connections.
+
 <details>
 <summary><strong>Go2 in Action</strong> — official Unitree footage (click to expand)</summary>
 <br>
@@ -137,7 +144,7 @@
 | Python | 3.8+ |
 | LLM Runtime | [Ollama](https://ollama.ai/) |
 | Middleware | ROS2 Foxy + CycloneDDS |
-| Network | Ethernet to robot (`192.168.123.x`) |
+| Network | Wi-Fi ([TP-Link Archer T2UB Nano](https://www.tp-link.com/jp/home-networking/adapter/archer-t2ub-nano/)) or Ethernet (`192.168.123.x`) |
 
 ### Installation
 
@@ -301,8 +308,21 @@ Claudia runs on a **Unitree Go2** quadruped robot with an external **NVIDIA Jets
 | **OS** | Ubuntu 20.04, L4T R35.3.1 (JetPack 5.1.1), Python 3.8.10 |
 | **LLM Runtime** | Ollama + Qwen2.5-7B (Q4_K_M, ~4.7GB VRAM) |
 | **ASR** | faster-whisper base (CPU int8, ~1.6s/utterance) |
-| **Microphone** | Audio-Technica AT2020USB-XP (44.1kHz → 16kHz resample) |
-| **Network** | Ethernet (eth0, 192.168.123.x) for robot DDS communication |
+| **Microphone** | DJI MIC 2 (wireless) or Audio-Technica AT2020USB-XP (USB wired) |
+| **Network** | Wi-Fi ([TP-Link Archer T2UB Nano](https://www.tp-link.com/jp/home-networking/adapter/archer-t2ub-nano/), `192.168.123.x`) — Ethernet no longer required |
+
+### Fully Wireless Configuration
+
+As of the latest update, Claudia can operate with **zero wired connections** to the Jetson. All previously wired peripherals have been replaced:
+
+| Connection | Previous (Wired) | Current (Wireless) |
+|------------|-------------------|---------------------|
+| **Network** | Ethernet (eth0) | [TP-Link Archer T2UB Nano](https://www.tp-link.com/jp/home-networking/adapter/archer-t2ub-nano/) (AC600, USB Wi-Fi + Bluetooth 4.2) |
+| **Microphone** | Audio-Technica AT2020USB-XP (USB) | [DJI MIC 2](https://www.dji.com/mic-2) (wireless, USB-C receiver) |
+
+**Wi-Fi setup reference**: [Jetson Orin NX Wi-Fi configuration guide (Qiita)](https://qiita.com/todateman/items/aea5b12f1456308ed981)
+
+> The TP-Link Archer T2UB Nano connects via USB and provides both Wi-Fi (for `192.168.123.x` robot network) and Bluetooth 4.2. The DJI MIC 2 provides broadcast-quality wireless audio with its dedicated USB-C receiver, eliminating the need for a wired USB microphone.
 
 ### Command Processing Pipeline
 
@@ -350,7 +370,7 @@ flowchart TD
 ### Voice Pipeline
 
 ```
-USB Mic (AT2020USB-XP, auto-detect card, 44100Hz)
+Wireless Mic (DJI MIC 2) or USB Mic (AT2020USB-XP), auto-detect card
   │ arecord subprocess → resample → 16kHz 960byte frames
   v
 AudioCapture ──→ /tmp/claudia_audio.sock ──→ ASR Server (subprocess)

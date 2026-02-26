@@ -67,6 +67,13 @@
 > 高危模式切换 (c) → 拉伸 / 前跳 / 前空翻 — 演示 SafetyCompiler 门控机制。
 > 此处使用终端模式演示 — 语音与终端共享同一 LLM 管线，仅输入方式不同。
 
+### Claudia 完全无线演示
+
+<!-- TODO: 上传 YouTube 视频后，将 VIDEO_ID 替换为实际视频 ID -->
+<!-- [![Fully Wireless Demo](https://img.youtube.com/vi/VIDEO_ID/sddefault.jpg)](https://youtu.be/VIDEO_ID) -->
+
+> 即将发布 — 完全无线配置（Wi-Fi + 无线麦克风）下的完整音频管线演示，零有线连接。
+
 <details>
 <summary><strong>Go2 动作预览</strong> —— Unitree 官方素材（点击展开）</summary>
 <br>
@@ -137,7 +144,7 @@
 | Python | 3.8 以上 |
 | LLM 运行时 | [Ollama](https://ollama.ai/) |
 | 中间件 | ROS2 Foxy + CycloneDDS |
-| 网络 | 以太网连接机器人 (`192.168.123.x`) |
+| 网络 | Wi-Fi ([TP-Link Archer T2UB Nano](https://www.tp-link.com/jp/home-networking/adapter/archer-t2ub-nano/)) 或以太网 (`192.168.123.x`) |
 
 ### 安装
 
@@ -301,8 +308,21 @@ Claudia 运行在 **Unitree Go2** 四足机器人上，外接 **NVIDIA Jetson Or
 | **操作系统** | Ubuntu 20.04，L4T R35.3.1（JetPack 5.1.1），Python 3.8.10 |
 | **LLM 运行时** | Ollama + Qwen2.5-7B（Q4_K_M，VRAM ~4.7GB） |
 | **ASR** | faster-whisper base（CPU int8，~1.6 秒/句） |
-| **麦克风** | Audio-Technica AT2020USB-XP（44.1kHz → 16kHz 重采样） |
-| **网络** | 以太网（eth0，192.168.123.x）用于机器人 DDS 通信 |
+| **麦克风** | DJI MIC 2（无线）或 Audio-Technica AT2020USB-XP（USB 有线） |
+| **网络** | Wi-Fi ([TP-Link Archer T2UB Nano](https://www.tp-link.com/jp/home-networking/adapter/archer-t2ub-nano/)，`192.168.123.x`) — 不再需要以太网 |
+
+### 完全无线配置
+
+最新更新后，Claudia 已实现 Jetson 的**零有线连接**运行。所有原有线外设均已替换为无线方案：
+
+| 连接 | 原方案（有线） | 现方案（无线） |
+|------|---------------|----------------|
+| **网络** | 以太网 (eth0) | [TP-Link Archer T2UB Nano](https://www.tp-link.com/jp/home-networking/adapter/archer-t2ub-nano/) (AC600, USB Wi-Fi + 蓝牙 4.2) |
+| **麦克风** | Audio-Technica AT2020USB-XP (USB) | [DJI MIC 2](https://www.dji.com/mic-2)（无线，USB-C 接收器） |
+
+**Wi-Fi 配置参考**: [Jetson Orin NX Wi-Fi 配置指南 (Qiita)](https://qiita.com/todateman/items/aea5b12f1456308ed981)
+
+> TP-Link Archer T2UB Nano 通过 USB 连接，同时提供 Wi-Fi（用于 `192.168.123.x` 机器人网络）和蓝牙 4.2。DJI MIC 2 通过专用 USB-C 接收器提供广播级无线音频，无需有线 USB 麦克风。
 
 ### 命令处理管线
 
@@ -350,7 +370,7 @@ flowchart TD
 ### 语音管线
 
 ```
-USB 麦克风 (AT2020USB-XP, 自动检测声卡, 44100Hz)
+无线麦克风 (DJI MIC 2) 或 USB 麦克风 (AT2020USB-XP), 自动检测声卡
   │ arecord 子进程 → 重采样 → 16kHz 960byte 帧
   v
 AudioCapture ──→ /tmp/claudia_audio.sock ──→ ASR Server（子进程）
