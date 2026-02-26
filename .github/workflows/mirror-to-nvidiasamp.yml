@@ -1,0 +1,23 @@
+name: Mirror to nvidiasamp
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push to nvidiasamp/Claudia
+        run: |
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          git remote add mirror https://x-access-token:${MIRROR_TOKEN}@github.com/nvidiasamp/Claudia.git
+          git push mirror main
+        env:
+          MIRROR_TOKEN: ${{ secrets.NVIDIASAMP_MIRROR_TOKEN }}
