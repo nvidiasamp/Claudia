@@ -69,8 +69,9 @@
 
 | Demo | Description | Status |
 |------|-------------|--------|
-| **Hero Demo** | End-to-end: Japanese commands → LLM semantic understanding → robot action | Planned |
-| **Voice Pipeline** | USB mic → ASR → LLM → SafetyCompiler → execution chain | Planned |
+| **Hero Demo** | End-to-end: Japanese commands → LLM semantic understanding → robot action | Done |
+| **Voice Pipeline** | USB mic → ASR → LLM → SafetyCompiler → execution chain | Done |
+| **Terminal Control** | Interactive launcher → keyboard mode → text commands → robot action | Done |
 | **Multilingual** | Same robot controlled in Japanese, Chinese, and English | Planned |
 | **Safety System** | Battery gating, standing prerequisites, emergency stop | Planned |
 | **Action Showcase** | All 18 performance actions in quick-cut montage | Planned |
