@@ -35,6 +35,13 @@
 > Interactive launcher → Keyboard mode → Japanese text commands → Robot Action.
 > Commands shown: Stand up (立って) / Sit (座って) / Lie down (伏せて) / Hello (挨拶して)
 
+### Claudia Advanced Actions
+
+[![Advanced Actions Demo](https://img.youtube.com/vi/VIDEO_ID/sddefault.jpg)](https://youtu.be/VIDEO_ID)
+
+> High-risk mode toggle (c) → Stretch / Front Jump / Front Flip — demonstrating SafetyCompiler gate control.
+> Commands shown: Enable high-risk mode → Stretch (ストレッチ) / Front Jump (前ジャンプ) / Front Flip (前宙)
+
 ### Go2 in Action
 
 <p align="center">
@@ -72,9 +79,10 @@
 | **Hero Demo** | End-to-end: Japanese commands → LLM semantic understanding → robot action | Done |
 | **Voice Pipeline** | USB mic → ASR → LLM → SafetyCompiler → execution chain | Done |
 | **Terminal Control** | Interactive launcher → keyboard mode → text commands → robot action | Done |
+| **Advanced Actions** | High-risk mode toggle + advanced actions (Stretch, Front Jump, Front Flip) | Done |
 | **Multilingual** | Whisper language switching + Qwen2.5-7B cross-lingual command understanding | Planned |
 | **Safety System** | Battery gating, standing prerequisites, emergency stop | Planned |
-| **Action Showcase** | All 18 performance actions in quick-cut montage | Planned |
+| **Action Showcase** | Full action montage — all performance actions in quick-cut | Planned |
 
 ---
 
