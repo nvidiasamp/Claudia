@@ -318,12 +318,6 @@ flowchart TD
     LLM --> Safety["SafetyCompiler.compile()<br/>白名单 / 电量 / 站立"]
     Safety --> Execute["执行动作"]
     Execute --> Robot["SportClient RPC<br/>via CycloneDDS"]
-
-    style Input fill:#e1f5fe,stroke:#0288d1
-    style Stop fill:#ffcdd2,stroke:#c62828
-    style TextOnly fill:#f3e5f5,stroke:#7b1fa2
-    style Execute fill:#c8e6c9,stroke:#2e7d32
-    style Robot fill:#c8e6c9,stroke:#2e7d32
 ```
 
 > **路由模式** (`BRAIN_ROUTER_MODE`): `dual`（默认，Action 专用模型，~30 tokens）| `legacy`（7B 完整响应）| `shadow`（A/B 对比日志）
