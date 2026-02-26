@@ -37,7 +37,7 @@
 
 ### Claudia Advanced Actions
 
-[![Advanced Actions Demo](https://img.youtube.com/vi/VIDEO_ID/sddefault.jpg)](https://youtu.be/VIDEO_ID)
+[![Advanced Actions Demo](https://img.youtube.com/vi/-Sj_ffcLJzA/sddefault.jpg)](https://youtu.be/-Sj_ffcLJzA)
 
 > High-risk mode toggle (c) → Stretch / Front Jump / Front Flip — demonstrating SafetyCompiler gate control.
 > Commands shown: Enable high-risk mode → Stretch (ストレッチ) / Front Jump (前ジャンプ) / Front Flip (前宙)

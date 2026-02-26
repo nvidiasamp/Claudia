@@ -37,7 +37,7 @@
 
 ### Claudia 高级动作
 
-[![Advanced Actions Demo](https://img.youtube.com/vi/VIDEO_ID/sddefault.jpg)](https://youtu.be/VIDEO_ID)
+[![Advanced Actions Demo](https://img.youtube.com/vi/-Sj_ffcLJzA/sddefault.jpg)](https://youtu.be/-Sj_ffcLJzA)
 
 > 高危模式切换 (c) → 拉伸 / 前跳 / 前空翻 — 演示 SafetyCompiler 门控机制。
 > 演示命令：启用高危模式 → 拉伸 / 前跳 / 前空翻（文本输入，Unitree Go2 实机）

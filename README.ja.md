@@ -37,7 +37,7 @@
 
 ### Claudia 高度な動作
 
-[![Advanced Actions Demo](https://img.youtube.com/vi/VIDEO_ID/sddefault.jpg)](https://youtu.be/VIDEO_ID)
+[![Advanced Actions Demo](https://img.youtube.com/vi/-Sj_ffcLJzA/sddefault.jpg)](https://youtu.be/-Sj_ffcLJzA)
 
 > 高リスクモード切替 (c) → ストレッチ / 前ジャンプ / 前宙 — SafetyCompiler ゲート制御のデモ。
 > 実演コマンド: 高リスクモード有効化 → ストレッチ / 前ジャンプ / 前宙（テキスト入力、Unitree Go2 実機）
